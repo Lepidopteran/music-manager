@@ -1,2 +1,18 @@
+# Environment Files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Debug Files
+config.toml
+*.log
+*.db
+
+# Build Files
 /target
 /dist
+
+# Temp Files
+*.bak
