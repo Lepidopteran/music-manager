@@ -8,12 +8,10 @@
 # Debug Files
 config.toml
 *.log
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite-wal
-*.sqlite-shm
+
+# Database Files
+*.db*
+*.sqlite*
 
 # Build Files
 /target
