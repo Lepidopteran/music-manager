@@ -1,8 +1,11 @@
 use std::process::Command;
 
 fn main() {
+    println!("cargo:rerun-if-changed=frontend");
+    println!("cargo:rerun-if-changed=migrations");
+
     if let Err(err) = build_frontend() {
-        panic!("{}", err);
+        panic!("Failed to build frontend: {}", err);
     };
 }
 

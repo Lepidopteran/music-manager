@@ -1,61 +1,70 @@
-use axum::{
-  http::{header, StatusCode, Uri},
-  response::{Html, IntoResponse, Response},
-  routing::{get, Router},
-};
-use rust_embed::Embed;
-use std::net::SocketAddr;
+use std::{env, fs::File, path::PathBuf};
+
+use clap::Parser;
+use color_eyre::owo_colors::OwoColorize;
+use dotenvy::dotenv;
+use sqlx::sqlite::SqlitePoolOptions;
+
+use music_manager::{app, config::Settings, create_default_database, logging, Args};
 
 #[tokio::main]
 async fn main() {
-  // Define our app routes, including a fallback option for anything not matched.
-  let app = Router::new()
-    .route("/", get(index_handler))
-    .route("/index.html", get(index_handler))
-    .route("/*file", get(static_handler))
-    .fallback_service(get(not_found));
+    logging::init().expect("Failed to initialize logging");
+    dotenv().ok();
 
-  // Start listening on the given address.
-  let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-  println!("listening on {}", addr);
-  let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-  axum::serve(listener, app.into_make_service()).await.unwrap();
-}
+    tracing::info!(
+        "Launching {} v{}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
 
-// We use static route matchers ("/" and "/index.html") to serve our home
-// page.
-async fn index_handler() -> impl IntoResponse {
-  static_handler("/index.html".parse::<Uri>().unwrap()).await
-}
+    let args = Args::parse();
+    let mut settings = Settings::load(args.config).expect("Failed to load settings");
 
-async fn static_handler(uri: Uri) -> impl IntoResponse {
-    StaticFile(uri.path().trim_start_matches('/').to_string())
-}
-
-// Finally, we use a fallback route for anything that didn't match.
-async fn not_found() -> Html<&'static str> {
-  Html("<h1>404</h1><p>Not Found</p>")
-}
-
-#[derive(Embed)]
-#[folder = "dist/"]
-struct Asset;
-
-pub struct StaticFile<T>(pub T);
-
-impl<T> IntoResponse for StaticFile<T>
-where
-  T: Into<String>,
-{
-  fn into_response(self) -> Response {
-    let path = self.0.into();
-
-    match Asset::get(path.as_str()) {
-      Some(content) => {
-        let mime = mime_guess::from_path(path).first_or_octet_stream();
-        ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
-      }
-      None => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
+    if let Some(url) = &args.database_url {
+        settings.database_url = Some(url.to_string());
     }
-  }
+
+    if let Some(port) = &args.port {
+        settings.server.port = *port;
+    }
+
+    if let Some(host) = &args.host {
+        settings.server.listen_on_all_interfaces = *host;
+    }
+
+    let database_url = match &settings.database_url {
+        Some(url) => url,
+        None => {
+            tracing::info!(
+                "{}",
+                "No database URL specified. Using default database."
+                    .blue()
+                    .bold()
+            );
+
+            &create_default_database("data").expect("Failed to create default database")
+        }
+    };
+
+    if let Some(database_url) = database_url.strip_prefix("sqlite://") {
+        let path = PathBuf::from(database_url);
+
+        if !path.exists() {
+            File::create(&path).expect("Failed to create database file");
+        }
+    }
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(32)
+        .connect(database_url)
+        .await
+        .expect("Failed to connect to database");
+
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
+
+    app::serve(settings, pool).await;
 }
