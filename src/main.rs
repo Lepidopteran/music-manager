@@ -5,7 +5,7 @@ use color_eyre::owo_colors::OwoColorize;
 use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 
-use music_manager::{app, config::Settings, create_default_database, logging, Args};
+use music_manager::{app, config, create_default_database, logging, Args};
 
 #[tokio::main]
 async fn main() {
@@ -19,29 +19,17 @@ async fn main() {
     );
 
     let args = Args::parse();
-    let mut settings = Settings::load(args.config).expect("Failed to load settings");
-
-    if let Some(url) = &args.database_url {
-        settings.database_url = Some(url.to_string());
-    }
-
-    if let Some(port) = &args.port {
-        settings.server.port = *port;
-    }
-
-    if let Some(host) = &args.host {
-        settings.server.listen_on_all_interfaces = *host;
-    }
+    let settings = config::load(&args).expect("Failed to load settings");
 
     let database_url = match &settings.database_url {
         Some(url) => url,
         None => {
-            tracing::info!(
-                "{}",
-                "No database URL specified. Using default database."
-                    .blue()
-                    .bold()
-            );
+            let info_msg = "No database URL specified. Using default database."
+                .blue()
+                .bold()
+                .to_string();
+
+            tracing::info!("{info_msg}");
 
             &create_default_database("data").expect("Failed to create default database")
         }

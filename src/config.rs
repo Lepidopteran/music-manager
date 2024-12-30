@@ -1,13 +1,18 @@
-use color_eyre::eyre::{Error, Result};
+use color_eyre::{
+    eyre::{Error, Result},
+    owo_colors::OwoColorize,
+};
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    fs::{create_dir_all, read_to_string, File},
+    fs::{read_to_string, File},
     io::Write,
     net::IpAddr,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
+
+use crate::Args;
 
 /// Server configuration.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -43,46 +48,77 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Loads the application configuration.
-    pub fn load(path: Option<PathBuf>) -> Result<Self, Error> {
-        let path = match path {
-            Some(path) => path,
-            None => {
-                let path = crate::get_app_config_dir();
+    /// Load settings from a TOML file located at the specified path.
+    pub fn load(path: &Path) -> Result<Self, Error> {
+        Ok(toml::from_str::<Self>(&read_to_string(path)?)?)
+    }
+}
 
-                if !path.exists() {
-                    create_dir_all(&path)?;
+/// Loads the application configuration using `Settings::load`. Handles default
+/// configuration paths, argument overrides, and creates a default configuration if necessary.
+pub fn load(args: &Args) -> Result<Settings, Error> {
+
+    if let Some(config) = &args.config {
+        let mut settings = Settings::load(config)?;
+        override_config(&mut settings, args);
+
+        return Ok(settings);
+    }
+
+    let path = crate::get_app_config_dir().join("config.toml");
+    let settings = match Settings::load(&path) {
+        Ok(settings) => settings,
+        Err(err) => {
+            if let Some(io_error) = err.downcast_ref::<std::io::Error>() {
+                if io_error.kind() != std::io::ErrorKind::NotFound {
+                    return Err(err);
                 }
-
-                path.join("config.toml")
+            } else {
+                return Err(err);
             }
-        };
 
-        let mut settings = Self::default();
+            let info_msg = "No config file found. Creating default config."
+                .blue()
+                .bold()
+                .to_string();
 
-        if !path.exists() {
-            create_default_config(path.clone(), &settings)?;
+            tracing::info!("{info_msg}");
+
+            let mut settings = Settings::default();
+
+            override_config(&mut settings, args);
+            create_default_config(path, &settings)?;
+
+            settings
         }
+    };
 
-        let config: Option<String> = match read_to_string(&path) {
-            Ok(config) => Some(config),
-            Err(_) => None,
-        };
+    Ok(settings)
+}
 
-        if let Some(config) = config {
-            settings = toml::from_str(&config)?;
-        }
+fn override_config(config: &mut Settings, args: &Args) {
+    if let Some(url) = &args.database_url {
+        config.database_url = Some(url.to_string());
+    }
 
-        Ok(settings)
+    if let Some(port) = &args.port {
+        config.server.port = *port;
+    }
+
+    if let Some(host) = &args.host {
+        config.server.listen_on_all_interfaces = *host;
     }
 }
 
 fn create_default_config(path: PathBuf, settings: &Settings) -> Result<(), Error> {
     let template = include_str!("../templates/config.toml");
 
-    let mut handlebars = Handlebars::new();
-    handlebars.register_template_string("config", template)?;
-    let config = handlebars.render("config", settings)?;
+    let config = {
+        let mut handlebars = Handlebars::new();
+        handlebars.register_template_string("config", template)?;
+        handlebars.render("config", settings)?
+    };
+
     let mut file = File::create(&path)?;
     file.write_all(config.as_bytes())?;
 
