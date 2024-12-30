@@ -1,0 +1,17 @@
+# Database configuration
+# URL for connecting to the database. Example: `sqlite://Music.db`
+# Currently, only SQLite is supported and will continue to be the case for some time.
+database_url = "{{ database_url }}"
+
+# Server configuration
+[server]
+
+# Determines if the server should listen on all interfaces 
+listen_on_all_interfaces = {{ server.listen_on_all_interfaces }}
+
+# The port for the server to listen on
+port = {{ server.port }}
+
+# The address for the server to listen on (overrides `listen_on_all_interfaces` if set)
+# Uncomment to set custom address
+# host = "0.0.0.0"
