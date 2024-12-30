@@ -21,7 +21,7 @@ async fn main() {
     let args = Args::parse();
     let settings = config::load(&args).expect("Failed to load settings");
 
-    let database_url = match &settings.database_url {
+    let database_url = match &settings.server.database_url {
         Some(url) => url,
         None => {
             let info_msg = "No database URL specified. Using default database."

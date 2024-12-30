@@ -17,6 +17,9 @@ use crate::Args;
 /// Server configuration.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Server {
+    /// Database URL to connect to
+    pub database_url: Option<String>,
+
     /// Whether to listen on all interfaces
     pub listen_on_all_interfaces: bool,
 
@@ -30,18 +33,17 @@ pub struct Server {
 /// Application settings.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub database_url: Option<String>,
     pub server: Server,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            database_url: None,
             server: Server {
                 listen_on_all_interfaces: false,
                 port: 3000,
                 host: None,
+                database_url: None,
             },
         }
     }
@@ -98,7 +100,7 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
 
 fn override_config(config: &mut Settings, args: &Args) {
     if let Some(url) = &args.database_url {
-        config.database_url = Some(url.to_string());
+        config.server.database_url = Some(url.to_string());
     }
 
     if let Some(port) = &args.port {
