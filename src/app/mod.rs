@@ -3,6 +3,8 @@ use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
+use crate::get_app_config_dir;
+
 use super::{
     config,
     task::{Registry, RegistryError, TaskInfo},
@@ -101,4 +103,19 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
     let _ = registry.register(move || Box::new(tasks::ScanSongs::new(pool.clone())));
 
     Arc::new(Mutex::new(registry))
+}
+
+/// Ensure that the app directories exist.
+pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
+    let dirs = vec![
+        get_app_config_dir()
+    ];
+
+    for dir in dirs {
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+    }
+
+    Ok(())
 }

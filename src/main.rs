@@ -12,6 +12,8 @@ async fn main() {
     logging::init().expect("Failed to initialize logging");
     dotenv().ok();
 
+    app::ensure_paths_exist().expect("Failed to ensure paths exist");
+
     tracing::info!(
         "Launching {} v{}",
         env!("CARGO_PKG_NAME"),
