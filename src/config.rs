@@ -64,11 +64,13 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
         let mut settings = Settings::load(config)?;
         override_config(&mut settings, args);
 
+        tracing::info!("Using config file: {}", config.display());
+
         return Ok(settings);
     }
 
     let path = crate::get_app_config_dir().join("config.toml");
-    let settings = match Settings::load(&path) {
+    let mut settings = match Settings::load(&path) {
         Ok(settings) => settings,
         Err(err) => {
             if let Some(io_error) = err.downcast_ref::<std::io::Error>() {
@@ -86,14 +88,14 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
 
             tracing::info!("{info_msg}");
 
-            let mut settings = Settings::default();
-
-            override_config(&mut settings, args);
+            let settings = Settings::default();
             create_default_config(path, &settings)?;
 
             settings
         }
     };
+
+    override_config(&mut settings, args);
 
     Ok(settings)
 }
