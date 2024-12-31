@@ -26,12 +26,12 @@ mod ui;
 
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
     let app = Router::new()
-        .merge(ui::router())
         .merge(api::songs::router().with_state(db.clone()))
         .merge(api::albums::router().with_state(db.clone()))
         .merge(api::directories::router().with_state(db.clone()))
         .merge(api::tasks::router().with_state(setup_tasks(db.clone())))
         .merge(api::cover_art::router().with_state(db))
+        .merge(ui::router())
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
                 let matched_path = request
@@ -67,7 +67,7 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .await
         .expect("Failed to bind to address");
 
-    axum::serve(listener, app.into_make_service())
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
@@ -107,9 +107,7 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
 
 /// Ensure that the app directories exist.
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
-    let dirs = vec![
-        get_app_config_dir()
-    ];
+    let dirs = vec![get_app_config_dir()];
 
     for dir in dirs {
         if !dir.exists() {
