@@ -24,8 +24,8 @@ async fn main() {
     let settings = config::load(&args).expect("Failed to load settings");
 
     let database_url = match &settings.server.database_url {
-        Some(url) => url,
-        None => {
+        Some(url) if !url.trim().is_empty() => url,
+        _ => {
             let info_msg = "No database URL specified. Using default database."
                 .blue()
                 .bold()
@@ -36,6 +36,8 @@ async fn main() {
             &create_default_database("data").expect("Failed to create default database")
         }
     };
+
+    tracing::info!("Database URL: {}", database_url.underline().blue());
 
     if let Some(database_url) = database_url.strip_prefix("sqlite://") {
         let path = PathBuf::from(database_url);
