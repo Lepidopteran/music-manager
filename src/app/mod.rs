@@ -3,7 +3,7 @@ use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
-use crate::get_app_config_dir;
+use crate::{config::Settings, get_app_config_dir};
 
 use super::{
     config,
@@ -16,7 +16,7 @@ use std::{
 };
 
 use axum::{
-    extract::{MatchedPath, Request},
+    extract::{FromRef, MatchedPath, Request},
     Router,
 };
 
@@ -24,13 +24,24 @@ mod api;
 mod tasks;
 mod ui;
 
+#[derive(Clone)]
+pub struct AppState {
+    pub settings: Settings,
+    pub db: sqlx::Pool<sqlx::Sqlite>,
+}
+
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
+    let tasks = setup_tasks(db.clone());
     let app = Router::new()
-        .merge(api::songs::router().with_state(db.clone()))
-        .merge(api::albums::router().with_state(db.clone()))
-        .merge(api::directories::router().with_state(db.clone()))
-        .merge(api::tasks::router().with_state(setup_tasks(db.clone())))
-        .merge(api::cover_art::router().with_state(db))
+        .merge(api::tasks::router().with_state(tasks))
+        .merge(api::songs::router())
+        .merge(api::albums::router())
+        .merge(api::directories::router())
+        .merge(api::cover_art::router())
+        .with_state(AppState {
+            settings: settings.clone(),
+            db,
+        })
         .merge(ui::router())
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
@@ -116,4 +127,16 @@ pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+impl FromRef<AppState> for sqlx::Pool<sqlx::Sqlite> {
+    fn from_ref(state: &AppState) -> Self {
+        state.db.clone()
+    }
+}
+
+impl FromRef<AppState> for Settings {
+    fn from_ref(state: &AppState) -> Self {
+        state.settings.clone()
+    }
 }

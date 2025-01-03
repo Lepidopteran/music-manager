@@ -7,9 +7,9 @@ use axum::{
 };
 use sqlx::query_as;
 
-use crate::{metadata::{Album, Song}, utils::*};
+use crate::{app::AppState, metadata::{Album, Song}, utils::*};
 
-pub fn router() -> Router<sqlx::Pool<sqlx::Sqlite>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/albums/:title", get(get_album))
         .route("/api/albums/", get(get_albums))

@@ -15,13 +15,13 @@ pub struct Directory {
     pub path: String,
 }
 
-use crate::utils::*;
+use crate::{app::AppState, utils::*};
 
-pub fn router() -> Router<sqlx::Pool<sqlx::Sqlite>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/directories/", get(get_directories))
-        .route("/api/directories/:name", get(get_directory))
         .route("/api/directories/", post(add_directory))
+        .route("/api/directories/:name", get(get_directory))
         .route("/api/directories/:name", delete(remove_directory))
 }
 

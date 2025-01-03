@@ -11,6 +11,7 @@ use axum::{
 use sqlx::{query, query_as, query_scalar};
 
 use crate::{
+    app::AppState,
     metadata::{get_cover_art, CoverArt, CoverArtType},
     utils::*,
 };
@@ -22,7 +23,7 @@ struct CoverArtMetadata {
     image: String,
 }
 
-pub fn router() -> Router<sqlx::Pool<sqlx::Sqlite>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route(
             "/api/songs/:song_id/cover-art",

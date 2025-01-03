@@ -6,9 +6,9 @@ use axum::{
 };
 use sqlx::query_as;
 
-use crate::{metadata::Song, utils::*};
+use crate::{app::AppState, metadata::Song, utils::*};
 
-pub fn router() -> Router<sqlx::Pool<sqlx::Sqlite>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
         .route("/api/songs/:id", get(get_song))
