@@ -171,19 +171,27 @@ async fn get_album_cover_art(
         }
     };
 
-    let path = match query_scalar!("SELECT path FROM songs WHERE album = ?", album)
-        .fetch_one(&db)
+    let paths = match query_scalar!("SELECT path FROM songs WHERE album = ?", album)
+        .fetch_all(&db)
         .await
     {
         Ok(song) => song,
         Err(err) => return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())),
     };
 
-    let cover_art = get_cover_art(&path).into_iter().find(|cover_art| {
-        let cover_type = CoverArtType::try_from(cover_type.as_str());
+    let mut cover_art = None;
 
-        cover_type.map_or(false, |ct| ct == cover_art.cover_type)
-    });
+    for path in paths {
+        let art = get_cover_art(&path).into_iter().find(|cover_art| {
+            let cover_type = CoverArtType::try_from(cover_type.as_str());
+            cover_type.map_or(false, |ct| ct == cover_art.cover_type)
+        });
+        
+        if let Some(art) = art {
+            cover_art = Some(art);
+            break;
+        }
+    }
 
     match cover_art {
         Some(cover_art) => match convert_cover_art(cover_art, ext) {
