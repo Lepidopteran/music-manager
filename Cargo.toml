@@ -31,6 +31,7 @@ rust-embed = "8.5.0"
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.133"
 sqlx = { version = "0.8.2", features = ["runtime-tokio", "tls-native-tls", "sqlite", "time", "json"] }
+sysinfo = "0.33.1"
 thiserror = "2.0.8"
 time = {version = "0.3.37", features = ["serde", "serde-well-known", "macros", "serde-human-readable"] }
 tokio = { version = "1.42.0", features = ["full"] }

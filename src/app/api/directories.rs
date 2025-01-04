@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{error::ErrorKind, FromRow};
+use sqlx::error::ErrorKind;
 
 use axum::{
     extract::{Path, State},
@@ -8,27 +8,34 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use sysinfo::Disks;
 
-#[derive(Deserialize, Serialize, FromRow)]
-pub struct Directory {
-    pub name: String,
-    pub path: String,
+use crate::{
+    app::{AppState, Database},
+    db::Directory as DirectoryDB,
+    utils::*,
+};
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Directory {
+    name: String,
+    path: String,
+    free_space: Option<u64>,
+    total_space: Option<u64>,
 }
-
-use crate::{app::AppState, utils::*};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/directories/", get(get_directories))
         .route("/api/directories/", post(add_directory))
-        .route("/api/directories/:name", get(get_directory))
         .route("/api/directories/:name", delete(remove_directory))
 }
 
 async fn add_directory(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Json(directory): Json<Directory>,
-) -> Result<Json<Directory>, impl IntoResponse> {
+    State(db): State<Database>,
+    Json(directory): Json<DirectoryDB>,
+) -> Result<Json<DirectoryDB>, impl IntoResponse> {
     match sqlx::query!(
         "INSERT INTO directories (name, path) VALUES (?, ?)",
         directory.name,
@@ -53,7 +60,7 @@ async fn add_directory(
 }
 
 async fn remove_directory(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(db): State<Database>,
     Path(name): Path<String>,
 ) -> Result<StatusCode, impl IntoResponse> {
     if name.trim().is_empty() {
@@ -70,23 +77,38 @@ async fn remove_directory(
     }
 }
 
-async fn get_directory(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(name): Path<String>,
-) -> Result<Json<Directory>, impl IntoResponse> {
-    sqlx::query_as!(Directory, "SELECT * FROM directories WHERE name = ?", name)
-        .fetch_one(&db)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
 async fn get_directories(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-) -> Result<axum::Json<Vec<Directory>>, impl IntoResponse> {
-    sqlx::query_as!(Directory, "SELECT * FROM directories")
+    State(db): State<Database>,
+) -> Result<Json<Vec<Directory>>, impl IntoResponse> {
+    let disks = Disks::new_with_refreshed_list();
+    let directories = match sqlx::query_as!(DirectoryDB, "SELECT * FROM directories")
         .fetch_all(&db)
         .await
-        .map(Json)
-        .map_err(internal_error)
+    {
+        Ok(directories) => directories,
+        Err(err) => {
+            tracing::error!("{}", err);
+            return Err(internal_error(err));
+        }
+    };
+
+    let directories_with_space: Vec<Directory> = directories
+        .into_iter()
+        .filter_map(|directory| {
+            let disk = disks.iter().find(|disk| {
+                directory
+                    .path
+                    .contains(&disk.mount_point().to_string_lossy().to_string())
+            });
+
+            disk.map(|disk| Directory {
+                name: directory.name,
+                path: directory.path,
+                free_space: Some(disk.available_space()),
+                total_space: Some(disk.total_space()),
+            })
+        })
+        .collect();
+
+    Ok(Json(directories_with_space))
 }

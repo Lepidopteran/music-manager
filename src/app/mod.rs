@@ -24,10 +24,13 @@ mod api;
 mod tasks;
 mod ui;
 
+pub type Database = sqlx::Pool<sqlx::Sqlite>;
+pub type Tasks = Arc<Mutex<Registry>>;
+
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
-    pub db: sqlx::Pool<sqlx::Sqlite>,
+    pub db: Database,
 }
 
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
