@@ -106,15 +106,20 @@ async fn remove_directory(
     Path(name): Path<String>,
 ) -> Result<StatusCode, impl IntoResponse> {
     if name.trim().is_empty() {
-        return Ok(StatusCode::BAD_REQUEST);
+        return Err((StatusCode::BAD_REQUEST, "Name cannot be empty".to_string()));
     }
 
     match sqlx::query!("DELETE FROM directories WHERE name = ?", name)
         .execute(&db)
         .await
     {
-        Ok(result) if result.rows_affected() > 0 => Ok(StatusCode::OK),
-        Ok(_) => Ok(StatusCode::NOT_FOUND),
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                Ok(StatusCode::OK)
+            } else {
+                Err((StatusCode::NOT_FOUND, format!("\"{}\" not found", name)))
+            }
+        }
         Err(err) => Err(internal_error(err)),
     }
 }
