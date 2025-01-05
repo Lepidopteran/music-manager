@@ -35,8 +35,36 @@ pub fn router() -> Router<AppState> {
 async fn add_directory(
     State(db): State<Database>,
     Json(directory): Json<DirectoryDB>,
-) -> Result<Json<DirectoryDB>, impl IntoResponse> {
-    match sqlx::query!(
+) -> Result<Json<Directory>, impl IntoResponse> {
+    if directory.name.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Name cannot be empty".to_string()));
+    }
+
+    if directory.path.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
+    }
+
+    if !directory.path.starts_with('/') {
+        return Err((StatusCode::BAD_REQUEST, "Path must be absolute".to_string()));
+    }
+
+    let path = std::path::Path::new(&directory.path);
+
+    if !path.exists() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("Path \"{}\" does not exist", directory.path),
+        ));
+    }
+
+    if !path.is_dir() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("Path \"{}\" is not a directory", directory.path),
+        ));
+    }
+
+    let result = match sqlx::query!(
         "INSERT INTO directories (name, path) VALUES (?, ?)",
         directory.name,
         directory.path
@@ -44,19 +72,33 @@ async fn add_directory(
     .execute(&db)
     .await
     {
-        Ok(result) if result.rows_affected() > 0 => Ok(Json(directory)),
-        Ok(_) => Ok(Json(directory)),
+        Ok(result) if result.rows_affected() > 0 => directory,
+        Ok(_) => directory,
         Err(err) => match err {
             sqlx::Error::Database(err) if err.kind() == ErrorKind::UniqueViolation => {
                 tracing::error!("\"{}\" already exists", directory.name);
-                Err((
+                return Err((
                     StatusCode::CONFLICT,
                     format!("\"{}\" already exists", directory.name),
-                ))
+                ));
             }
-            _ => Err(internal_error(err)),
+            _ => return Err(internal_error(err)),
         },
-    }
+    };
+
+    let disks = Disks::new_with_refreshed_list();
+    let disk = disks.iter().find(|disk| {
+        result
+            .path
+            .contains(&disk.mount_point().to_string_lossy().to_string())
+    });
+
+    Ok(Json(Directory {
+        name: result.name,
+        path: result.path,
+        free_space: disk.map(|disk| disk.available_space()),
+        total_space: disk.map(|disk| disk.total_space()),
+    }))
 }
 
 async fn remove_directory(
