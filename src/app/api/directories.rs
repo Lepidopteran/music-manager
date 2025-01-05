@@ -64,6 +64,23 @@ async fn add_directory(
         ));
     }
 
+    let directories = sqlx::query_scalar!("SELECT path FROM directories")
+        .fetch_all(&db)
+        .await
+        .map_err(internal_error)?;
+
+    for entry in directories {
+        if path.starts_with(entry) {
+            return Err((
+                StatusCode::CONFLICT,
+                format!(
+                    "Path \"{}\" is a subdirectory of an existing directory",
+                    directory.path
+                ),
+            ));
+        }
+    }
+
     let result = match sqlx::query!(
         "INSERT INTO directories (name, path) VALUES (?, ?)",
         directory.name,
