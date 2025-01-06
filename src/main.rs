@@ -5,7 +5,7 @@ use color_eyre::owo_colors::OwoColorize;
 use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 
-use music_manager::{app, config, create_default_database, logging, Args};
+use muusik::{app, config, create_default_database, logging, Args};
 
 #[tokio::main]
 async fn main() {
