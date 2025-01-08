@@ -49,7 +49,6 @@ impl From<FlacPictureType> for CoverArtType {
 pub struct CoverArt {
     pub cover_type: CoverArtType,
     pub mime_type: String,
-    pub song_file_type: String,
     pub data: Vec<u8>,
 }
 
@@ -58,7 +57,6 @@ impl Debug for CoverArt {
         f.debug_struct("CoverArt")
             .field("cover_type", &self.cover_type)
             .field("mime_type", &self.mime_type)
-            .field("song_file_type", &self.song_file_type)
             .field("data_len", &self.data.len())
             .finish()
     }
@@ -92,7 +90,6 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
                 .map(|picture| CoverArt {
                     cover_type: picture.picture_type.into(),
                     mime_type: picture.mime_type.clone(),
-                    song_file_type: file_type.to_string(),
                     data: picture.data.clone(),
                 })
                 .collect()
@@ -108,7 +105,6 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
                 .map(|picture| CoverArt {
                     cover_type: picture.picture_type.into(),
                     mime_type: picture.mime_type.to_string(),
-                    song_file_type: file_type.to_string(),
                     data: picture.data.to_vec(),
                 })
                 .collect()
@@ -134,7 +130,6 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
                         ImgFmt::Png => "image/png".to_string(),
                         ImgFmt::Bmp => "image/bmp".to_string(),
                     },
-                    song_file_type: file_type.to_string(),
                     data: artwork.data.to_vec(),
                 })
                 .collect()

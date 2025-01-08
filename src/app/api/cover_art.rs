@@ -19,7 +19,6 @@ use crate::{
 #[derive(serde::Serialize)]
 struct CoverArtMetadata {
     cover_type: CoverArtType,
-    song_file_type: String,
     image: String,
 }
 
@@ -131,7 +130,6 @@ async fn get_song_cover_art_metadata(
         .enumerate()
         .map(|(index, cover_art)| CoverArtMetadata {
             cover_type: cover_art.cover_type.clone(),
-            song_file_type: cover_art.song_file_type,
             image: map_type_to_path(&cover_art.cover_type, index),
         })
         .collect();
@@ -228,7 +226,6 @@ async fn get_album_cover_art_metadata(
         .enumerate()
         .map(|(index, cover_art)| CoverArtMetadata {
             cover_type: cover_art.cover_type,
-            song_file_type: cover_art.song_file_type,
             image: map_type_to_path(&cover_art.cover_type, index),
         })
         .collect();
