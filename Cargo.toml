@@ -18,7 +18,6 @@ hyper = "1.5.2"
 hyper-util = "0.1.10"
 id3 = { version = "1.16.0", features = ["tokio"] }
 image = { version = "0.25.5", features = ["serde"] }
-indicatif = "0.17.9"
 lewton = "0.10.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 metaflac = "0.2.7"
@@ -39,6 +38,5 @@ toml = "0.8.19"
 toml_edit = "0.22.22"
 tower-http = { version = "0.6.2", features = ["trace"] }
 tracing = "0.1.41"
-tracing-indicatif = "0.3.8"
 tracing-subscriber = {version= "0.3.19", features = ["env-filter"]}
 walkdir = "2.5.0"

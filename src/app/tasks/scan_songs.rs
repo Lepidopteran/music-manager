@@ -1,7 +1,5 @@
 use color_eyre::eyre::Result;
-use id3::Tag;
 use sqlx::{query, sqlite::SqliteQueryResult};
-use tracing::Span;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::metadata::Song;
@@ -98,19 +96,13 @@ impl Task for ScanSongs {
                 .map(|path| {
                     let db = db.clone();
                     let path = path.clone();
-                    let status = status.clone();
                     async move {
-                        if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
-                            drop(Span::current());
-                            return Ok(());
-                        }
-
                         add_song(db, path).await.map(|_| ())
                     }
                 })
                 .collect();
 
-            // TODO: increase speed
+            // PERF: Increase the speed of adding data to the database.
             let results: Vec<_> = iter(tasks).buffer_unordered(1).collect().await;
 
             for result in results {
