@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -53,18 +55,39 @@ struct AlbumMetadata {
 
 async fn get_albums(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-) -> Result<Json<Vec<AlbumMetadata>>, impl IntoResponse> {
-    match query_as!(
-        AlbumMetadata,
-        "SELECT album AS title, album_artist AS artist FROM songs WHERE album IS NOT NULL GROUP by album"
-    )
-    .fetch_all(&db)
-    .await
+) -> Result<Json<Vec<Album>>, impl IntoResponse> {
+    let tracks = match query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
+        .fetch_all(&db)
+        .await
     {
-        Ok(albums) => Ok(Json(albums)),
+        Ok(tracks) => tracks,
         Err(err) => {
             tracing::error!("{}", err);
-            Err(internal_error(err))
+            return Err(internal_error(err));
         }
+    };
+
+    if tracks.is_empty() {
+        return Err((StatusCode::NOT_FOUND, "No albums found".to_string()));
     }
+
+    let mut album_map: HashMap<String, Vec<Song>> = HashMap::new();
+
+    for track in tracks {
+        album_map
+            .entry(track.album.clone().expect("Album not found"))
+            .or_default()
+            .push(track);
+    }
+
+    let albums: Vec<Album> = album_map
+        .into_iter()
+        .filter_map(|(_, tracks)| Album::try_from(tracks).ok())
+        .collect();
+
+    if albums.is_empty() {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to construct albums".to_string()));
+    }
+
+    Ok(Json(albums))
 }
