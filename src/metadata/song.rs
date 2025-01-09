@@ -3,11 +3,12 @@ use std::{fs::File, io::BufReader, path::Path};
 use id3::{Tag as Id3Tag, TagLike};
 use lewton::inside_ogg::{read_headers, OggStreamReader};
 use metaflac::Tag as FlacTag;
-use mp4ameta::{ImgFmt, Tag as Mp4Tag};
+use mp4ameta::Tag as Mp4Tag;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::*;
 
 #[derive(Deserialize, Serialize, FromRow, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Song {
     pub id: i64,
     pub path: String,
