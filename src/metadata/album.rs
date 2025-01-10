@@ -28,6 +28,7 @@ impl TryFrom<Vec<Song>> for Album {
         if rest.is_empty() {
             return Ok(Self {
                 title,
+                tracks: tracks.to_vec(),
                 artist: first.album_artist.clone(),
                 ..Default::default()
             });
@@ -39,7 +40,7 @@ impl TryFrom<Vec<Song>> for Album {
 
         Ok(Self {
             title,
-            tracks: tracks.clone(),
+            tracks: tracks.to_vec(),
             artist: first.album_artist.clone(),
             ..Default::default()
         })
