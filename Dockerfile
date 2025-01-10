@@ -7,7 +7,7 @@ ARG MODE="release"
 # Set environment variables
 ENV XDG_CONFIG_HOME="/config"
 ENV LISTEN_ON_ALL_INTERFACES="true"
-ENV PORT="3000" 
+ENV PORT="5678" 
 
 # Install dependencies
 RUN apt-get update && apt-get install -y sqlite3;
