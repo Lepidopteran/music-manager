@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y sqlite3;
 COPY ./target/release/ /app
 
 # Set permissions
-RUN chmod +x /app/music-manager
+RUN chmod +x /app/muusik
 
 # Set working directory
 WORKDIR /app
@@ -27,4 +27,4 @@ EXPOSE $PORT
 # Set volumes
 VOLUME ["/config"]
 
-ENTRYPOINT ["/app/music-manager"]
+ENTRYPOINT ["/app/muusik"]
