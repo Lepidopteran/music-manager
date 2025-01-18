@@ -164,19 +164,13 @@ async fn add_song(
         metadata
     );
 
-    let parent_path = match path.parent() {
-        Some(parent) => parent.to_string_lossy().to_string(),
-        None => String::new(),
-    };
-
     let path = path.to_string_lossy().to_string();
 
     match metadata {
         Some(song) => {
             query!(
-                "INSERT INTO songs (path, parent_path, title, album, album_artist, disc_number, artist, year, track_number, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 path,
-                parent_path,
                 song.title,
                 song.album,
                 song.album_artist,
@@ -191,9 +185,8 @@ async fn add_song(
         }
         None => {
             query!(
-                "INSERT INTO songs (path, parent_path) VALUES (?, ?)",
+                "INSERT INTO songs (path) VALUES (?)",
                 path,
-                parent_path
             )
             .execute(&pool)
             .await

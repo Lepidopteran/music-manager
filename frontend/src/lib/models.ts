@@ -14,7 +14,6 @@ export interface Album {
 export interface Song {
   id: number;
 	path: string;
-	parentPath: string;
   title: string | null;
   artist: string | null;
   album: string | null;

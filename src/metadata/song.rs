@@ -14,7 +14,6 @@ use super::tags::{parse_tags, sanitize_tag, ParserConfig};
 pub struct Song {
     pub id: i64,
     pub path: String,
-    pub parent_path: String,
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album: Option<String>,
