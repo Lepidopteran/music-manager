@@ -1,9 +1,10 @@
-import { mount } from 'svelte'
-import './app.css'
-import App from './App.svelte'
+import { mount } from "svelte";
+import "./app.css";
+import App from "./App.svelte";
+import UniversalRouter from "universal-router";
 
 const app = mount(App, {
-  target: document.getElementById('app')!,
-})
+	target: document.getElementById("app") as HTMLElement,
+});
 
-export default app
+export default app;

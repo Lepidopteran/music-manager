@@ -1,47 +1,136 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import Icon from "@iconify/svelte";
+  import Button from "@components/Button.svelte";
+  import Directories from "@pages/Directories.svelte";
+  import Home from "@pages/Albums.svelte";
+  import UniversalRouter, {
+    type Route,
+    type ResolveContext,
+  } from "universal-router";
+    import Logo from "./components/Logo.svelte";
+
+  let menuOpen = $state(true);
+
+  interface Page extends Route {
+    icon?: string;
+  }
+
+  class AppState {
+    path = $state("/");
+    name = $state("Home");
+    pageComponent = $state(Home);
+    router: UniversalRouter;
+
+    constructor(routes: Array<Route>) {
+      this.router = new UniversalRouter(routes);
+    }
+
+    async changePage(input: string | ResolveContext) {
+      const { path, name, pageComponent } = await this.router.resolve(input);
+
+      this.path = path;
+      this.name = name;
+      this.pageComponent = pageComponent;
+    }
+  }
+
+  const routes: Array<Page> = [
+    {
+      path: "/",
+      name: "Albums",
+      icon: "mdi:album",
+      action() {
+        return {
+          path: this.path,
+          name: this.name,
+          pageComponent: Home,
+        };
+      },
+    },
+    {
+      path: "/directories",
+      name: "Directories",
+      icon: "mdi:folder",
+      action() {
+        return {
+          path: this.path,
+          name: this.name,
+          pageComponent: Directories,
+        };
+      },
+    },
+  ];
+
+  const app = new AppState(routes);
+
+  async function handleNavitionClick(event: MouseEvent) {
+    const { target } = event;
+
+    if (!(target instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const path = target.getAttribute("href") as string;
+    event.preventDefault();
+
+    window.history.pushState({}, "", path);
+    await app.changePage(path);
+  }
+
+  app.changePage({ pathname: window.location.pathname });
 </script>
 
-<main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+<svelte:window
+  onpopstate={() => app.changePage({ pathname: window.location.pathname })}
+  onresize={() => (menuOpen = window.innerWidth > 650)}
+  onload={() => (menuOpen = window.innerWidth > 650)}
+/>
 
-  <div class="card">
-    <Counter />
-  </div>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
-</main>
-
-<style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
-  }
-</style>
+<div
+  class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full"
+>
+  <header
+    class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
+  >
+    <div class="flex items-center gap-2">
+      <Button
+        color="ghost"
+        toggleable={true}
+        active={menuOpen}
+        onclick={() => (menuOpen = !menuOpen)}
+        class="group size-10 sm:hidden"
+      >
+        <Icon
+          icon="mdi:menu"
+          class="text-2xl group-data-[active=true]:text-primary transition"
+        />
+      </Button>
+			<h1 class="text-2xl font-bold row-start-1 flex gap-2 items-center"><Logo class="p-1"/> Muusik</h1>
+    </div>
+    <div class="flex gap-4"></div>
+    <div class="flex gap-4"></div>
+  </header>
+  <aside
+    class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
+  >
+    <nav>
+      {#each routes as route}
+        {@const icon = route.icon as string}
+        <a
+          href={route.path as string}
+          onclick={handleNavitionClick}
+          class="font-semibold px-4 flex items-center gap-2 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
+          data-active={route.path === app.path || undefined}
+        >
+          <Icon {icon} class="text-xl" />
+          {route.name}
+        </a>
+      {/each}
+    </nav>
+  </aside>
+  <main
+    class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
+  >
+    <app.pageComponent />
+  </main>
+</div>

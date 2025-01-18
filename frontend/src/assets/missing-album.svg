@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       id="linearGradient9">
+      <stop
+         style="stop-color:currentColor;stop-opacity:1;"
+         offset="0"
+         id="stop9" />
+      <stop
+         style="stop-color:#000000;stop-opacity:0;"
+         offset="1"
+         id="stop10" />
+    </linearGradient>
+    <radialGradient
+       xlink:href="#linearGradient9"
+       id="radialGradient10"
+       cx="348.9827"
+       cy="96.806221"
+       fx="348.9827"
+       fy="96.806221"
+       r="111.58984"
+       gradientTransform="matrix(1.3114979,0.94625849,-0.34549125,0.47884491,-78.406139,-271.62517)"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter10"
+       x="-0.037550086"
+       y="-0.037550086"
+       width="1.0751002"
+       height="1.0751002">
+      <feGaussianBlur
+         stdDeviation="5.4334509"
+         id="feGaussianBlur10" />
+    </filter>
+  </defs>
+  <g
+     id="layer1">
+    <rect
+       style="fill-opacity:0.5"
+       id="rect10"
+       width="512"
+       height="512"
+       x="0"
+       y="0" />
+    <circle
+       style="opacity:1;fill:#000000;fill-opacity:0.247213;stroke:none;stroke-width:1.66797;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers;filter:url(#filter10)"
+       id="path10"
+       cx="256"
+       cy="256"
+       r="173.6385" />
+    <path
+       id="path1"
+       style="opacity:0.85;fill:currentColor;stroke:none"
+       d="M 256,82.361329 A 173.63893,173.63893 0 0 0 82.361329,256 173.63893,173.63893 0 0 0 256,429.63867 173.63893,173.63893 0 0 0 429.63867,256 173.63893,173.63893 0 0 0 256,82.361329 Z m 0,78.162111 c 52.19858,0 95.47656,43.27798 95.47656,95.47656 0,52.19858 -43.27798,95.47656 -95.47656,95.47656 -52.19858,0 -95.47656,-43.27798 -95.47656,-95.47656 0,-52.19858 43.27798,-95.47656 95.47656,-95.47656 z m 0,53.24023 A 42.235643,42.235643 0 0 0 213.76367,256 42.235643,42.235643 0 0 0 256,298.23633 42.235643,42.235643 0 0 0 298.23633,256 42.235643,42.235643 0 0 0 256,213.76367 Z" />
+    <path
+       id="path8"
+       style="opacity:1;fill:url(#radialGradient10);stroke:none"
+       d="m 256,82.361328 a 173.63893,173.63893 0 0 0 -55.14453,9.355469 142.41963,96.832031 0 0 0 -5.19531,25.746093 142.41963,96.832031 0 0 0 21.95507,51.3418 c 11.79187,-5.27931 24.7693,-8.28125 38.38477,-8.28125 37.2236,0 69.81456,22.06201 85.50586,53.61914 A 142.41963,96.832031 0 0 0 418.83984,196.98438 173.63893,173.63893 0 0 0 256,82.361328 Z" />
+  </g>
+</svg>
