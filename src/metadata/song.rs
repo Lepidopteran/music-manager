@@ -1,13 +1,11 @@
-use std::{fs::File, io::BufReader, path::Path};
+use std::path::Path;
 
-use id3::{Tag as Id3Tag, TagLike};
-use lewton::inside_ogg::{read_headers, OggStreamReader};
-use metaflac::Tag as FlacTag;
-use mp4ameta::Tag as Mp4Tag;
+use lofty::prelude::*;
+use lofty::probe::Probe;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::*;
 
-use super::tags::{parse_tags, sanitize_tag, ParserConfig};
+use super::tags::sanitize_tag;
 
 #[derive(Deserialize, Serialize, FromRow, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
@@ -34,96 +32,39 @@ impl Song {
             return Err("Path is not a file".to_string());
         }
 
-        let mut file = File::open(path).map_err(|err| err.to_string())?;
-
         let stem = match path.file_stem() {
             Some(stem) => stem.to_str().map(|stem| stem.to_string()),
             None => return Err("No file stem found".to_string()),
         };
 
-        let file_type = match path.extension() {
-            Some(ext) => ext.to_string_lossy().to_string().to_lowercase(),
-            None => return Err("No file type found".to_string()),
+        let tagged_file = match Probe::open(path) {
+            Ok(tag) => tag.read().map_err(|err| err.to_string())?,
+            Err(err) => return Err(err.to_string()),
         };
 
-        // TODO: Remove default parser config for customization
-        let config = ParserConfig::new();
+        let tag = match tagged_file.primary_tag() {
+            Some(tag) => tag,
+            None => tagged_file.first_tag().ok_or("No tags found".to_string())?,
+        };
 
-        match file_type.as_str() {
-            "mp3" | "wav" | "aif" | "aiff" => {
-                let tag = Id3Tag::read_from2(file).map_err(|err| err.to_string())?;
-
-                Ok(Self {
-                    title: match tag.title() {
-                        Some(title) => Some(sanitize_tag(title)),
-                        None => stem,
-                    },
-                    artist: tag
-                        .artist()
-                        .map(|artist| parse_tags(artist, &config).join(", ")),
-                    album: tag.album().map(sanitize_tag),
-                    album_artist: tag
-                        .album_artist()
-                        .map(|album_artist| parse_tags(album_artist, &config).join(", ")),
-                    genre: tag
-                        .genre()
-                        .map(|genre| parse_tags(genre, &config).join(", ")),
-                    track_number: tag.track().map(|track| track.to_string()),
-                    disc_number: tag.disc().map(|disc| disc.to_string()),
-                    year: tag.year().map(|year| year.to_string()),
-                    ..Default::default()
-                })
-            }
-            "flac" => {
-                let mut reader = BufReader::new(file);
-                let tag = FlacTag::read_from(&mut reader).map_err(|err| err.to_string())?;
-
-                let comments = match tag.vorbis_comments() {
-                    Some(comments) => comments,
-                    None => return Err("No comments found".to_string()),
-                };
-
-                Ok(Self {
-                    title: match comments.title() {
-                        Some(title) => Some(title[0].to_string()),
-                        None => stem,
-                    },
-                    artist: comments.artist().map(|artist| artist[0].to_string()),
-                    album: comments.album().map(|album| album[0].to_string()),
-                    album_artist: comments
-                        .album_artist()
-                        .map(|album_artist| parse_tags(&album_artist[0], &config).join(", ")),
-                    genre: comments
-                        .genre()
-                        .map(|genre| parse_tags(&genre[0], &config).join(", ")),
-                    track_number: comments.track().map(|track| track.to_string()),
-                    disc_number: comments
-                        .get("DISCNUMBER")
-                        .map(|disc| sanitize_tag(&disc[0])),
-                    ..Default::default()
-                })
-            }
-            "mp4" | "m4a" => {
-                let tag = Mp4Tag::read_from(&mut file).map_err(|err| err.to_string())?;
-
-                Ok(Self {
-                    title: stem,
-                    artist: tag
-                        .artist()
-                        .map(|artist| parse_tags(artist, &config).join(", ")),
-                    album: tag.album().map(sanitize_tag),
-                    album_artist: tag
-                        .album_artist()
-                        .map(|album_artist| parse_tags(album_artist, &config).join(", ")),
-                    genre: tag
-                        .genre()
-                        .map(|genre| parse_tags(genre, &config).join(", ")),
-                    track_number: tag.track_number().map(|track| track.to_string()),
-                    disc_number: tag.disc_number().map(|disc| disc.to_string()),
-                    ..Default::default()
-                })
-            }
-            _ => Err("Unsupported file type".to_string()),
-        }
+        Ok(Self {
+            title: match tag.title().as_deref() {
+                Some(title) => Some(sanitize_tag(title)),
+                None => stem,
+            },
+            artist: tag.artist().as_deref().map(sanitize_tag),
+            album: tag.album().as_deref().map(sanitize_tag),
+            album_artist: tag.get_string(&ItemKey::AlbumArtist).map(sanitize_tag),
+            genre: tag
+                .get_strings(&ItemKey::Genre)
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+                .into(),
+            track_number: tag.track().map(|track| track.to_string()),
+            disc_number: tag.disk().map(|disc| disc.to_string()),
+            year: tag.year().map(|year| year.to_string()),
+            ..Default::default()
+        })
     }
 }
