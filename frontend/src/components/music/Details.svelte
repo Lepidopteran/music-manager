@@ -63,11 +63,11 @@
 </script>
 
 <div
-  class="flex flex-col items-center justify-center gap-2 relative h-full overflow-y-auto pt-2 bg-base-100"
+  class="space-y-2 relative h-full overflow-y-auto pt-2 bg-base-100"
   {...rest}
 >
   {#if selectedItem}
-    <div class="flex flex-col items-center text-sm">
+    <div class="text-center text-sm">
       <Cover
         lazy={false}
         bind:imageHeight
@@ -76,12 +76,12 @@
         onLoading={onCoverLoad}
         onLoad={onCoverLoad}
         item={selectedItem}
-        class="mb-1 rounded-theme shadow-lg shadow-black/25"
+        class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25"
       />
 
       {#if !imageHeight && !imageWidth && !failedToLoad}
         <div
-          class="w-24 bg-base-950/25 text-transparent motion-safe:animate-pulse rounded-theme-lg"
+          class="w-24 bg-base-950/25 text-transparent motion-safe:animate-pulse rounded-theme-lg mx-auto"
           aria-hidden="true"
         >
           x
@@ -98,7 +98,7 @@
     </div>
     <h2 class="text-2xl font-bold text-center">{selectedItem.title}</h2>
     <p class="text-center">{selectedItem.artist}</p>
-    <div class="flex flex-col gap-2 w-full md:w-1/2">
+    <div class="space-y-2 mt-2 px-2 md:w-3/5 mx-auto">
       {#if isSong(selectedItem)}
         {#each Object.entries(selectedItem) as [key, value]}
           {#if value && !excludedFields.includes(key)}
