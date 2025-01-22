@@ -137,7 +137,3 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
             .collect()
     }
 }
-        }
-        _ => Vec::new(),
-    }
-}
