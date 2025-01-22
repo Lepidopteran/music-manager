@@ -68,7 +68,7 @@
 
   function getCoverUrl(item: Album | Song, artType: "front" | "back") {
     return isAlbum(item)
-      ? `/api/albums/${item.title}/cover-art/${artType}.jpg`
+      ? `/api/albums/${encodeURIComponent(item.title)}/cover-art/${artType}.jpg`
       : `/api/songs/${item.id}/cover-art/${artType}.jpg`;
   }
 
