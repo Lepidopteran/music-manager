@@ -5,7 +5,7 @@ FROM debian:stable-slim
 ARG MODE="release"
 
 # Set environment variables
-ENV XDG_CONFIG_HOME="/config"
+ENV MUUSIK_CONFIG_DIR="/config"
 ENV LISTEN_ON_ALL_INTERFACES="true"
 ENV PORT="5678" 
 

@@ -5,7 +5,9 @@ use std::{env, path::PathBuf};
 
 /// Get the path to the config directory.
 pub fn get_config_dir() -> PathBuf {
-    if let Ok(config_dir) = env::var("XDG_CONFIG_HOME") {
+    let app_name = env!("CARGO_PKG_NAME");
+
+    if let Ok(config_dir) = env::var(format!("{}_CONFIG_DIR", app_name.to_uppercase()).as_str()) {
         return PathBuf::from(config_dir);
     }
 
@@ -20,7 +22,7 @@ pub fn get_config_dir() -> PathBuf {
 pub fn get_app_config_dir() -> PathBuf {
     let app_name = env!("CARGO_PKG_NAME");
 
-    if let Ok(config_dir) = env::var("XDG_CONFIG_HOME") {
+    if let Ok(config_dir) = env::var(format!("{}_CONFIG_DIR", app_name.to_uppercase()).as_str()) {
         return PathBuf::from(config_dir);
     }
 
