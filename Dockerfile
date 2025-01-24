@@ -6,6 +6,8 @@ ARG MODE="release"
 
 # Set environment variables
 ENV MUUSIK_CONFIG_DIR="/config"
+ENV MUUSIK_DATA_DIR="/config/data"
+ENV MUUSIK_CACHE_DIR="/cache"
 ENV LISTEN_ON_ALL_INTERFACES="true"
 ENV PORT="5678" 
 
@@ -25,6 +27,6 @@ WORKDIR /app
 EXPOSE $PORT
 
 # Set volumes
-VOLUME ["/config"]
+VOLUME ["/config", "/cache"]
 
 ENTRYPOINT ["/app/muusik"]

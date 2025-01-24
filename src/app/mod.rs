@@ -3,7 +3,7 @@ use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
-use crate::{config::Settings, get_app_config_dir};
+use crate::{config::Settings, get_app_cache_dir, get_app_config_dir, get_app_data_dir};
 
 use super::{
     config,
@@ -114,14 +114,20 @@ async fn shutdown_signal() {
 fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
     let mut registry = Registry::default();
 
-    let _ = registry.register(move || Box::new(tasks::ScanSongs::new(pool.clone())));
+    let scan_songs_pool = pool.clone();
+
+    let err = registry.register(move || Box::new(tasks::ScanSongs::new(scan_songs_pool.clone())));
+    if let Err(RegistryError::AlreadyExists) = err {
+        tracing::warn!("Task already registered");
+    }
+
 
     Arc::new(Mutex::new(registry))
 }
 
 /// Ensure that the app directories exist.
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
-    let dirs = vec![get_app_config_dir()];
+    let dirs = vec![get_app_config_dir(), get_app_cache_dir(), get_app_data_dir()];
 
     for dir in dirs {
         if !dir.exists() {
