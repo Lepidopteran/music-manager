@@ -1,11 +1,8 @@
 use std::{fmt::Debug, path::Path};
 
-use id3::{frame::PictureType as Id3PictureType, Tag as Id3Tag};
 use lofty::probe::Probe;
 use lofty::tag::TagType;
 use lofty::{picture::PictureType, prelude::*};
-use metaflac::{block::PictureType as FlacPictureType, Tag as FlacTag};
-use mp4ameta::{ImgFmt, Tag as Mp4Tag};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
@@ -33,26 +30,6 @@ impl From<PictureType> for CoverArtType {
         match value {
             PictureType::CoverFront => CoverArtType::Front,
             PictureType::CoverBack => CoverArtType::Back,
-            _ => CoverArtType::Other,
-        }
-    }
-}
-
-impl From<Id3PictureType> for CoverArtType {
-    fn from(value: Id3PictureType) -> Self {
-        match value {
-            Id3PictureType::CoverFront => CoverArtType::Front,
-            Id3PictureType::CoverBack => CoverArtType::Back,
-            _ => CoverArtType::Other,
-        }
-    }
-}
-
-impl From<FlacPictureType> for CoverArtType {
-    fn from(value: FlacPictureType) -> Self {
-        match value {
-            FlacPictureType::CoverFront => CoverArtType::Front,
-            FlacPictureType::CoverBack => CoverArtType::Back,
             _ => CoverArtType::Other,
         }
     }
