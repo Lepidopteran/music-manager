@@ -33,6 +33,7 @@ pub struct AppState {
     pub db: Database,
 }
 
+/// Start the server
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
     let tasks = setup_tasks(db.clone());
     let app = Router::new()
@@ -87,6 +88,7 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .unwrap();
 }
 
+/// Wait for a shutdown signal
 async fn shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -111,6 +113,7 @@ async fn shutdown_signal() {
     }
 }
 
+/// Set up the tasks that can run in the background
 fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
     let mut registry = Registry::default();
 
