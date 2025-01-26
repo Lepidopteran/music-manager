@@ -1,6 +1,7 @@
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::util::SubscriberInitExt;
 
+/// Initialize logging.
 pub fn init() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
 
