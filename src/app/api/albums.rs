@@ -9,7 +9,26 @@ use axum::{
 };
 use sqlx::query_as;
 
-use crate::{app::AppState, metadata::{Album, Song}, utils::*};
+use crate::{app::AppState, db::Song, utils::*};
+
+#[derive(serde::Serialize)]
+pub struct Album {
+    title: String,
+    artist: Option<String>,
+    tracks: Vec<Song>,
+}
+
+impl From<Vec<Song>> for Album {
+    fn from(tracks: Vec<Song>) -> Self {
+        let title = tracks[0].album.clone().expect("Album not found");
+        let artist = tracks[0].album_artist.clone();
+        Album {
+            title,
+            artist,
+            tracks,
+        }
+    }
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -36,13 +55,7 @@ async fn get_album(
         return Err((StatusCode::NOT_FOUND, "Album not found".to_string()));
     }
 
-    let album = match Album::try_from(tracks) {
-        Ok(album) => album,
-        Err(err) => {
-            tracing::error!("{}", err);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()));
-        }
-    };
+    let album = Album::from(tracks);
 
     Ok(Json(album))
 }
@@ -86,7 +99,10 @@ async fn get_albums(
         .collect();
 
     if albums.is_empty() {
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to construct albums".to_string()));
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to construct albums".to_string(),
+        ));
     }
 
     Ok(Json(albums))

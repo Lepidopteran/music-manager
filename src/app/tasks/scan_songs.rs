@@ -2,8 +2,8 @@ use color_eyre::eyre::Result;
 use sqlx::{query, sqlite::SqliteQueryResult};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::metadata::Song;
 use futures::stream::{iter, StreamExt};
+use crate::metadata::SongMetadata;
 
 use super::*;
 
@@ -150,7 +150,7 @@ async fn add_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
     path: PathBuf,
 ) -> Result<SqliteQueryResult, sqlx::Error> {
-    let metadata = match Song::from_path(&path) {
+    let metadata = match SongMetadata::from_path(&path) {
         Ok(song) => Some(song),
         Err(err) => {
             tracing::warn!("Failed to read tags: {}", err);
@@ -168,28 +168,36 @@ async fn add_song(
 
     match metadata {
         Some(song) => {
+            let SongMetadata {
+                title,
+                album,
+                album_artist,
+                disc_number,
+                artist,
+                year,
+                track_number,
+                genre,
+            } = song;
+
             query!(
                 "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 path,
-                song.title,
-                song.album,
-                song.album_artist,
-                song.disc_number,
-                song.artist,
-                song.year,
-                song.track_number,
-                song.genre
+                title,
+                album,
+                album_artist,
+                disc_number,
+                artist,
+                year,
+                track_number,
+                genre
             )
             .execute(&pool)
             .await
         }
         None => {
-            query!(
-                "INSERT INTO songs (path) VALUES (?)",
-                path,
-            )
-            .execute(&pool)
-            .await
+            query!("INSERT INTO songs (path) VALUES (?)", path,)
+                .execute(&pool)
+                .await
         }
     }
 }

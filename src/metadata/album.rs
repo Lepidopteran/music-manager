@@ -1,10 +1,10 @@
-use super::Song;
+use super::SongMetadata;
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Album {
     pub title: String,
-    pub tracks: Vec<Song>,
+    pub tracks: Vec<SongMetadata>,
     pub barcode: Option<String>,
     pub catalog_number: Option<String>,
     pub comment: Option<String>,
@@ -15,10 +15,10 @@ pub struct Album {
     pub original_date: Option<time::Date>,
 }
 
-impl TryFrom<Vec<Song>> for Album {
+impl TryFrom<Vec<SongMetadata>> for Album {
     type Error = String;
 
-    fn try_from(tracks: Vec<Song>) -> Result<Self, Self::Error> {
+    fn try_from(tracks: Vec<SongMetadata>) -> Result<Self, Self::Error> {
         let (first, rest) = tracks.split_first().ok_or("No tracks found")?;
         let title = match &first.album {
             Some(title) => title.clone(),
