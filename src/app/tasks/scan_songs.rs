@@ -2,7 +2,6 @@ use color_eyre::eyre::Result;
 use sqlx::{query, sqlite::SqliteQueryResult};
 use walkdir::{DirEntry, WalkDir};
 
-use futures::stream::{iter, StreamExt};
 use crate::metadata::SongMetadata;
 
 use super::*;
@@ -91,30 +90,16 @@ impl Task for ScanSongs {
                 return;
             }
 
-            let tasks: Vec<_> = song_paths
-                .into_iter()
-                .map(|path| {
-                    let db = db.clone();
-                    let path = path.clone();
-                    async move {
-                        add_song(db, path).await.map(|_| ())
-                    }
-                })
-                .collect();
-
-            // PERF: Increase the speed of adding data to the database.
-            let results: Vec<_> = iter(tasks).buffer_unordered(1).collect().await;
-
-            for result in results {
-                if let Err(err) = result {
-                    tracing::error!("Failed to insert song: {}", err);
+            for song in song_paths {
+                if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
+                    status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
+                    tracing::info!("Song scan cancelled");
+                    return;
                 }
-            }
 
-            if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
-                status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
-                tracing::info!("Song scan cancelled");
-                return;
+                let _ = add_song(db.clone(), song).await.map_err(|err| {
+                    tracing::error!("Song scan error: {}", err);
+                });
             }
 
             status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
