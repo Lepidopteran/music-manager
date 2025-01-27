@@ -42,6 +42,7 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .merge(api::albums::router())
         .merge(api::directories::router())
         .merge(api::cover_art::router())
+        .merge(api::info::router())
         .with_state(AppState {
             settings: settings.clone(),
             db,
@@ -125,7 +126,8 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
         tracing::warn!("Task already registered");
     }
 
-    let err = registry.register(move || Box::new(tasks::UpdateSongs::new(refresh_songs_pool.clone())));
+    let err =
+        registry.register(move || Box::new(tasks::UpdateSongs::new(refresh_songs_pool.clone())));
     if let Err(RegistryError::AlreadyExists) = err {
         tracing::warn!("Task already registered");
     }
@@ -135,7 +137,11 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
 
 /// Ensure that the app directories exist.
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
-    let dirs = vec![get_app_config_dir(), get_app_cache_dir(), get_app_data_dir()];
+    let dirs = vec![
+        get_app_config_dir(),
+        get_app_cache_dir(),
+        get_app_data_dir(),
+    ];
 
     for dir in dirs {
         if !dir.exists() {

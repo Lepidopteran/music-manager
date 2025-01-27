@@ -3,5 +3,6 @@ pub mod directories;
 pub mod tasks;
 pub mod cover_art;
 pub mod albums;
+pub mod info;
 
 use super::{TaskInfo, Registry, RegistryError};
