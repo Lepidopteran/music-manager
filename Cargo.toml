@@ -20,7 +20,7 @@ id3 = { version = "1.16.0", features = ["tokio"] }
 image = { version = "0.25.5", features = ["serde"] }
 lewton = "0.10.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
-lofty = "0.22.1"
+lofty = "0.22.2"
 metaflac = "0.2.7"
 mime_guess = "2.0.5"
 mp4ameta = "0.11.0"
