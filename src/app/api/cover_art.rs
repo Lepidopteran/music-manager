@@ -129,7 +129,7 @@ async fn get_song_cover_art_metadata(
         .into_iter()
         .enumerate()
         .map(|(index, cover_art)| CoverArtMetadata {
-            cover_type: cover_art.cover_type.clone(),
+            cover_type: cover_art.cover_type,
             image: map_type_to_path(&cover_art.cover_type, index),
         })
         .collect();
