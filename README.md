@@ -7,10 +7,10 @@ Written with [Rust](https://www.rust-lang.org/), [TypeScript](https://www.typesc
 ## Features
 
 - [x] Web interface
-- [x] Music tagging
 - [x] Support for a majoirty of audio formats: MP3, M4A, AIFF, AAC, FLAC, OGG, WAV, and More
-- [x] Scrape metadata from multiple sources
 - [x] Scrape metadata from audio files 
+- [ ] Scrape metadata from multiple sources
+- [ ] Music tagging
 
 ## Development
 
