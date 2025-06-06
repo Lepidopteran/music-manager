@@ -221,7 +221,7 @@ fn scan_song_paths(directories: Vec<String>, status: Arc<AtomicU8>) -> Vec<PathB
 }
 
 fn is_music_file(entry: &DirEntry) -> bool {
-    let extensions = [".mp3", ".m4a", ".flac", ".wav", ".ogg", ".wma", ".aac"];
+    let extensions = [".mp3", ".m4a", ".flac", ".wav", ".ogg", ".wma", ".aac", ".opus"];
     let file_name = entry.file_name().to_string_lossy();
 
     extensions.iter().any(|ext| file_name.ends_with(ext))
