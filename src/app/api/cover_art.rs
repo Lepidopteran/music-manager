@@ -8,7 +8,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sqlx::{query, query_as, query_scalar};
+use sqlx::query_scalar;
 
 use crate::{
     app::AppState,
@@ -62,7 +62,7 @@ async fn get_song_cover_art(
         .unwrap_or(&cover_type)
         .to_string();
 
-    let ext = match uri.path().split('.').last() {
+    let ext = match uri.path().split('.').next_back() {
         Some(ext) => ext,
         None => {
             return Err((
@@ -93,7 +93,7 @@ async fn get_song_cover_art(
     let cover_art = get_cover_art(&path).into_iter().find(|cover_art| {
         let cover_type = CoverArtType::try_from(cover_type.as_str());
 
-        cover_type.map_or(false, |ct| ct == cover_art.cover_type)
+        cover_type == Ok(cover_art.cover_type)
     });
 
     match cover_art {
@@ -149,7 +149,7 @@ async fn get_album_cover_art(
         .unwrap_or(&cover_type)
         .to_string();
 
-    let ext = match uri.path().split('.').last() {
+    let ext = match uri.path().split('.').next_back() {
         Some(ext) => ext,
         None => {
             return Err((
@@ -182,7 +182,8 @@ async fn get_album_cover_art(
     for path in paths {
         let art = get_cover_art(&path).into_iter().find(|cover_art| {
             let cover_type = CoverArtType::try_from(cover_type.as_str());
-            cover_type.map_or(false, |ct| ct == cover_art.cover_type)
+
+            cover_type == Ok(cover_art.cover_type)
         });
 
         if let Some(art) = art {

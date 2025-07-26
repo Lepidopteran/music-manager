@@ -60,12 +60,6 @@ async fn get_album(
     Ok(Json(album))
 }
 
-#[derive(serde::Serialize)]
-struct AlbumMetadata {
-    title: Option<String>,
-    artist: Option<String>,
-}
-
 async fn get_albums(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
 ) -> Result<Json<Vec<Album>>, impl IntoResponse> {
@@ -94,8 +88,8 @@ async fn get_albums(
     }
 
     let albums: Vec<Album> = album_map
-        .into_iter()
-        .filter_map(|(_, tracks)| Album::try_from(tracks).ok())
+        .into_values()
+        .map(Album::from)
         .collect();
 
     if albums.is_empty() {
