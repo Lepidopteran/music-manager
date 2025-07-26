@@ -184,7 +184,7 @@ async fn get_album_cover_art(
             let cover_type = CoverArtType::try_from(cover_type.as_str());
             cover_type.map_or(false, |ct| ct == cover_art.cover_type)
         });
-        
+
         if let Some(art) = art {
             cover_art = Some(art);
             break;
@@ -236,11 +236,7 @@ async fn get_album_cover_art_metadata(
 fn convert_cover_art(cover_art: CoverArt, extension: &str) -> Option<Vec<u8>> {
     use image::{load_from_memory, ImageFormat};
 
-    let format = match ImageFormat::from_extension(extension) {
-        Some(format) => format,
-        None => return None,
-    };
-
+    let format = ImageFormat::from_extension(extension)?;
     match load_from_memory(&cover_art.data) {
         Ok(cover) => {
             let mut buffer: Vec<u8> = Vec::new();
