@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
-use sqlx::error::ErrorKind;
+use std::path::PathBuf;
+
+use serde::Serialize;
 
 use axum::{
     extract::{Path, State},
@@ -8,6 +9,8 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+
+use sqlx::error::ErrorKind;
 use sysinfo::Disks;
 
 use crate::{
@@ -28,6 +31,10 @@ struct Directory {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/directories/", get(get_directories))
+        .route(
+            "/api/directories/filesystem/*path",
+            get(get_directory_folders),
+        )
         .route("/api/directories/", post(add_directory))
         .route("/api/directories/:name", delete(remove_directory))
 }
@@ -175,4 +182,45 @@ async fn get_directories(
         .collect();
 
     Ok(Json(directories_with_space))
+}
+
+async fn get_directory_folders(path: Path<String>) -> Result<Json<Vec<PathBuf>>, impl IntoResponse> {
+    if path.to_string().trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
+    }
+
+    let path = std::path::PathBuf::from(&path.to_string());
+
+    if !path.exists() {
+        return Err((StatusCode::BAD_REQUEST, "Path does not exist".to_string()));
+    }
+
+    if !path.is_dir() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Path is not a directory".to_string(),
+        ));
+    }
+
+    if path.is_relative() {
+        return Err((StatusCode::BAD_REQUEST, "Path must be absolute".to_string()));
+    }
+
+    let directories = match std::fs::read_dir(path) {
+        Ok(entries) => entries
+            .filter_map(|entry| {
+                if let Ok(entry) = entry {
+                    if let Ok(file_type) = entry.file_type() {
+                        if file_type.is_dir() {
+                            return Some(entry.path());
+                        }
+                    }
+                }
+                None
+            })
+            .collect(),
+        Err(err) => return Err(internal_error(err)),
+    };
+
+    Ok(Json(directories))
 }
