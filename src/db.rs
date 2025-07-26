@@ -24,4 +24,5 @@ pub struct Song {
     pub track_number: Option<String>,
     pub disc_number: Option<String>,
     pub year: Option<String>,
+    pub mood: Option<String>,
 }
