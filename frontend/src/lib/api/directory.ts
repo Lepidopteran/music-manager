@@ -6,7 +6,7 @@ import type { Directory, NewDirectory } from "../models";
  * @returns Promise resolving to an array of directories.
  */
 export async function getDirectories(): Promise<Array<Directory>> {
-  return await fetchJson<Array<Directory>>("/api/directories/");
+	return await fetchJson<Array<Directory>>("/api/directories/");
 }
 
 /**
@@ -15,12 +15,12 @@ export async function getDirectories(): Promise<Array<Directory>> {
  * @returns Promise resolving to the created directory.
  */
 export async function createDirectory(
-  directory: NewDirectory,
+	directory: NewDirectory,
 ): Promise<Directory | null> {
-  return await fetchJson<Directory | null>("/api/directories/", {
-    method: "POST",
-    body: JSON.stringify(directory),
-  });
+	return await fetchJson<Directory | null>("/api/directories/", {
+		method: "POST",
+		body: JSON.stringify(directory),
+	});
 }
 
 /**
@@ -29,7 +29,7 @@ export async function createDirectory(
  * @returns Promise resolving when the directory is deleted.
  */
 export async function deleteDirectory(name: string): Promise<void> {
-  await fetchJson<void>(`/api/directories/${name}`, {
-    method: "DELETE",
-  });
+	await fetchJson<void>(`/api/directories/${name}`, {
+		method: "DELETE",
+	});
 }

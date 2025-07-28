@@ -1,136 +1,143 @@
 <script lang="ts">
-  import Icon from "@iconify/svelte";
-  import Button from "@components/Button.svelte";
-  import Directories from "@pages/Directories.svelte";
-  import Home from "@pages/Albums.svelte";
-  import UniversalRouter, {
-    type Route,
-    type ResolveContext,
-  } from "universal-router";
-    import Logo from "./components/Logo.svelte";
+	import Icon from "@iconify/svelte";
+	import Button from "@components/Button.svelte";
+	import Directories from "@pages/Directories.svelte";
+	import Home from "@pages/Albums.svelte";
+	import UniversalRouter, {
+		type Route,
+		type ResolveContext,
+	} from "universal-router";
+	import Logo from "./components/Logo.svelte";
 
-  let menuOpen = $state(true);
+	let menuOpen = $state(true);
+	let theme = $state("dark");
 
-  interface Page extends Route {
-    icon?: string;
-  }
+	interface Page extends Route {
+		icon?: string;
+	}
 
-  class AppState {
-    path = $state("/");
-    name = $state("Home");
-    pageComponent = $state(Home);
-    router: UniversalRouter;
+	class AppState {
+		path = $state("/");
+		name = $state("Home");
+		pageComponent = $state(Home);
+		router: UniversalRouter;
 
-    constructor(routes: Array<Route>) {
-      this.router = new UniversalRouter(routes);
-    }
+		constructor(routes: Array<Route>) {
+			this.router = new UniversalRouter(routes);
+		}
 
-    async changePage(input: string | ResolveContext) {
-      const { path, name, pageComponent } = await this.router.resolve(input);
+		async changePage(input: string | ResolveContext) {
+			const { path, name, pageComponent } = await this.router.resolve(input);
 
-      this.path = path;
-      this.name = name;
-      this.pageComponent = pageComponent;
-    }
-  }
+			this.path = path;
+			this.name = name;
+			this.pageComponent = pageComponent;
+		}
+	}
 
-  const routes: Array<Page> = [
-    {
-      path: "/",
-      name: "Albums",
-      icon: "mdi:album",
-      action() {
-        return {
-          path: this.path,
-          name: this.name,
-          pageComponent: Home,
-        };
-      },
-    },
-    {
-      path: "/directories",
-      name: "Directories",
-      icon: "mdi:folder",
-      action() {
-        return {
-          path: this.path,
-          name: this.name,
-          pageComponent: Directories,
-        };
-      },
-    },
-  ];
+	const routes: Array<Page> = [
+		{
+			path: "/",
+			name: "Albums",
+			icon: "mdi:album",
+			action() {
+				return {
+					path: this.path,
+					name: this.name,
+					pageComponent: Home,
+				};
+			},
+		},
+		{
+			path: "/directories",
+			name: "Directories",
+			icon: "mdi:folder",
+			action() {
+				return {
+					path: this.path,
+					name: this.name,
+					pageComponent: Directories,
+				};
+			},
+		},
+	];
 
-  const app = new AppState(routes);
+	const app = new AppState(routes);
 
-  async function handleNavitionClick(event: MouseEvent) {
-    const { target } = event;
+	async function handleNavitionClick(event: MouseEvent) {
+		const { target } = event;
 
-    if (!(target instanceof HTMLAnchorElement)) {
-      return;
-    }
+		if (!(target instanceof HTMLAnchorElement)) {
+			return;
+		}
 
-    const path = target.getAttribute("href") as string;
-    event.preventDefault();
+		const path = target.getAttribute("href") as string;
+		event.preventDefault();
 
-    window.history.pushState({}, "", path);
-    await app.changePage(path);
-  }
+		window.history.pushState({}, "", path);
+		await app.changePage(path);
+	}
 
-  app.changePage({ pathname: window.location.pathname });
+	app.changePage({ pathname: window.location.pathname });
+
+	$effect(() => {
+		document.documentElement.dataset.theme = theme;
+	});
 </script>
 
 <svelte:window
-  onpopstate={() => app.changePage({ pathname: window.location.pathname })}
-  onresize={() => (menuOpen = window.innerWidth > 650)}
-  onload={() => (menuOpen = window.innerWidth > 650)}
+	onpopstate={() => app.changePage({ pathname: window.location.pathname })}
+	onresize={() => (menuOpen = window.innerWidth > 650)}
+	onload={() => (menuOpen = window.innerWidth > 650)}
 />
 
 <div
-  class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full"
+	class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full"
 >
-  <header
-    class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-  >
-    <div class="flex items-center gap-2">
-      <Button
-        color="ghost"
-        toggleable={true}
-        active={menuOpen}
-        onclick={() => (menuOpen = !menuOpen)}
-        class="group size-10 sm:hidden"
-      >
-        <Icon
-          icon="mdi:menu"
-          class="text-2xl group-data-[active=true]:text-primary transition"
-        />
-      </Button>
-			<h1 class="text-2xl font-bold row-start-1 flex gap-2 items-center"><Logo class="p-1"/> Muusik</h1>
-    </div>
-    <div class="flex gap-4"></div>
-    <div class="flex gap-4"></div>
-  </header>
-  <aside
-    class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
-  >
-    <nav>
-      {#each routes as route}
-        {@const icon = route.icon as string}
-        <a
-          href={route.path as string}
-          onclick={handleNavitionClick}
-          class="font-semibold px-4 flex items-center gap-2 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-          data-active={route.path === app.path || undefined}
-        >
-          <Icon {icon} class="text-xl" />
-          {route.name}
-        </a>
-      {/each}
-    </nav>
-  </aside>
-  <main
-    class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
-  >
-    <app.pageComponent />
-  </main>
+	<header
+		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
+	>
+		<div class="flex items-center gap-2">
+			<Button
+				color="ghost"
+				toggleable={true}
+				active={menuOpen}
+				onclick={() => (menuOpen = !menuOpen)}
+				class="group size-10 sm:hidden"
+			>
+				<Icon
+					icon="mdi:menu"
+					class="text-2xl group-data-[active=true]:text-primary transition"
+				/>
+			</Button>
+			<h1 class="text-2xl font-bold row-start-1 flex gap-2 items-center">
+				<Logo class="p-1" /> Muusik
+			</h1>
+		</div>
+		<div class="flex gap-4"></div>
+		<div class="flex gap-4"></div>
+	</header>
+	<aside
+		class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
+	>
+		<nav>
+			{#each routes as route}
+				{@const icon = route.icon as string}
+				<a
+					href={route.path as string}
+					onclick={handleNavitionClick}
+					class="font-semibold px-4 flex items-center gap-2 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
+					data-active={route.path === app.path || undefined}
+				>
+					<Icon {icon} class="text-xl" />
+					{route.name}
+				</a>
+			{/each}
+		</nav>
+	</aside>
+	<main
+		class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
+	>
+		<app.pageComponent />
+	</main>
 </div>

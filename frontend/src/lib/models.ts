@@ -1,27 +1,27 @@
 export interface Album {
-  title: string;
+	title: string;
 	tracks: Array<Song>;
-  barcode: string | null;
-  catalogNumber: string | null;
-  comment: string | null;
-  country: string | null;
-  artist: string | null;
-  label: string | null;
-  date: Date | null;
+	barcode: string | null;
+	catalogNumber: string | null;
+	comment: string | null;
+	country: string | null;
+	artist: string | null;
+	label: string | null;
+	date: Date | null;
 	originalDate: Date | null;
 }
 
 export interface Song {
-  id: number;
+	id: number;
 	path: string;
-  title: string | null;
-  artist: string | null;
-  album: string | null;
-  albumArtist: string | null;
-  genre: string | null;
-  trackNumber: string | null;
-  discNumber: string | null;
-  year: string | null;
+	title: string | null;
+	artist: string | null;
+	album: string | null;
+	albumArtist: string | null;
+	genre: string | null;
+	trackNumber: string | null;
+	discNumber: string | null;
+	year: string | null;
 }
 
 export interface NewDirectory {
