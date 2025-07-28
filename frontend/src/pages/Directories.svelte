@@ -85,8 +85,8 @@
       >
         <th class="p-cell text-left">Location</th>
         <th class="p-cell text-left">Name</th>
-        <th class="p-cell text-right">Free Space</th>
-        <th class="p-cell text-right">Total Space</th>
+        <th class="p-cell text-right">Drive Usage</th>
+        <th class="p-cell text-right">Drive Total</th>
       </tr>
     </thead>
     <tbody
