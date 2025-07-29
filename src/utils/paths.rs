@@ -1,6 +1,6 @@
 //! Utility functions for working with paths.
 
-use dirs::config_dir;
+use directories::BaseDirs;
 use std::{env, path::PathBuf};
 
 /// Get the path to the app config directory.
@@ -11,8 +11,8 @@ pub fn app_config_dir() -> PathBuf {
         return PathBuf::from(config_dir);
     }
 
-    if let Some(config_dir) = config_dir() {
-        return config_dir.join(app_name);
+    if let Some(base_dirs) = BaseDirs::new() {
+        return base_dirs.config_dir().join(app_name);
     }
 
     env::current_dir().expect("Failed to get current directory")
@@ -26,8 +26,8 @@ pub fn app_data_dir() -> PathBuf {
         return PathBuf::from(data_dir);
     }
 
-    if let Some(data_dir) = dirs::data_dir() {
-        return data_dir.join(app_name);
+    if let Some(base_dirs) = BaseDirs::new() {
+        return base_dirs.data_dir().join(app_name);
     }
 
     env::current_dir().expect("Failed to get current directory")
@@ -41,8 +41,8 @@ pub fn app_cache_dir() -> PathBuf {
         return PathBuf::from(cache_dir);
     }
 
-    if let Some(cache_dir) = dirs::cache_dir() {
-        return cache_dir.join(app_name);
+    if let Some(base_dirs) = BaseDirs::new() {
+        return base_dirs.cache_dir().join(app_name);
     }
 
     env::current_dir().expect("Failed to get current directory")
