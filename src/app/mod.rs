@@ -5,7 +5,7 @@ use tracing::info_span;
 
 use crate::{
     config::Settings,
-    paths::{app_cache_dir, app_config_dir, app_data_dir},
+    paths::{app_cache_dir, app_config_dir, app_data_dir, metadata_history_dir},
 };
 
 use super::{
@@ -140,7 +140,12 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
 
 /// Ensure that the app directories exist.
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
-    let dirs = vec![app_config_dir(), app_cache_dir(), app_data_dir()];
+    let dirs = vec![
+        app_config_dir(),
+        app_cache_dir(),
+        app_data_dir(),
+        metadata_history_dir(),
+    ];
 
     for dir in dirs {
         if !dir.exists() {

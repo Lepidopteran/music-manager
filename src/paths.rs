@@ -31,6 +31,11 @@ pub fn app_data_dir() -> PathBuf {
     env::current_dir().expect("Failed to get current directory")
 }
 
+/// Get the path to the metadata history directory.
+pub fn metadata_history_dir() -> PathBuf {
+    app_data_dir().join("history")
+}
+
 /// Get the path to the app cache directory.
 pub fn app_cache_dir() -> PathBuf {
     if let Ok(cache_dir) = env::var(format!("{}_CACHE_DIR", APP_NAME.to_uppercase()).as_str()) {
