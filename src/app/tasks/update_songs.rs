@@ -1,5 +1,4 @@
 use color_eyre::eyre::Result;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sqlx::{query, query_as};
 use tokio::task::spawn_blocking;
 
