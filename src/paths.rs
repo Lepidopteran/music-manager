@@ -1,9 +1,8 @@
 //! Methods for getting app paths.
 
-use directories::{ProjectDirs};
-use std::{env, path::PathBuf};
 use crate::APP_NAME;
-
+use directories::ProjectDirs;
+use std::{env, path::PathBuf};
 
 /// Get the path to the app config directory.
 pub fn app_config_dir() -> PathBuf {
@@ -33,7 +32,7 @@ pub fn app_data_dir() -> PathBuf {
 
 /// Get the path to the metadata history directory.
 pub fn metadata_history_dir() -> PathBuf {
-    app_data_dir().join("history")
+    app_data_dir().join("metadata").join("history")
 }
 
 /// Get the path to the app cache directory.
