@@ -1,7 +1,9 @@
 use color_eyre::eyre::Result;
-use sqlx::query;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use sqlx::{query, query_as};
+use tokio::task::spawn_blocking;
 
-use crate::metadata::SongMetadata;
+use crate::{db::Song, metadata::SongMetadata};
 
 use super::*;
 
@@ -46,12 +48,10 @@ impl Task for UpdateSongs {
 
         status.store(TaskStatus::Running.into(), Ordering::Relaxed);
         tokio::spawn(async move {
-            let tracks: Vec<(String, i64)> = query!("SELECT path, id FROM songs")
+            let tracks: Vec<Song> = query_as!(Song, "SELECT * FROM songs")
                 .fetch_all(&db)
                 .await
-                .map(|rows| rows.into_iter().map(|row| (row.path, row.id)).collect())
-                .map_err(|err| err.to_string())
-                .unwrap_or_default();
+                .expect("Failed to get tracks");
 
             if tracks.is_empty() {
                 tracing::warn!("No Songs found, cancelling update");
@@ -59,20 +59,36 @@ impl Task for UpdateSongs {
                 return;
             }
 
-            for (path, id) in tracks {
+            let comparison_tasks = tracks.into_iter().map(|song| {
+                spawn_blocking(move || {
+                    get_updated_metadata(&song)
+                })
+            });
+
+            let updated_tracks = futures::future::join_all(comparison_tasks)
+                .await
+                .into_iter()
+                .filter_map(Result::ok)
+                .flatten()
+                .collect::<Vec<(i64, SongMetadata)>>();
+
+            if updated_tracks.is_empty() {
+                tracing::info!("No Songs need updating, cancelling update");
+                status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
+                return;
+            }
+
+            for (id, metadata) in updated_tracks {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                     status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                     tracing::info!("Refresh metadata cancelled");
                     return;
                 }
 
-                let _ = update_song(db.clone(), id, path.into())
-                    .await
-                    .map_err(|err| {
-                        tracing::error!("Failed to update song: {}", err);
-                    });
+                let _ = update_song(db.clone(), id, metadata).await.map_err(|err| {
+                    tracing::error!("Failed to update song: {}", err);
+                });
             }
-
 
             status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
 
@@ -103,11 +119,10 @@ impl Task for UpdateSongs {
     }
 }
 
-async fn update_song(
-    pool: sqlx::Pool<sqlx::Sqlite>,
-    id: i64,
-    path: PathBuf,
-) -> Result<(), sqlx::Error> {
+fn get_updated_metadata(song: &Song) -> Option<(i64, SongMetadata)> {
+    let path = PathBuf::from(&song.path);
+    tracing::debug!("Getting metadata for: {}", path.display());
+
     let metadata = match SongMetadata::from_path(&path) {
         Ok(song) => Some(song),
         Err(err) => {
@@ -116,30 +131,46 @@ async fn update_song(
         }
     };
 
-    tracing::info!(
-        "Updating song: {}, {:?}",
-        path.to_string_lossy().to_string(),
-        metadata
-    );
-
-    match metadata {
-        Some(song) => {
-            query!(
-                "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ? WHERE id = ?",
-                song.title,
-                song.album,
-                song.album_artist,
-                song.disc_number,
-                song.artist,
-                song.year,
-                song.track_number,
-                song.genre,
-                id
-            )
-            .execute(&pool)
-            .await
-            .map(|_| ())
+    metadata.and_then(|metadata| {
+        if song_metadata_changed(song, &metadata) {
+            Some((song.id, metadata))
+        } else {
+            None
         }
-        _ => Ok(())
-    }
+    })
+}
+
+fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
+    song.title != metadata.title
+        || song.album != metadata.album
+        || song.album_artist != metadata.album_artist
+        || song.disc_number != metadata.disc_number
+        || song.artist != metadata.artist
+        || song.year != metadata.year
+        || song.track_number != metadata.track_number
+        || song.genre != metadata.genre
+}
+
+async fn update_song(
+    pool: sqlx::Pool<sqlx::Sqlite>,
+    id: i64,
+    metadata: SongMetadata,
+) -> Result<(), sqlx::Error> {
+    tracing::info!("Updating song: {id}, {:?}", metadata);
+
+    query!(
+        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ? WHERE id = ?",
+        metadata.title,
+        metadata.album,
+        metadata.album_artist,
+        metadata.disc_number,
+        metadata.artist,
+        metadata.year,
+        metadata.track_number,
+        metadata.genre,
+        id
+    )
+    .execute(&pool)
+    .await
+    .map(|_| ())
 }
