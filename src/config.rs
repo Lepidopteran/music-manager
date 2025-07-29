@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::Args;
+use crate::{paths, Args};
 
 /// Server configuration.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -69,7 +69,7 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
         return Ok(settings);
     }
 
-    let path = crate::app_config_dir().join("config.toml");
+    let path = paths::app_config_dir().join("config.toml");
     let mut settings = match Settings::load(&path) {
         Ok(settings) => settings,
         Err(err) => {
