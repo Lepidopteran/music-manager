@@ -3,7 +3,7 @@ use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
-use crate::{config::Settings, get_app_cache_dir, get_app_config_dir, get_app_data_dir};
+use crate::{config::Settings, app_cache_dir, app_config_dir, app_data_dir};
 
 use super::{
     config,
@@ -138,9 +138,9 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
 /// Ensure that the app directories exist.
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
     let dirs = vec![
-        get_app_config_dir(),
-        get_app_cache_dir(),
-        get_app_data_dir(),
+        app_config_dir(),
+        app_cache_dir(),
+        app_data_dir(),
     ];
 
     for dir in dirs {

@@ -4,7 +4,7 @@ use dirs::config_dir;
 use std::{env, path::PathBuf};
 
 /// Get the path to the app config directory.
-pub fn get_app_config_dir() -> PathBuf {
+pub fn app_config_dir() -> PathBuf {
     let app_name = env!("CARGO_PKG_NAME");
 
     if let Ok(config_dir) = env::var(format!("{}_CONFIG_DIR", app_name.to_uppercase()).as_str()) {
@@ -19,7 +19,7 @@ pub fn get_app_config_dir() -> PathBuf {
 }
 
 /// Get the path to the app data directory.
-pub fn get_app_data_dir() -> PathBuf {
+pub fn app_data_dir() -> PathBuf {
     let app_name = env!("CARGO_PKG_NAME");
 
     if let Ok(data_dir) = env::var(format!("{}_DATA_DIR", app_name.to_uppercase()).as_str()) {
@@ -34,7 +34,7 @@ pub fn get_app_data_dir() -> PathBuf {
 }
 
 /// Get the path to the app cache directory.
-pub fn get_app_cache_dir() -> PathBuf {
+pub fn app_cache_dir() -> PathBuf {
     let app_name = env!("CARGO_PKG_NAME");
 
     if let Ok(cache_dir) = env::var(format!("{}_CACHE_DIR", app_name.to_uppercase()).as_str()) {

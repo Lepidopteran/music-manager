@@ -69,7 +69,7 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
         return Ok(settings);
     }
 
-    let path = crate::get_app_config_dir().join("config.toml");
+    let path = crate::app_config_dir().join("config.toml");
     let mut settings = match Settings::load(&path) {
         Ok(settings) => settings,
         Err(err) => {
