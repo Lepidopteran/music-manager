@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use fs_extra::dir::get_size;
 use serde::Serialize;
 
 use axum::{
@@ -24,6 +25,7 @@ use crate::{
 struct Directory {
     name: String,
     path: String,
+    path_size: Option<u64>,
     free_space: Option<u64>,
     total_space: Option<u64>,
 }
@@ -118,10 +120,11 @@ async fn add_directory(
     });
 
     Ok(Json(Directory {
-        name: result.name,
-        path: result.path,
+        path_size: get_size(&result.path).ok(),
         free_space: disk.map(|disk| disk.available_space()),
         total_space: disk.map(|disk| disk.total_space()),
+        name: result.name,
+        path: result.path,
     }))
 }
 
@@ -173,10 +176,11 @@ async fn get_directories(
             });
 
             disk.map(|disk| Directory {
-                name: directory.name,
-                path: directory.path,
+                path_size: get_size(&directory.path).ok(),
                 free_space: Some(disk.available_space()),
                 total_space: Some(disk.total_space()),
+                name: directory.name,
+                path: directory.path,
             })
         })
         .collect();
@@ -184,7 +188,9 @@ async fn get_directories(
     Ok(Json(directories_with_space))
 }
 
-async fn get_directory_folders(path: Path<String>) -> Result<Json<Vec<PathBuf>>, impl IntoResponse> {
+async fn get_directory_folders(
+    path: Path<String>,
+) -> Result<Json<Vec<PathBuf>>, impl IntoResponse> {
     if path.to_string().trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
     }

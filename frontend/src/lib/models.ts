@@ -32,6 +32,7 @@ export interface NewDirectory {
 export interface Directory {
 	name: string;
 	path: string;
+	pathSize: number;
 	freeSpace: number;
 	totalSpace: number;
 }

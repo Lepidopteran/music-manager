@@ -59,23 +59,10 @@
 	>
 		<caption class="p-2 text-left text-lg">Directories</caption>
 
-		{#snippet row(
-			path: string,
-			name: string,
-			freeSpace: number,
-			totalSpace: number,
-		)}
-			<tr class="border-inherit *:overflow-hidden">
-				<td class="p-cell truncate">{path}</td>
-				<td class="p-cell">{name}</td>
-				<td class="p-cell text-right">{formatBytes(freeSpace)}</td>
-				<td class="p-cell text-right">{formatBytes(totalSpace)}</td>
-			</tr>
-		{/snippet}
-
 		<colgroup>
 			<col />
 			<col class="w-12 md:w-24" />
+			<col class="w-0 collapse md:w-28 md:visible" />
 			<col class="w-32" />
 			<col class="w-0 collapse md:w-28 md:visible" />
 		</colgroup>
@@ -85,6 +72,7 @@
 			>
 				<th class="p-cell text-left">Location</th>
 				<th class="p-cell text-left">Name</th>
+				<th class="p-cell text-right">Path Size</th>
 				<th class="p-cell text-right">Drive Usage</th>
 				<th class="p-cell text-right">Drive Total</th>
 			</tr>
@@ -92,10 +80,26 @@
 		<tbody
 			class="divide-y divide-primary-600/15 border-inherit inset-shadow-xs inset-shadow-highlight/25"
 		>
+			{#snippet row(
+				path: string,
+				name: string,
+				pathSize: number,
+				freeSpace: number,
+				totalSpace: number,
+			)}
+				<tr class="border-inherit *:overflow-hidden">
+					<td class="p-cell truncate">{path}</td>
+					<td class="p-cell">{name}</td>
+					<td class="p-cell text-right">{formatBytes(pathSize)}</td>
+					<td class="p-cell text-right">{formatBytes(freeSpace)}</td>
+					<td class="p-cell text-right">{formatBytes(totalSpace)}</td>
+				</tr>
+			{/snippet}
 			{#each directories as directory}
 				{@render row(
 					directory.path,
 					directory.name,
+					directory.pathSize,
 					directory.freeSpace,
 					directory.totalSpace,
 				)}
