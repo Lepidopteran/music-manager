@@ -162,10 +162,11 @@ async fn add_song(
                 year,
                 track_number,
                 genre,
+                mood,
             } = song;
 
             query!(
-                "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 path,
                 title,
                 album,
@@ -174,7 +175,8 @@ async fn add_song(
                 artist,
                 year,
                 track_number,
-                genre
+                genre,
+                mood
             )
             .execute(&pool)
             .await

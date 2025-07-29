@@ -148,6 +148,7 @@ fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
         || song.year != metadata.year
         || song.track_number != metadata.track_number
         || song.genre != metadata.genre
+        || song.mood != metadata.mood
 }
 
 async fn update_song(
@@ -158,7 +159,7 @@ async fn update_song(
     tracing::info!("Updating song: {id}, {:?}", metadata);
 
     query!(
-        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ? WHERE id = ?",
+        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
         metadata.title,
         metadata.album,
         metadata.album_artist,
@@ -167,6 +168,7 @@ async fn update_song(
         metadata.year,
         metadata.track_number,
         metadata.genre,
+        metadata.mood,
         id
     )
     .execute(&pool)

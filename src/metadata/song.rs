@@ -278,6 +278,7 @@ pub struct SongMetadata {
     pub genre: Option<String>,
     pub track_number: Option<String>,
     pub disc_number: Option<String>,
+    pub mood: Option<String>,
     pub year: Option<String>,
 }
 
@@ -306,6 +307,7 @@ impl From<&Tag> for SongMetadata {
             artist: tag.artist().as_deref().map(sanitize_tag),
             album: tag.album().as_deref().map(sanitize_tag),
             album_artist: tag.get_string(&ItemKey::AlbumArtist).map(sanitize_tag),
+            mood: tag.get_string(&ItemKey::Mood).map(sanitize_tag),
             genre: Some(
                 tag.get_strings(&ItemKey::Genre)
                     .map(std::string::ToString::to_string)
