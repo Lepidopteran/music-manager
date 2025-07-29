@@ -141,7 +141,7 @@ async fn remove_directory(
             if result.rows_affected() > 0 {
                 Ok(StatusCode::OK)
             } else {
-                Err((StatusCode::NOT_FOUND, format!("\"{}\" not found", name)))
+                Err((StatusCode::NOT_FOUND, format!("\"{name}\" not found")))
             }
         }
         Err(err) => Err(internal_error(err)),

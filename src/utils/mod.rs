@@ -17,7 +17,7 @@ pub use status::*;
 /// # Returns
 /// Returns the connection string of the database.
 pub fn create_default_database(name: &str) -> Result<String, std::io::Error> {
-    let db_name = format!("{}.db", name);
+    let db_name = format!("{name}.db");
     let config_dir = paths::get_app_config_dir();
     let conn_str = format!(
         "sqlite://{}",

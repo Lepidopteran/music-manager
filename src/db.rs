@@ -3,8 +3,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
-use crate::metadata::SongMetadata;
-
 #[derive(Deserialize, Serialize, FromRow)]
 pub struct Directory {
     pub name: String,

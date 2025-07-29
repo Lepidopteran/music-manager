@@ -261,8 +261,8 @@ fn convert_cover_art(cover_art: CoverArt, extension: &str) -> Option<Vec<u8>> {
 
 fn map_type_to_path(cover_type: &CoverArtType, index: usize) -> String {
     match cover_type {
-        CoverArtType::Front => format!("/front/{}.jpg", index),
-        CoverArtType::Back => format!("/back/{}.jpg", index),
-        CoverArtType::Other => format!("/other/{}.jpg", index),
+        CoverArtType::Front => format!("/front/{index}.jpg"),
+        CoverArtType::Back => format!("/back/{index}.jpg"),
+        CoverArtType::Other => format!("/other/{index}.jpg"),
     }
 }

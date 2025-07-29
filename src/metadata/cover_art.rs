@@ -20,7 +20,7 @@ impl TryFrom<&str> for CoverArtType {
             "front" => Ok(CoverArtType::Front),
             "back" => Ok(CoverArtType::Back),
             "other" => Ok(CoverArtType::Other),
-            _ => Err(format!("Invalid cover art type: {}", value))?,
+            _ => Err(format!("Invalid cover art type: {value}"))?,
         }
     }
 }
