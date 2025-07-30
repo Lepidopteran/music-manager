@@ -8,12 +8,14 @@ use axum::{
     Json, Router,
 };
 use sqlx::{query_as, query_scalar};
+use time::OffsetDateTime;
 use tokio::task::spawn_blocking;
 
 use crate::{
     app::AppState,
     db::Song,
     metadata::{SongFile, SongMetadata},
+    paths::metadata_history_dir,
     utils::*,
 };
 
@@ -101,17 +103,24 @@ async fn edit_song(
 
     let original_metadata = file.metadata_mut();
 
+    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+
+    if !metadata_dir.exists() {
+        std::fs::create_dir_all(&metadata_dir).map_err(internal_error)?;
+    }
+
+    std::fs::write(
+        metadata_dir.join(format!(
+            "{}.json",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        )),
+        serde_json::to_string_pretty(&original_metadata).map_err(internal_error)?,
+    )
+    .map_err(internal_error)?;
+
     tracing::info!("Original metadata: {original_metadata:#?}");
 
-    original_metadata.title = metadata.title.clone();
-    original_metadata.artist = metadata.artist.clone();
-    original_metadata.album = metadata.album.clone();
-    original_metadata.album_artist = metadata.album_artist.clone();
-    original_metadata.genre = metadata.genre.clone();
-    original_metadata.track_number = metadata.track_number.clone();
-    original_metadata.disc_number = metadata.disc_number.clone();
-    original_metadata.year = metadata.year.clone();
-
+    *original_metadata = metadata.clone();
     tracing::info!("Updated metadata: {:#?}", file.metadata());
 
     let err = file.write();
