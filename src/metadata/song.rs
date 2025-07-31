@@ -268,7 +268,7 @@ impl SongFile {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SongMetadata {
     pub title: Option<String>,
