@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use axum::{
     extract::{Path, State},
@@ -8,7 +8,7 @@ use axum::{
     Json, Router,
 };
 use sqlx::{query_as, query_scalar};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
 
 use crate::{
@@ -25,6 +25,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/songs/:id", get(get_song))
         .route("/api/songs/:id/refresh", post(refresh_song_details))
         .route("/api/songs/:id", put(edit_song))
+        .route(
+            "/api/songs/:id/metadata-history",
+            get(get_song_metadata_history),
+        )
 }
 
 async fn get_song(
@@ -82,6 +86,52 @@ async fn get_songs(
         .await
         .map(Json)
         .map_err(internal_error)
+}
+
+async fn get_song_metadata_history(
+    Path(song_id): Path<i32>,
+) -> Result<Json<HashMap<UtcDateTime, SongMetadata>>, impl IntoResponse> {
+    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+
+    if !metadata_dir.exists() {
+        return Err((StatusCode::NOT_FOUND, "No metadata found".to_string()));
+    }
+
+    let paths = std::fs::read_dir(metadata_dir)
+        .map_err(internal_error)?
+        .filter_map(|entry| {
+            entry
+                .ok()
+                .filter(|entry| {
+                    let path = entry.path();
+                    path.extension() == Some("json".as_ref()) && path.is_file()
+                })
+                .map(|entry| entry.path())
+        })
+        .collect::<Vec<PathBuf>>();
+
+    let metadata = paths
+        .into_iter()
+        .filter_map(|path| {
+            let metadata: SongMetadata = serde_json::from_str(
+                &std::fs::read_to_string(&path)
+                    .map_err(internal_error)
+                    .ok()?,
+            )
+            .ok()?;
+
+            let timestamp = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .and_then(|s| s.parse::<i128>().ok())
+                .map(|ts| UtcDateTime::from_unix_timestamp_nanos(ts).unwrap())
+                .unwrap();
+
+            Some((timestamp, metadata))
+        })
+        .collect::<HashMap<_, _>>();
+
+    Ok(Json(metadata))
 }
 
 async fn edit_song(
