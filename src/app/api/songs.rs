@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
+use color_eyre::eyre::eyre;
 use sqlx::{query_as, query_scalar};
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
@@ -19,6 +20,8 @@ use crate::{
     utils::*,
 };
 
+type SongId = i32;
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
@@ -26,14 +29,18 @@ pub fn router() -> Router<AppState> {
         .route("/api/songs/:id/refresh", post(refresh_song_details))
         .route("/api/songs/:id", put(edit_song))
         .route(
-            "/api/songs/:id/metadata-history",
+            "/api/songs/:id/metadata/restore/:timestamp",
+            get(restore_metadata),
+        )
+        .route(
+            "/api/songs/:id/metadata/history",
             get(get_song_metadata_history),
         )
 }
 
 async fn get_song(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(song_id): Path<i32>,
+    Path(song_id): Path<SongId>,
 ) -> Result<Json<Song>, impl IntoResponse> {
     query_as("SELECT * FROM songs WHERE id = ?")
         .bind(song_id)
@@ -45,7 +52,7 @@ async fn get_song(
 
 async fn refresh_song_details(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(song_id): Path<i32>,
+    Path(song_id): Path<SongId>,
 ) -> Result<Json<SongMetadata>, (StatusCode, String)> {
     let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
         .fetch_one(&db)
@@ -89,7 +96,7 @@ async fn get_songs(
 }
 
 async fn get_song_metadata_history(
-    Path(song_id): Path<i32>,
+    Path(song_id): Path<SongId>,
 ) -> Result<Json<HashMap<UtcDateTime, SongMetadata>>, impl IntoResponse> {
     let metadata_dir = metadata_history_dir().join(song_id.to_string());
 
@@ -134,9 +141,40 @@ async fn get_song_metadata_history(
     Ok(Json(metadata))
 }
 
+async fn restore_metadata(
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    Path((song_id, timestamp)): Path<(SongId, UtcDateTime)>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+    let path = metadata_dir.join(format!("{}.json", timestamp.unix_timestamp_nanos()));
+
+    if !path.exists() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            format!("No metadata found for timestamp \"{timestamp}\""),
+        ));
+    }
+
+    let new_metadata: SongMetadata =
+        serde_json::from_str(&std::fs::read_to_string(&path).map_err(internal_error)?)
+            .map_err(internal_error)?;
+
+    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
+        .fetch_one(&db)
+        .await
+        .map(PathBuf::from)
+        .map_err(internal_error)?;
+
+    let _ = spawn_blocking(move || update_metadata(song_id, &path, &new_metadata))
+        .await
+        .map_err(internal_error)?;
+
+    Ok(StatusCode::OK)
+}
+
 async fn edit_song(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(song_id): Path<i32>,
+    Path(song_id): Path<SongId>,
     Json(metadata): Json<SongMetadata>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
@@ -145,18 +183,29 @@ async fn edit_song(
         .map(PathBuf::from)
         .map_err(internal_error)?;
 
-    let mut file = spawn_blocking(move || {
-        SongFile::open(&path).map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err))
-    })
-    .await
-    .map_err(internal_error)??;
+    let _ = spawn_blocking(move || update_metadata(song_id, &path, &metadata))
+        .await
+        .map_err(internal_error)?;
 
-    let original_metadata = file.metadata_mut();
+    Ok(StatusCode::OK)
+}
 
-    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+fn update_metadata(
+    id: SongId,
+    path: &std::path::Path,
+    new_metadata: &SongMetadata,
+) -> color_eyre::Result<()> {
+    let mut song = SongFile::open(path).map_err(|err| eyre!(err))?;
+    let original_metadata = song.metadata_mut();
+
+    if original_metadata == new_metadata {
+        return Ok(());
+    }
+
+    let metadata_dir = metadata_history_dir().join(id.to_string());
 
     if !metadata_dir.exists() {
-        std::fs::create_dir_all(&metadata_dir).map_err(internal_error)?;
+        std::fs::create_dir_all(&metadata_dir)?;
     }
 
     std::fs::write(
@@ -164,21 +213,15 @@ async fn edit_song(
             "{}.json",
             OffsetDateTime::now_utc().unix_timestamp_nanos()
         )),
-        serde_json::to_string_pretty(&original_metadata).map_err(internal_error)?,
-    )
-    .map_err(internal_error)?;
+        serde_json::to_string_pretty(&original_metadata)?,
+    )?;
 
     tracing::info!("Original metadata: {original_metadata:#?}");
 
-    *original_metadata = metadata.clone();
-    tracing::info!("Updated metadata: {:#?}", file.metadata());
+    *original_metadata = new_metadata.clone();
 
-    let err = file.write();
+    tracing::info!("Updated metadata: {:#?}", song.metadata());
+    song.write().map_err(|err| eyre!(err))?;
 
-    if let Err(err) = err {
-        tracing::error!("Error writing metadata: {err}");
-        return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()));
-    }
-
-    Ok(StatusCode::OK)
+    Ok(())
 }
