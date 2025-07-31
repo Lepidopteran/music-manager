@@ -16,7 +16,14 @@ use serde::{Deserialize, Serialize};
 use super::{
     file::SongFileType,
     tags::{sanitize_tag, TagType},
+    Result,
 };
+
+#[derive(Debug, thiserror::Error)]
+pub enum SongError {
+    #[error("No Tag(s) found")]
+    NoTag,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -39,19 +46,14 @@ pub struct SongFile {
 
 impl SongFile {
     /// Opens a song file and returns a [`SongFile`]
-    pub fn open(path: &Path) -> Result<Self, String> {
-        check_path(path)?;
+    pub fn open(path: &Path) -> Result<Self> {
+        let path_metadata = path.metadata()?;
 
-        let path_metadata = path.metadata().map_err(|err| err.to_string())?;
-
-        let tagged_file = match Probe::open(path) {
-            Ok(tag) => tag.read().map_err(|err| err.to_string())?,
-            Err(err) => return Err(err.to_string()),
-        };
+        let tagged_file = Probe::open(path)?.read()?;
 
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
-            None => return Err("No tag found".to_string()),
+            None => tagged_file.first_tag().ok_or(SongError::NoTag)?,
         };
 
         Ok(Self {
@@ -59,8 +61,8 @@ impl SongFile {
             size: path_metadata.len(),
             tag_type: tag.tag_type().into(),
             file_type: SongFileType::from(tagged_file.file_type()),
-            last_modified: path_metadata.modified().map_err(|err| err.to_string())?,
-            created: path_metadata.created().map_err(|err| err.to_string())?,
+            last_modified: path_metadata.modified()?,
+            created: path_metadata.created()?,
             metadata: SongMetadata::from(tag),
         })
     }
@@ -77,22 +79,19 @@ impl SongFile {
         &mut self.metadata
     }
 
-    pub fn read(&mut self) -> Result<(), String> {
-        self.metadata = SongMetadata::from_path(&self.path).map_err(|err| err.to_string())?;
+    pub fn read(&mut self) -> Result<()> {
+        self.metadata = SongMetadata::from_path(&self.path)?;
         Ok(())
     }
 
-    pub fn write(&mut self) -> Result<(), String> {
-        let mut file = File::open(&self.path).map_err(|err| err.to_string())?;
+    pub fn write(&mut self) -> Result<()> {
+        let mut file = File::open(&self.path)?;
 
-        let mut tagged_file = match read_from(&mut file) {
-            Ok(tag) => tag,
-            Err(err) => return Err(err.to_string()),
-        };
+        let mut tagged_file = read_from(&mut file)?;
 
         let tag = match tagged_file.primary_tag_mut() {
             Some(tag) => tag,
-            None => return Err("No tag found".to_string()),
+            None => return Err(SongError::NoTag.into()),
         };
 
         // TEST: Debug info
@@ -170,27 +169,21 @@ impl SongFile {
             TagType::Id3v2 => {
                 let id3_tag: Id3v2Tag = tag.clone().into();
 
-                id3_tag
-                    .save_to_path(&self.path, WriteOptions::default())
-                    .map_err(|err| err.to_string())?
+                id3_tag.save_to_path(&self.path, WriteOptions::default())?
             }
             _ => {
-                tag.save_to_path(&self.path, WriteOptions::default())
-                    .map_err(|err| err.to_string())?;
+                tag.save_to_path(&self.path, WriteOptions::default())?;
             }
         }
 
         // TEST: Debug info after write
-        let mut file = File::open(&self.path).map_err(|err| err.to_string())?;
+        let mut file = File::open(&self.path)?;
 
-        let mut tagged_file = match read_from(&mut file) {
-            Ok(tag) => tag,
-            Err(err) => return Err(err.to_string()),
-        };
+        let mut tagged_file = read_from(&mut file)?;
 
         let tag = match tagged_file.primary_tag_mut() {
             Some(tag) => tag,
-            None => return Err("No tag found".to_string()),
+            None => return Err(SongError::NoTag.into()),
         };
 
         debug_message.push("##### Written using lofty".to_string());
@@ -283,17 +276,12 @@ pub struct SongMetadata {
 }
 
 impl SongMetadata {
-    pub fn from_path(path: &Path) -> Result<Self, String> {
-        check_path(path)?;
-
-        let tagged_file = match Probe::open(path) {
-            Ok(tag) => tag.read().map_err(|err| err.to_string())?,
-            Err(err) => return Err(err.to_string()),
-        };
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let tagged_file = Probe::open(path)?.read()?;
 
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
-            None => tagged_file.first_tag().ok_or("No tags found".to_string())?,
+            None => tagged_file.first_tag().ok_or(SongError::NoTag)?,
         };
 
         Ok(Self::from(tag))
@@ -319,19 +307,6 @@ impl From<&Tag> for SongMetadata {
             year: tag.year().map(|year| year.to_string()),
         }
     }
-}
-
-#[doc(hidden)]
-pub fn check_path(path: &Path) -> Result<(), String> {
-    if !path.exists() {
-        return Err("Path does not exist".to_string());
-    }
-
-    if !path.is_file() {
-        return Err("Path is not a file".to_string());
-    }
-
-    Ok(())
 }
 
 impl From<SongFile> for SongMetadata {

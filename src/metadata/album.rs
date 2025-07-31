@@ -1,4 +1,4 @@
-use super::SongMetadata;
+use super::{Error, SongMetadata};
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,14 +15,24 @@ pub struct Album {
     pub original_date: Option<time::Date>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum AlbumError {
+    #[error("No album found")]
+    NoAlbum,
+    #[error("No tracks found")]
+    NoTracks,
+    #[error("All tracks must be from the same album")]
+    MixedTracks,
+}
+
 impl TryFrom<Vec<SongMetadata>> for Album {
-    type Error = String;
+    type Error = Error;
 
     fn try_from(tracks: Vec<SongMetadata>) -> Result<Self, Self::Error> {
-        let (first, rest) = tracks.split_first().ok_or("No tracks found")?;
+        let (first, rest) = tracks.split_first().ok_or(AlbumError::NoTracks)?;
         let title = match &first.album {
             Some(title) => title.clone(),
-            None => return Err("No album found".to_string()),
+            None => return Err(AlbumError::NoAlbum.into()),
         };
 
         if rest.is_empty() {
@@ -35,7 +45,7 @@ impl TryFrom<Vec<SongMetadata>> for Album {
         }
 
         if !rest.iter().all(|song| song.album == first.album) {
-            return Err("All tracks must be from the same album".to_string());
+            return Err(AlbumError::MixedTracks.into());
         }
 
         Ok(Self {

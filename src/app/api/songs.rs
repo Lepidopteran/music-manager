@@ -7,7 +7,6 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use color_eyre::eyre::eyre;
 use sqlx::{query_as, query_scalar};
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
@@ -61,7 +60,7 @@ async fn refresh_song_details(
         .map_err(internal_error)?;
 
     let file = spawn_blocking(move || {
-        SongFile::open(&path).map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err))
+        SongFile::open(&path).map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
     })
     .await
     .map_err(internal_error)??;
@@ -195,7 +194,7 @@ fn update_metadata(
     path: &std::path::Path,
     new_metadata: &SongMetadata,
 ) -> color_eyre::Result<()> {
-    let mut song = SongFile::open(path).map_err(|err| eyre!(err))?;
+    let mut song = SongFile::open(path)?;
     let original_metadata = song.metadata_mut();
 
     if original_metadata == new_metadata {
@@ -221,7 +220,7 @@ fn update_metadata(
     *original_metadata = new_metadata.clone();
 
     tracing::info!("Updated metadata: {:#?}", song.metadata());
-    song.write().map_err(|err| eyre!(err))?;
+    song.write()?;
 
     Ok(())
 }
