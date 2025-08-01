@@ -48,3 +48,19 @@ impl From<lofty::tag::TagType> for TagType {
 pub fn sanitize_tag(tag: &str) -> String {
     tag.trim().replace('\0', "").to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_tag() {
+        assert_eq!(sanitize_tag("  hello  "), "hello");
+        assert_eq!(sanitize_tag("hello\0"), "hello");
+    }
+
+    #[test]
+    fn test_tag_type() {
+        assert_eq!(TagType::from(lofty::tag::TagType::Id3v2), TagType::Id3v2);
+    }
+}
