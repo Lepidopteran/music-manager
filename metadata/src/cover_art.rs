@@ -4,6 +4,8 @@ use lofty::probe::Probe;
 use lofty::tag::TagType;
 use lofty::{picture::PictureType, prelude::*};
 
+use super::Result;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
 pub enum CoverArtType {
@@ -89,7 +91,7 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
                 } else {
                     CoverArtType::Other
                 },
-                mime_type: picture.mime_type().unwrap().as_str().to_string(),
+                mime_type: picture.mime_type().unwrap().to_string(),
                 data: picture.data().to_vec(),
             })
             .collect()
@@ -97,7 +99,7 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
         pictures
             .map(|picture| CoverArt {
                 cover_type: picture.pic_type().into(),
-                mime_type: picture.mime_type().unwrap().as_str().to_string(),
+                mime_type: picture.mime_type().unwrap().to_string(),
                 data: picture.data().to_vec(),
             })
             .collect()
@@ -108,9 +110,65 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
             })
             .map(|picture| CoverArt {
                 cover_type: PictureType::CoverFront.into(),
-                mime_type: picture.mime_type().unwrap().as_str().to_string(),
+                mime_type: picture.mime_type().unwrap().to_string(),
                 data: picture.data().to_vec(),
             })
             .collect()
     }
 }
+
+pub fn get_external_cover_art(path: &Path) -> Result<Vec<CoverArt>> {
+    let mut cover_art = Vec::new();
+
+    let path = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap()
+    };
+
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file()
+            && path.extension().is_some_and(|ext| {
+                ["jpg", "jpeg", "png", "bmp", "gif", "tiff", "webp"]
+                    .contains(&ext.to_str().unwrap())
+            })
+        {
+            let stem = path
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_lowercase()
+                .to_string();
+
+            cover_art.push(CoverArt {
+                cover_type: if ["folder", "cover", "front"].contains(&stem.as_str()) {
+                    CoverArtType::Front
+                } else if ["back", "backcover"].contains(&stem.as_str()) {
+                    CoverArtType::Back
+                } else {
+                    CoverArtType::Other
+                },
+                mime_type: mime_guess::from_path(&path).first().unwrap().to_string(),
+                data: std::fs::read(path)?,
+            });
+        }
+    }
+
+    Ok(cover_art)
+}
+
+#[cfg(test)]
+mod tests {
+    use test_log::test;
+    use super::*;
+
+    #[test]
+    fn test_get_cover_art() {
+        let cover_art = get_cover_art("data/flip.wav");
+        assert_eq!(cover_art.len(), 1);
+    }
+}
+
