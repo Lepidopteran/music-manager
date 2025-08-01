@@ -2,8 +2,7 @@ use color_eyre::eyre::Result;
 use sqlx::{query, query_as};
 use tokio::task::spawn_blocking;
 
-use crate::db::Song;
-use metadata::SongMetadata;
+use crate::{db::Song, metadata::SongMetadata};
 
 use super::*;
 
@@ -59,9 +58,11 @@ impl Task for UpdateSongs {
                 return;
             }
 
-            let comparison_tasks = tracks
-                .into_iter()
-                .map(|song| spawn_blocking(move || get_updated_metadata(&song)));
+            let comparison_tasks = tracks.into_iter().map(|song| {
+                spawn_blocking(move || {
+                    get_updated_metadata(&song)
+                })
+            });
 
             let updated_tracks = futures::future::join_all(comparison_tasks)
                 .await
