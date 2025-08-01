@@ -10,11 +10,8 @@ use axum::{
 };
 use sqlx::query_scalar;
 
-use crate::{
-    app::AppState,
-    metadata::{get_cover_art, CoverArt, CoverArtType},
-    utils::*,
-};
+use crate::{app::AppState, utils::*};
+use metadata::{get_cover_art, CoverArt, CoverArtType};
 
 #[derive(serde::Serialize)]
 struct CoverArtMetadata {
@@ -264,5 +261,6 @@ fn map_type_to_path(cover_type: &CoverArtType, index: usize) -> String {
         CoverArtType::Front => format!("/front/{index}.jpg"),
         CoverArtType::Back => format!("/back/{index}.jpg"),
         CoverArtType::Other => format!("/other/{index}.jpg"),
+        _ => unimplemented!("Cannot map cover art type to path"),
     }
 }

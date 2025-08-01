@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use sqlx::{query, sqlite::SqliteQueryResult};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::metadata::SongMetadata;
+use metadata::SongMetadata;
 
 use super::*;
 

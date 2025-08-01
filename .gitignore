@@ -14,8 +14,8 @@
 *.sqlite*
 
 # Build Files
-/target
-/dist
+target/
+dist/
 
 # Temp Files
 *.bak

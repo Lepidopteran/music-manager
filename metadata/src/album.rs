@@ -11,8 +11,8 @@ pub struct Album {
     pub country: Option<String>,
     pub artist: Option<String>,
     pub label: Option<String>,
-    pub date: Option<time::Date>,
-    pub original_date: Option<time::Date>,
+    pub date: Option<String>,
+    pub original_date: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

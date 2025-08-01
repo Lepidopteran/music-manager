@@ -94,45 +94,6 @@ impl SongFile {
             None => return Err(SongError::NoTag.into()),
         };
 
-        // TEST: Debug info
-
-        let mut debug_message = Vec::new();
-
-        debug_message.push(format!("#### {:?}", self.tag_type));
-        debug_message.push(String::new());
-        debug_message.push("##### Original".to_string());
-        debug_message.push(String::new());
-        debug_message.push("```".to_string());
-
-        for key in &[
-            ItemKey::TrackTitle,
-            ItemKey::AlbumArtist,
-            ItemKey::TrackArtist,
-            ItemKey::TrackArtists,
-            ItemKey::Genre,
-            ItemKey::MusicBrainzReleaseId,
-            ItemKey::MusicBrainzReleaseArtistId,
-            ItemKey::MusicBrainzReleaseGroupId,
-            ItemKey::MusicBrainzRecordingId,
-            ItemKey::MusicBrainzTrackId,
-            ItemKey::MusicBrainzArtistId,
-        ] {
-            let value: String = tag
-                .get_strings(key)
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<String>>()
-                .join("; ");
-
-            if value.is_empty() {
-                debug_message.push(format!("{:<30} None", format!("{key:?}:")));
-            } else {
-                debug_message.push(format!("{:<30} {value:<10}", format!("{key:?}:")));
-            }
-        }
-
-        debug_message.push("```".to_string());
-        debug_message.push(String::new());
-
         for (key, value) in &[
             (ItemKey::TrackTitle, self.metadata.title.clone()),
             (ItemKey::TrackArtist, self.metadata.artist.clone()),
@@ -175,63 +136,6 @@ impl SongFile {
                 tag.save_to_path(&self.path, WriteOptions::default())?;
             }
         }
-
-        // TEST: Debug info after write
-        let mut file = File::open(&self.path)?;
-
-        let mut tagged_file = read_from(&mut file)?;
-
-        let tag = match tagged_file.primary_tag_mut() {
-            Some(tag) => tag,
-            None => return Err(SongError::NoTag.into()),
-        };
-
-        debug_message.push("##### Written using lofty".to_string());
-        debug_message.push(String::new());
-        debug_message.push("```".to_string());
-
-        for key in &[
-            ItemKey::TrackTitle,
-            ItemKey::AlbumArtist,
-            ItemKey::TrackArtist,
-            ItemKey::TrackArtists,
-            ItemKey::Genre,
-            ItemKey::MusicBrainzReleaseId,
-            ItemKey::MusicBrainzReleaseArtistId,
-            ItemKey::MusicBrainzReleaseGroupId,
-            ItemKey::MusicBrainzRecordingId,
-            ItemKey::MusicBrainzTrackId,
-            ItemKey::MusicBrainzArtistId,
-        ] {
-            let value: String = tag
-                .get_strings(key)
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<String>>()
-                .join("; ");
-
-            if value.is_empty() {
-                debug_message.push(format!("{:<30} None", format!("{key:?}:")));
-            } else {
-                debug_message.push(format!("{:<30} {value:<10}", format!("{key:?}:")));
-            }
-        }
-
-        debug_message.push("```".to_string());
-        debug_message.push(String::new());
-
-        use std::io::Write;
-
-        let mut log_file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("song-metadata-changelog.md")
-            .unwrap();
-
-        log_file
-            .write_all(debug_message.join("\n").as_bytes())
-            .unwrap();
-
-        tracing::debug!("{debug_message:#?}");
 
         Ok(())
     }
