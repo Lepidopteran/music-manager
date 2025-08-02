@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, path::PathBuf};
 
 use axum::{
     body::Body,
@@ -90,11 +90,14 @@ async fn get_song_cover_art(
         Err(err) => return Err((StatusCode::INTERNAL_SERVER_ERROR, err.to_string())),
     };
 
-    let cover_art = get_cover_art(&path).into_iter().find(|cover_art| {
-        let cover_type = CoverArtType::try_from(cover_type.as_str());
+    let cover_art = get_cover_art(&PathBuf::from(path))
+        .map_err(internal_error)?
+        .into_iter()
+        .find(|cover_art| {
+            let cover_type = CoverArtType::try_from(cover_type.as_str());
 
-        cover_type == Ok(cover_art.cover_type)
-    });
+            cover_type == Ok(cover_art.cover_type)
+        });
 
     match cover_art {
         Some(cover_art) => match convert_cover_art(cover_art, ext) {
@@ -125,7 +128,8 @@ async fn get_song_cover_art_metadata(
         Err(err) => return Err(err),
     };
 
-    let cover_art = get_cover_art(&path)
+    let cover_art = get_cover_art(&PathBuf::from(path))
+        .map_err(internal_error)?
         .into_iter()
         .enumerate()
         .map(|(index, cover_art)| CoverArtMetadata {
@@ -180,11 +184,14 @@ async fn get_album_cover_art(
     let mut cover_art = None;
 
     for path in paths {
-        let art = get_cover_art(&path).into_iter().find(|cover_art| {
-            let cover_type = CoverArtType::try_from(cover_type.as_str());
+        let art = get_cover_art(&PathBuf::from(path))
+            .map_err(internal_error)?
+            .into_iter()
+            .find(|cover_art| {
+                let cover_type = CoverArtType::try_from(cover_type.as_str());
 
-            cover_type == Ok(cover_art.cover_type)
-        });
+                cover_type == Ok(cover_art.cover_type)
+            });
 
         if let Some(art) = art {
             cover_art = Some(art);
@@ -222,7 +229,8 @@ async fn get_album_cover_art_metadata(
         Err(err) => return Err(err),
     };
 
-    let cover_art = get_cover_art(&path)
+    let cover_art = get_cover_art(&PathBuf::from(path))
+        .map_err(internal_error)?
         .into_iter()
         .enumerate()
         .map(|(index, cover_art)| CoverArtMetadata {

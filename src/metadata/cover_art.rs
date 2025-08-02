@@ -4,7 +4,7 @@ use lofty::probe::Probe;
 use lofty::tag::TagType;
 use lofty::{picture::PictureType, prelude::*};
 
-use super::Result;
+use super::{Result, SongError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
@@ -57,31 +57,22 @@ impl Debug for CoverArt {
 /// Get all the cover art from a file
 ///
 /// Returns an empty vector if no cover art is found
-pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
-    let path = Path::new(path);
+pub fn get_cover_art(path: &Path) -> Result<Vec<CoverArt>> {
+    let tagged_file = Probe::open(path)?.read()?;
 
-    if !path.exists() || !path.is_file() {
-        return Vec::new();
-    }
-
-    let tagged_file = match Probe::open(path) {
-        Ok(tag) => tag.read().unwrap(),
-        Err(_) => return Vec::new(),
-    };
-
-    let tag = tagged_file.primary_tag().unwrap();
+    let tag = tagged_file.primary_tag().ok_or(SongError::NoTag)?;
 
     if tag.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     let pictures = tag.pictures().iter();
 
     if pictures.len() == 0 {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
-    if tag.tag_type() == TagType::Mp4Ilst {
+    Ok(if tag.tag_type() == TagType::Mp4Ilst {
         pictures
             .enumerate()
             .map(|(index, picture)| CoverArt {
@@ -114,7 +105,7 @@ pub fn get_cover_art(path: &str) -> Vec<CoverArt> {
                 data: picture.data().to_vec(),
             })
             .collect()
-    }
+    })
 }
 
 pub fn get_external_cover_art(path: &Path) -> Result<Vec<CoverArt>> {
@@ -162,15 +153,25 @@ pub fn get_external_cover_art(path: &Path) -> Result<Vec<CoverArt>> {
 
 #[cfg(test)]
 mod tests {
-    use test_log::test;
     use super::*;
+    use test_log::test;
 
     #[test]
     fn test_get_cover_art() {
-        let cover_art = get_cover_art("data/flip.wav");
-        log::info!("{cover_art:#?}");
+        let files = [
+            ("data/flip.wav", 0),
+            ("data/flip.mp3", 1),
+            ("data/bumm.m4a", 1),
+            ("data/goose.flac", 1),
+            ("data/goose.opus", 0),
+        ];
 
-        assert_eq!(cover_art.len(), 0);
+        for (path, expected) in files {
+            let cover_art = get_cover_art(Path::new(path)).unwrap();
+            log::info!("{cover_art:#?}");
+
+            assert_eq!(cover_art.len(), expected);
+        }
     }
 
     #[test]
@@ -181,4 +182,3 @@ mod tests {
         assert!(!cover_art.is_empty());
     }
 }
-
