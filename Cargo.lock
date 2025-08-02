@@ -1922,6 +1922,7 @@ dependencies = [
  "image",
  "libsqlite3-sys",
  "lofty",
+ "log",
  "mime_guess",
  "num_enum",
  "rayon",
