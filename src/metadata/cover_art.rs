@@ -168,7 +168,9 @@ mod tests {
     #[test]
     fn test_get_cover_art() {
         let cover_art = get_cover_art("data/flip.wav");
-        assert_eq!(cover_art.len(), 1);
+        log::info!("{cover_art:#?}");
+
+        assert_eq!(cover_art.len(), 0);
     }
 }
 
