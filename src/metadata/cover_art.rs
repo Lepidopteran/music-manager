@@ -172,5 +172,13 @@ mod tests {
 
         assert_eq!(cover_art.len(), 0);
     }
+
+    #[test]
+    fn test_get_external_cover_art() {
+        let cover_art = get_external_cover_art(Path::new("data/")).unwrap();
+        log::info!("{cover_art:#?}");
+
+        assert!(!cover_art.is_empty());
+    }
 }
 
