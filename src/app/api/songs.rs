@@ -25,15 +25,15 @@ type SongId = i32;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
-        .route("/api/songs/:id", get(get_song))
-        .route("/api/songs/:id/refresh", post(refresh_song_details))
-        .route("/api/songs/:id", put(edit_song))
+        .route("/api/songs/{id}", get(get_song))
+        .route("/api/songs/{id}/refresh", post(refresh_song_details))
+        .route("/api/songs/{id}", put(edit_song))
         .route(
-            "/api/songs/:id/metadata/restore/:timestamp",
+            "/api/songs/{id}/metadata/restore/{timestamp}",
             get(restore_metadata),
         )
         .route(
-            "/api/songs/:id/metadata/history",
+            "/api/songs/{id}/metadata/history",
             get(get_song_metadata_history),
         )
 }

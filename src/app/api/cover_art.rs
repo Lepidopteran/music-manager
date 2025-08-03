@@ -25,27 +25,27 @@ struct CoverArtMetadata {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
-            "/api/songs/:song_id/cover-art",
+            "/api/songs/{song_id}/cover-art",
             get(get_song_cover_art_metadata),
         )
         .route(
-            "/api/songs/:song_id/cover-art/:cover_type",
+            "/api/songs/{song_id}/cover-art/{cover_type}",
             get(get_song_cover_art),
         )
         .route(
-            "/api/songs/:song_id/cover-art/:cover_type/:index",
+            "/api/songs/{song_id}/cover-art/{cover_type}/{index}",
             get(get_song_cover_art),
         )
         .route(
-            "/api/albums/:album/cover-art",
+            "/api/albums/{album}/cover-art",
             get(get_album_cover_art_metadata),
         )
         .route(
-            "/api/albums/:album/cover-art/:cover_type",
+            "/api/albums/{album}/cover-art/{cover_type}",
             get(get_album_cover_art),
         )
         .route(
-            "/api/albums/:album/cover-art/:cover_type/:index",
+            "/api/albums/{album}/cover-art/{cover_type}/{index}",
             get(get_album_cover_art),
         )
 }

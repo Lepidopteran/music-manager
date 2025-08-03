@@ -34,11 +34,11 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/directories/", get(get_directories))
         .route(
-            "/api/directories/filesystem/*path",
+            "/api/directories/filesystem/{*path}",
             get(get_directory_folders),
         )
         .route("/api/directories/", post(add_directory))
-        .route("/api/directories/:name", delete(remove_directory))
+        .route("/api/directories/{name}", delete(remove_directory))
 }
 
 async fn add_directory(

@@ -14,9 +14,9 @@ use super::{Registry, RegistryError, TaskInfo};
 
 pub fn router() -> Router<Arc<Mutex<Registry>>> {
     Router::new()
-        .route("/api/tasks/:name/stop", post(stop_task))
-        .route("/api/tasks/:name/start", post(start_task))
-        .route("/api/tasks/:name", get(get_task))
+        .route("/api/tasks/{name}/stop", post(stop_task))
+        .route("/api/tasks/{name}/start", post(start_task))
+        .route("/api/tasks/{name}", get(get_task))
         .route("/api/tasks", get(list_tasks))
 }
 

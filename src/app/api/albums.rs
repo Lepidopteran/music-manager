@@ -32,7 +32,7 @@ impl From<Vec<Song>> for Album {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/api/albums/:title", get(get_album))
+        .route("/api/albums/{title}", get(get_album))
         .route("/api/albums/", get(get_albums))
 }
 
