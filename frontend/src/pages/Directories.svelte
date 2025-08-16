@@ -14,6 +14,7 @@
 		createDirectory,
 		deleteDirectory,
 	} from "@api/directory";
+	import ServerDirectoryExplorer from "@components/input/ServerDirectoryExplorer.svelte";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -122,12 +123,7 @@
 			placeholder="Name"
 			bind:value={newDirectory.name}
 		/>
-		<TextInput
-			label="Location"
-			required
-			placeholder="Location"
-			bind:value={newDirectory.path}
-		/>
+		<ServerDirectoryExplorer label="Location" required bind:value={newDirectory.path} />
 		<Button color="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
 </Modal>
