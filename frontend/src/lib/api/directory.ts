@@ -33,3 +33,12 @@ export async function deleteDirectory(name: string): Promise<void> {
 		method: "DELETE",
 	});
 }
+
+/**
+ * Get a list of folders in specific system directory.
+ * @param name The name of the directory.
+ * @returns Promise resolving to an array of files.
+ */
+export async function getServerDirectoryFolders(path: string): Promise<Array<string>> {
+	return await fetchJson<Array<string>>(`/api/directories/filesystem//${path}`);
+}
