@@ -110,11 +110,11 @@
 	<Button
 		color="primary"
 		class="font-bold w-40"
-		onclick={() => (newDirectoryModalOpen = true)}>Create Directory</Button
+		onclick={() => (newDirectoryModalOpen = true)}>Add Directory</Button
 	>
 </div>
 
-<Modal title="Create Directory" bind:open={newDirectoryModalOpen} class="w-1/3">
+<Modal title="Add Directory" bind:open={newDirectoryModalOpen} class="w-1/3">
 	<div class="flex flex-col gap-4">
 		<TextInput
 			label="Name"
@@ -128,15 +128,17 @@
 			placeholder="Location"
 			bind:value={newDirectory.path}
 		/>
-		<Button color="primary" onclick={handleNewDirectory}>Create</Button>
+		<Button color="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
 </Modal>
 <Modal
-	title={`Delete ${selectedDirectory?.name}?`}
+	title={`Remove ${selectedDirectory?.name}?`}
 	bind:open={deleteDirectoryModalOpen}
 	class="w-1/3"
 >
-	Are you sure you want to delete this directory?
+	Are you sure you want to remove this directory?
+	<br />
+	This will not delete the directory, it will just be removed from the list
 	<div class="flex gap-2">
 		<Button color="primary" onclick={handleDeleteDirectory}>Delete</Button>
 		<Button onclick={() => (deleteDirectoryModalOpen = false)} class="py-0">
