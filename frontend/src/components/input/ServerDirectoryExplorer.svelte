@@ -110,17 +110,17 @@
 		class="overflow-y-auto h-[200px] rounded-theme shadow-md shadow-black/25 border border-base-600/15 divide-y divide-base-600/15"
 	>
 		{#if level > 0}
-			<li role="none">
-				<button
-					class="w-full inset-shadow-xs inset-shadow-base-950/25 text-left p-2 bg-base-200 aria-selected:bg-base-300/50 cursor-pointer"
-					role="option"
-					id={`${componentName}-option--1`}
-					aria-selected={activeIndex === -1}
-					aria-label="Go up one directory"
-					onmouseover={() => (activeIndex = -1)}
-					onfocus={() => (activeIndex = -1)}
-					onclick={() => handleBackClick()}>../</button
-				>
+			<li
+				class="w-full inset-shadow-xs inset-shadow-base-950/25 text-left p-2 bg-base-200 aria-selected:bg-base-300/50 cursor-pointer"
+				role="option"
+				id={`${componentName}-option--1`}
+				aria-selected={activeIndex === -1}
+				aria-label="Go up one directory"
+				onmouseover={() => (activeIndex = -1)}
+				onfocus={() => (activeIndex = -1)}
+				onclick={() => handleBackClick()}
+			>
+				../
 			</li>
 		{/if}
 		{#await folders}
@@ -128,19 +128,25 @@
 		{:then folders}
 			{#each folders as folder, index}
 				{@const directory = folder.split("/").pop()}
-				<li role="none">
-					<button
-						role="option"
-						id={`${componentName}-option-${index}`}
-						aria-selected={index === activeIndex}
-						class="w-full inset-shadow-xs inset-shadow-base-950/25 text-left p-2 bg-base-200 aria-selected:bg-base-300/50 cursor-pointer"
-						onmouseover={() => (activeIndex = index)}
-						onfocus={() => (activeIndex = index)}
-						onclick={() => handleDirectoryClick(directory as string)}
-					>
-						<Icon icon="mdi:folder" class="inline mr-1" inline={true} />
-						{directory}
-					</button>
+				<li
+					role="option"
+					id={`${componentName}-option-${index}`}
+					aria-selected={index === activeIndex}
+					class="w-full inset-shadow-xs inset-shadow-base-950/25 text-left p-2 bg-base-200 aria-selected:bg-base-300/50 cursor-pointer"
+					onmouseover={() => (activeIndex = index)}
+					onkeydown={(event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							document
+								.getElementById(`${componentName}-option-${index}`)
+								?.click();
+						}
+					}}
+					onfocus={() => (activeIndex = index)}
+					onclick={() => handleDirectoryClick(directory as string)}
+				>
+					<Icon icon="mdi:folder" class="inline mr-1" inline={true} />
+					{directory}
 				</li>
 			{/each}
 		{:catch error}
