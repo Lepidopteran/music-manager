@@ -119,6 +119,14 @@
 				onmouseover={() => (activeIndex = -1)}
 				onfocus={() => (activeIndex = -1)}
 				onclick={() => handleBackClick()}
+				onkeydown={(event) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						document
+							.getElementById(`${componentName}-option--1`)
+							?.click();
+					}
+				}}
 			>
 				../
 			</li>
@@ -134,6 +142,8 @@
 					aria-selected={index === activeIndex}
 					class="w-full inset-shadow-xs inset-shadow-base-950/25 text-left p-2 bg-base-200 aria-selected:bg-base-300/50 cursor-pointer"
 					onmouseover={() => (activeIndex = index)}
+					onfocus={() => (activeIndex = index)}
+					onclick={() => handleDirectoryClick(directory as string)}
 					onkeydown={(event) => {
 						if (event.key === "Enter") {
 							event.preventDefault();
@@ -142,8 +152,6 @@
 								?.click();
 						}
 					}}
-					onfocus={() => (activeIndex = index)}
-					onclick={() => handleDirectoryClick(directory as string)}
 				>
 					<Icon icon="mdi:folder" class="inline mr-1" inline={true} />
 					{directory}
