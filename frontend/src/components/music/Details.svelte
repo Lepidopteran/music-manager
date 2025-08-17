@@ -103,7 +103,7 @@
 				{#each Object.entries(selectedItem) as [key, value]}
 					{#if value && !excludedFields.includes(key)}
 						<div
-							class="p-2 bg-base/25 rounded-theme shadow-black/25 inset-shadow-sm inset-shadow-highlight/25 shadow grow shrink-0"
+							class="p-2 bg-base/25 rounded-theme inset-shadow-sm inset-shadow-black/25 border border-black/25 grow shrink-0"
 						>
 							<p class="text-sm font-bold text-base-950/50">
 								{renameField(key)}
@@ -115,7 +115,7 @@
 			{:else}
 				{#each mapTracksToFields(selectedItem.tracks).entries() as [key, value]}
 					<div
-						class="p-2 bg-base/25 rounded-theme shadow-black/25 inset-shadow-sm inset-shadow-highlight/25 shadow grow shrink-0"
+						class="p-2 bg-base/25 rounded-theme inset-shadow-sm inset-shadow-black/25 border border-black/25 grow shrink-0"
 					>
 						<p class="text-sm font-bold text-base-950/50">
 							{renameField(key)}
