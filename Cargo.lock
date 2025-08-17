@@ -2014,6 +2014,7 @@ dependencies = [
  "thiserror 2.0.12",
  "time",
  "tokio",
+ "tokio-stream",
  "toml 0.8.23",
  "toml_edit",
  "tower-http",
@@ -3847,6 +3848,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

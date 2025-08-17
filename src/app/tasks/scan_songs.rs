@@ -1,8 +1,12 @@
 use color_eyre::eyre::Result;
 use sqlx::{query, sqlite::SqliteQueryResult};
+use tokio::sync::watch::{channel, Receiver, Sender};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::metadata::SongMetadata;
+use crate::{
+    metadata::SongMetadata,
+    task::{TaskEvent, TaskEventType},
+};
 
 use super::*;
 
@@ -14,11 +18,10 @@ use std::{
     },
 };
 
-// TODO: add progress information
-
 pub struct ScanSongs {
     info: TaskInfo,
     status: Arc<AtomicU8>,
+    channel: (Sender<TaskEvent>, Receiver<TaskEvent>),
     db: sqlx::Pool<sqlx::Sqlite>,
 }
 
@@ -32,6 +35,7 @@ impl ScanSongs {
                 name: "Scan Songs".to_string(),
                 description: "Scans directories for songs".to_string(),
             },
+            channel: channel(TaskEvent::default()),
         }
     }
 }
@@ -44,6 +48,7 @@ impl Task for ScanSongs {
         }
 
         let db = self.db.clone();
+        let (tx, _) = self.channel.clone();
 
         status.store(TaskStatus::Running.into(), Ordering::Relaxed);
         tokio::spawn(async move {
@@ -57,21 +62,29 @@ impl Task for ScanSongs {
                 })
                 .unwrap_or_default();
 
+            tx.send(TaskEvent::info("Scanning directories")).unwrap();
+
             if directories.is_empty() {
                 tracing::warn!("No directories found, cancelling scan");
+
+                tx.send(TaskEvent::warning("No directories found, cancelling scan"))
+                    .unwrap();
+
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
 
-            let mut song_paths = scan_song_paths(directories, status.clone());
+            let mut song_paths = scan_song_paths(directories, status.clone(), tx.clone());
 
             if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
+                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
                 return;
             }
 
             if song_paths.is_empty() {
                 tracing::warn!("No songs found");
+                tx.send(TaskEvent::warning("No songs found")).unwrap();
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
@@ -86,24 +99,45 @@ impl Task for ScanSongs {
 
             if song_paths.is_empty() {
                 tracing::warn!("No new songs found");
+                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
 
-            for song in song_paths {
+            let song_count = song_paths.len();
+
+            tx.send(TaskEvent::info(
+                format!("Found {} new song(s)", song_count).as_str(),
+            ))
+            .unwrap();
+
+            for (index, song) in song_paths.iter().enumerate() {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                     status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
+                    tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
                     tracing::info!("Song scan cancelled");
                     return;
                 }
 
-                let _ = add_song(db.clone(), song).await.map_err(|err| {
+                if let Err(err) = add_song(db.clone(), song.to_path_buf()).await {
                     tracing::error!("Song scan error: {}", err);
-                });
+                    tx.send(TaskEvent::error(
+                        format!("Unable to add song: {}", err).as_str(),
+                    ))
+                    .unwrap();
+                } else {
+                    tx.send(TaskEvent::progress(
+                        format!("Added song \"{}\"", song.display()).as_str(),
+                        index as u64,
+                        song_count as u64,
+                    ))
+                    .unwrap();
+                }
             }
 
             status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
 
+            tx.send(TaskEvent::complete("Song scan complete")).unwrap();
             tracing::info!("Song scan complete");
         });
 
@@ -128,6 +162,10 @@ impl Task for ScanSongs {
 
     fn info(&self) -> &TaskInfo {
         &self.info
+    }
+
+    fn channel(&self) -> Option<Receiver<TaskEvent>> {
+        Some(self.channel.1.clone())
     }
 }
 
@@ -189,17 +227,27 @@ async fn add_song(
     }
 }
 
-fn scan_song_paths(directories: Vec<String>, status: Arc<AtomicU8>) -> Vec<PathBuf> {
+fn scan_song_paths(
+    directories: Vec<String>,
+    status: Arc<AtomicU8>,
+    tx: Sender<TaskEvent>,
+) -> Vec<PathBuf> {
     let mut songs: Vec<PathBuf> = Vec::new();
+
+    tx.send(TaskEvent::info("Scanning directories for music"))
+        .unwrap();
+
     for directory in directories {
         if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
             tracing::info!("Song scan cancelled");
+            tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
             break;
         }
 
         for entry in WalkDir::new(&directory) {
             if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                 tracing::info!("Song scan cancelled");
+                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
                 break;
             }
 
@@ -213,17 +261,26 @@ fn scan_song_paths(directories: Vec<String>, status: Arc<AtomicU8>) -> Vec<PathB
                 }
                 Err(err) => {
                     tracing::error!("Song scan error: {}", err);
+                    tx.send(TaskEvent::error(
+                        format!("Song scan error: {}", err).as_str(),
+                    ))
+                    .unwrap();
                 }
                 _ => {}
             }
         }
     }
 
+    tx.send(TaskEvent::info("Song scan complete, adding to database"))
+        .unwrap();
+
     songs
 }
 
 fn is_music_file(entry: &DirEntry) -> bool {
-    let extensions = [".mp3", ".m4a", ".flac", ".wav", ".ogg", ".wma", ".aac", ".opus"];
+    let extensions = [
+        ".mp3", ".m4a", ".flac", ".wav", ".ogg", ".wma", ".aac", ".opus",
+    ];
     let file_name = entry.file_name().to_string_lossy();
 
     extensions.iter().any(|ext| file_name.ends_with(ext))

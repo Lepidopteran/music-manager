@@ -1,22 +1,39 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    convert::Infallible,
+    sync::{Arc, Mutex},
+};
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{
+        sse::{Event, KeepAlive},
+        IntoResponse, Sse,
+    },
     routing::get,
     Json, Router,
 };
+use futures::Stream;
+use tokio_stream::{wrappers::WatchStream, StreamExt};
 
-use crate::bad_request;
+use crate::{bad_request, task::TaskEventType};
 
 use super::{Registry, RegistryError, TaskInfo};
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TaskEvent {
+    pub source: String,
+    pub message: String,
+    pub current: Option<u64>,
+    pub total: Option<u64>,
+}
 
 pub fn router() -> Router<Arc<Mutex<Registry>>> {
     Router::new()
         .route("/api/tasks/{name}/stop", get(stop_task))
         .route("/api/tasks/{name}/start", get(start_task))
         .route("/api/tasks/{name}", get(get_task))
+        .route("/api/tasks/events", get(events))
         .route("/api/tasks", get(list_tasks))
 }
 
@@ -113,4 +130,47 @@ async fn start_task(
             ),
         }),
     }
+}
+
+async fn events(
+    State(registry): State<Arc<Mutex<Registry>>>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let registry = registry.lock().unwrap();
+    let tasks = registry.list();
+    let streams = tasks.iter().filter_map(|task| {
+        let task_name = task.clone();
+        registry.get_event_channel(task).map(move |channel| {
+            WatchStream::new(channel).map(move |event| {
+                let crate::task::TaskEvent {
+                    kind,
+                    message,
+                    current,
+                    total,
+                } = event;
+
+                Ok(Event::default()
+                    .event(format!(
+                        "task-{}",
+                        match kind {
+                            TaskEventType::Progress => "progress",
+                            TaskEventType::Info => "info",
+                            TaskEventType::Error => "error",
+                            TaskEventType::Warning => "warning",
+                            TaskEventType::Complete => "complete",
+                            TaskEventType::Initial => "init",
+                        }
+                    ))
+                    .json_data(TaskEvent {
+                        source: task_name.to_string(),
+                        message,
+                        current,
+                        total,
+                    })
+                    .expect("Failed to serialize event"))
+            })
+        })
+    });
+
+    let stream = futures::stream::select_all(streams);
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }

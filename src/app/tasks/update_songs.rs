@@ -1,8 +1,11 @@
 use color_eyre::eyre::Result;
 use sqlx::{query, query_as};
-use tokio::task::spawn_blocking;
+use tokio::{
+    sync::watch::{channel, Receiver, Sender},
+    task::spawn_blocking,
+};
 
-use crate::{db::Song, metadata::SongMetadata};
+use crate::{db::Song, metadata::SongMetadata, task::TaskEvent};
 
 use super::*;
 
@@ -14,12 +17,11 @@ use std::{
     },
 };
 
-// TODO: add progress information
-
 pub struct UpdateSongs {
     info: TaskInfo,
     status: Arc<AtomicU8>,
     db: sqlx::Pool<sqlx::Sqlite>,
+    channel: (Sender<TaskEvent>, Receiver<TaskEvent>),
 }
 
 impl UpdateSongs {
@@ -32,6 +34,7 @@ impl UpdateSongs {
                 name: "Update Songs".to_string(),
                 description: "Updates every song's metadata in the database".to_string(),
             },
+            channel: channel(TaskEvent::default()),
         }
     }
 }
@@ -44,22 +47,42 @@ impl Task for UpdateSongs {
         }
 
         let db = self.db.clone();
+        let (tx, _) = self.channel.clone();
 
         status.store(TaskStatus::Running.into(), Ordering::Relaxed);
         tokio::spawn(async move {
+            let _ = tx.send(TaskEvent::info("Starting song update"));
+
             let tracks: Vec<Song> = query_as!(Song, "SELECT * FROM songs")
                 .fetch_all(&db)
                 .await
                 .expect("Failed to get tracks");
 
             if tracks.is_empty() {
+                let _ = tx.send(TaskEvent::warning("No Songs found, cancelling update"));
+
                 tracing::warn!("No Songs found, cancelling update");
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
 
-            let comparison_tasks = tracks.into_iter().map(|song| {
+            let song_count = tracks.len();
+            let _ = tx.send(TaskEvent::info(
+                format!("Found {} song(s), comparing metadata...", song_count).as_str(),
+            ));
+
+            let comparison_tx = tx.clone();
+            let comparison_tasks = tracks.into_iter().enumerate().map(move |(index, song)| {
+                let tx = comparison_tx.clone();
                 spawn_blocking(move || {
+                    if index % 50 == 0 {
+                        let _ = tx.send(TaskEvent::progress(
+                            format!("Comparing metadata {}%", index * 100 / song_count).as_str(),
+                            index as u64,
+                            song_count as u64,
+                        ));
+                    }
+
                     get_updated_metadata(&song)
                 })
             });
@@ -73,9 +96,15 @@ impl Task for UpdateSongs {
 
             if updated_tracks.is_empty() {
                 tracing::info!("No Songs need updating, cancelling update");
+                let _ = tx.send(TaskEvent::info("No Songs need updating, cancelling update"));
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
+
+            let song_count = updated_tracks.len();
+            let _ = tx.send(TaskEvent::info(
+                format!("Updating {} song(s)...", song_count).as_str(),
+            ));
 
             for (id, metadata) in updated_tracks {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
@@ -84,14 +113,15 @@ impl Task for UpdateSongs {
                     return;
                 }
 
-                let _ = update_song(db.clone(), id, metadata).await.map_err(|err| {
+                if let Err(err) = update_song(db.clone(), id, metadata).await {
                     tracing::error!("Failed to update song: {}", err);
-                });
+                }
             }
 
             status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
 
             tracing::info!("Song update complete");
+            let _ = tx.send(TaskEvent::complete("Song update complete"));
         });
 
         Ok(())
@@ -115,6 +145,10 @@ impl Task for UpdateSongs {
 
     fn info(&self) -> &TaskInfo {
         &self.info
+    }
+
+    fn channel(&self) -> Option<Receiver<TaskEvent>> {
+        Some(self.channel.1.clone())
     }
 }
 

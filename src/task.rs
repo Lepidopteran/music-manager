@@ -2,6 +2,8 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use tokio::sync::watch::Receiver;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize)]
 #[repr(u8)]
 pub enum TaskStatus {
@@ -46,6 +48,77 @@ pub struct TaskInfo {
     pub description: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub enum TaskEventType {
+    #[default]
+    Initial,
+    Info,
+    Error,
+    Warning,
+    Progress,
+    Complete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskEvent {
+    pub kind: TaskEventType,
+    pub message: String,
+    pub current: Option<u64>,
+    pub total: Option<u64>,
+}
+
+impl TaskEvent {
+    pub fn new(kind: TaskEventType, message: String) -> Self {
+        Self {
+            kind,
+            message,
+            ..Default::default()
+        }
+    }
+
+    pub fn info(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Info,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn error(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Error,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn warning(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Warning,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn complete(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Complete,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn progress(message: &str, current: u64, total: u64) -> Self {
+        Self {
+            kind: TaskEventType::Progress,
+            message: message.to_string(),
+            current: Some(current),
+            total: Some(total),
+        }
+    }
+}
+
 pub trait Task: Send + Sync {
     /// Get information about the task
     fn info(&self) -> &TaskInfo;
@@ -72,6 +145,11 @@ pub trait Task: Send + Sync {
     /// Usually, it gets the name from the `info` function
     fn name(&self) -> String {
         self.info().name.clone()
+    }
+
+    /// Get the event channel of the task
+    fn channel(&self) -> Option<Receiver<TaskEvent>> {
+        None
     }
 }
 
@@ -146,6 +224,11 @@ impl Registry {
         }
 
         Ok(())
+    }
+
+    /// Gets the event channel for a task
+    pub fn get_event_channel(&self, name: &str) -> Option<Receiver<TaskEvent>> {
+        self.tasks.get(name).and_then(|task| task.channel())
     }
 
     /// Stops a task
