@@ -42,6 +42,7 @@ lofty = "0.22.4"
 thiserror = "2.0.8"
 scraper = "0.23.1"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+tower = "0.5.2"
 
 [dependencies.uuid]
 version = "1.17.0"
