@@ -24,6 +24,30 @@ export interface Song {
 	year: string | null;
 }
 
+export interface TaskInfo {
+	id: number;
+	name: string;
+	description: string;
+}
+
+export type TaskEventType =
+	| "Initial"
+	| "Info"
+	| "Error"
+	| "Warning"
+	| "Progress"
+	| "Complete"
+	| "Start"
+	| "Stop";
+
+export interface TaskEvent {
+	kind: TaskEventType;
+	source: string;
+	message: string;
+	current?: number;
+	total?: number;
+}
+
 export interface NewDirectory {
 	name: string;
 	path: string;

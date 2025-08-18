@@ -31,3 +31,30 @@ export async function fetchJson<T>(
 		throw error;
 	}
 }
+
+type MessageEventData<K extends keyof EventSourceEventMap> =
+  EventSourceEventMap[K] extends MessageEvent<infer T> ? T : never;
+
+/**
+ * Adds an event listener to an EventSource for a specific event type.
+ *
+ * @param source - The EventSource to listen to.
+ * @param event - The name of the event to listen for.
+ * @param handler - A callback function that handles the parsed data from the event.
+ */
+export function addSourceEventListener<K extends keyof EventSourceEventMap>(
+  source: EventSource,
+  event: K,
+  handler: (data: MessageEventData<K>) => void,
+) {
+  source.addEventListener(event, (rawEvent) => {
+    if (rawEvent instanceof MessageEvent) {
+      try {
+        const parsed: MessageEventData<K> = JSON.parse(rawEvent.data);
+        handler(parsed);
+      } catch (error) {
+        console.error(`Failed to parse EventSource message for event "${event}":`, error);
+      }
+    }
+  });
+}
