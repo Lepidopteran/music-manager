@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Album, Song } from "@lib/models";
 	import Cover from "./Cover.svelte";
-	import { isSong } from "@lib/utils/model_guards";
+	import { isSong } from "@lib/utils/model-guards";
 
 	const excludedFields = ["title", "artist", "id", "path", "parentPath"];
 

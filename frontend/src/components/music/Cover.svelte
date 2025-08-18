@@ -2,7 +2,7 @@
 	import type { Album, Song } from "@lib/models";
 	import MissingCover from "./MissingCover.svelte";
 
-	import { isAlbum } from "@utils/model_guards";
+	import { isAlbum } from "@utils/model-guards";
 
 	let failedToLoad = $state(false);
 	let image: HTMLImageElement;

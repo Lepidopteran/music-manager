@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getServerDirectoryFolders } from "@api/directory";
-	import { uniqueId } from "@lib/utils/counter_id";
+	import { uniqueId } from "@lib/utils/counter-id";
 	import { untrack } from "svelte";
 
 	import TextInput from "@components/TextInput.svelte";
