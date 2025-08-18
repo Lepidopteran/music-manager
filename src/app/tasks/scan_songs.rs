@@ -18,6 +18,8 @@ use std::{
     },
 };
 
+const SONG_SCAN_CANCEL_MESSAGE: &str = "Scan cancelled";
+
 pub struct ScanSongs {
     info: TaskInfo,
     status: Arc<AtomicU8>,
@@ -35,7 +37,7 @@ impl ScanSongs {
                 name: "Scan Songs".to_string(),
                 description: "Scans directories for songs".to_string(),
             },
-            channel: channel(TaskEvent::default()),
+            channel: channel(TaskEvent::initial("scan-songs")),
         }
     }
 }
@@ -78,13 +80,14 @@ impl Task for ScanSongs {
 
             if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
-                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
+                tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();
                 return;
             }
 
             if song_paths.is_empty() {
                 tracing::warn!("No songs found");
-                tx.send(TaskEvent::warning("No songs found")).unwrap();
+                tx.send(TaskEvent::warning("No songs found, stopping task..."))
+                    .unwrap();
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
@@ -99,7 +102,8 @@ impl Task for ScanSongs {
 
             if song_paths.is_empty() {
                 tracing::warn!("No new songs found");
-                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
+                tx.send(TaskEvent::warning("No new songs found, stopping task..."))
+                    .unwrap();
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
@@ -107,22 +111,22 @@ impl Task for ScanSongs {
             let song_count = song_paths.len();
 
             tx.send(TaskEvent::info(
-                format!("Found {} new song(s)", song_count).as_str(),
+                format!("Found {song_count} new song(s)").as_str(),
             ))
             .unwrap();
 
             for (index, song) in song_paths.iter().enumerate() {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                     status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
-                    tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
+                    tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();
                     tracing::info!("Song scan cancelled");
                     return;
                 }
 
                 if let Err(err) = add_song(db.clone(), song.to_path_buf()).await {
-                    tracing::error!("Song scan error: {}", err);
+                    tracing::error!("Song scan error: {err}");
                     tx.send(TaskEvent::error(
-                        format!("Unable to add song: {}", err).as_str(),
+                        format!("Unable to add song: {err}").as_str(),
                     ))
                     .unwrap();
                 } else {
@@ -239,15 +243,15 @@ fn scan_song_paths(
 
     for directory in directories {
         if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
-            tracing::info!("Song scan cancelled");
-            tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
+            tracing::info!(SONG_SCAN_CANCEL_MESSAGE);
+            tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();
             break;
         }
 
         for entry in WalkDir::new(&directory) {
             if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
-                tracing::info!("Song scan cancelled");
-                tx.send(TaskEvent::info("Song scan cancelled")).unwrap();
+                tracing::info!(SONG_SCAN_CANCEL_MESSAGE);
+                tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();
                 break;
             }
 
@@ -260,19 +264,14 @@ fn scan_song_paths(
                     }
                 }
                 Err(err) => {
-                    tracing::error!("Song scan error: {}", err);
-                    tx.send(TaskEvent::error(
-                        format!("Song scan error: {}", err).as_str(),
-                    ))
-                    .unwrap();
+                    tracing::error!("Song scan error: {err}");
+                    tx.send(TaskEvent::error(format!("Song scan error: {err}").as_str()))
+                        .unwrap();
                 }
                 _ => {}
             }
         }
     }
-
-    tx.send(TaskEvent::info("Song scan complete, adding to database"))
-        .unwrap();
 
     songs
 }

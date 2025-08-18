@@ -34,7 +34,7 @@ impl UpdateSongs {
                 name: "Update Songs".to_string(),
                 description: "Updates every song's metadata in the database".to_string(),
             },
-            channel: channel(TaskEvent::default()),
+            channel: channel(TaskEvent::initial("update-songs")),
         }
     }
 }
@@ -68,7 +68,7 @@ impl Task for UpdateSongs {
 
             let song_count = tracks.len();
             let _ = tx.send(TaskEvent::info(
-                format!("Found {} song(s), comparing metadata...", song_count).as_str(),
+                format!("Found {song_count} song(s), comparing metadata...").as_str(),
             ));
 
             let comparison_tx = tx.clone();
@@ -103,7 +103,7 @@ impl Task for UpdateSongs {
 
             let song_count = updated_tracks.len();
             let _ = tx.send(TaskEvent::info(
-                format!("Updating {} song(s)...", song_count).as_str(),
+                format!("Updating {song_count} song(s)...").as_str(),
             ));
 
             for (id, metadata) in updated_tracks {

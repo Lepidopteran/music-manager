@@ -57,6 +57,8 @@ pub enum TaskEventType {
     Warning,
     Progress,
     Complete,
+    Start,
+    Stop,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -115,6 +117,30 @@ impl TaskEvent {
             message: message.to_string(),
             current: Some(current),
             total: Some(total),
+        }
+    }
+
+    pub fn start(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Start,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn stop(message: &str) -> Self {
+        Self {
+            kind: TaskEventType::Stop,
+            message: message.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn initial(name: &str) -> Self {
+        Self {
+            kind: TaskEventType::Initial,
+            message: format!("Initialized \"{name}\" event channel"),
+            ..Default::default()
         }
     }
 }

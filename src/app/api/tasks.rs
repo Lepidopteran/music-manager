@@ -23,6 +23,7 @@ use super::{Registry, RegistryError, TaskInfo};
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TaskEvent {
     pub source: String,
+    pub kind: TaskEventType,
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
@@ -149,19 +150,10 @@ async fn events(
                 } = event;
 
                 Ok(Event::default()
-                    .event(format!(
-                        "task-{}",
-                        match kind {
-                            TaskEventType::Progress => "progress",
-                            TaskEventType::Info => "info",
-                            TaskEventType::Error => "error",
-                            TaskEventType::Warning => "warning",
-                            TaskEventType::Complete => "complete",
-                            TaskEventType::Initial => "init",
-                        }
-                    ))
+                    .event("task-event")
                     .json_data(TaskEvent {
                         source: task_name.to_string(),
+                        kind,
                         message,
                         current,
                         total,
