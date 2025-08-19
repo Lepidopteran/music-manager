@@ -28,6 +28,42 @@ impl TaskStatus {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskState {
+    pub status: TaskStatus,
+    pub started_at: Option<OffsetDateTime>,
+    pub stopped_at: Option<OffsetDateTime>,
+    pub completed_at: Option<OffsetDateTime>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskReport {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub steps: u8,
+    pub status: TaskStatus,
+    pub completed_at: Option<OffsetDateTime>,
+    pub started_at: Option<OffsetDateTime>,
+    pub stopped_at: Option<OffsetDateTime>,
+}
+
+impl TaskReport {
+    pub fn new(info: TaskInfo, state: TaskState) -> Self {
+        Self {
+            id: info.id,
+            name: info.name,
+            description: info.description,
+            steps: info.steps,
+            status: state.status,
+            completed_at: state.completed_at,
+            started_at: state.started_at,
+            stopped_at: state.stopped_at,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
 pub enum TaskError {
@@ -212,8 +248,8 @@ pub trait Task: Send + Sync {
     /// Stop the task
     fn stop(&mut self) -> Result<(), TaskError>;
 
-    /// Get the status of the task
-    fn status(&self) -> TaskStatus;
+    /// Gets the current state of the task
+    fn state(&self) -> TaskState;
 
     /// ID of the task
     ///
@@ -284,11 +320,11 @@ impl Registry {
         self.tasks.keys().cloned().collect()
     }
 
-    /// Gets the list of information for all tasks
-    pub fn list_tasks(&self) -> Vec<TaskInfo> {
+    /// Lists off information and state for all tasks
+    pub fn tasks(&self) -> Vec<TaskReport> {
         self.tasks
             .values()
-            .map(|task| task.info().clone())
+            .map(|task| TaskReport::new(task.info().clone(), task.state()))
             .collect()
     }
 

@@ -1,11 +1,16 @@
 use color_eyre::eyre::Result;
 use sqlx::{query, query_as};
+use time::OffsetDateTime;
 use tokio::{
     sync::watch::{channel, Receiver, Sender},
     task::spawn_blocking,
 };
 
-use crate::{db::Song, metadata::SongMetadata, task::TaskEvent};
+use crate::{
+    db::Song,
+    metadata::SongMetadata,
+    task::{TaskEvent, TaskState},
+};
 
 use super::*;
 
@@ -13,13 +18,16 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicU8, Ordering},
-        Arc,
+        Arc, RwLock,
     },
 };
 
 pub struct UpdateSongs {
     info: TaskInfo,
     status: Arc<AtomicU8>,
+    started_at: Arc<RwLock<Option<OffsetDateTime>>>,
+    completed_at: Arc<RwLock<Option<OffsetDateTime>>>,
+    cancelled_at: Arc<RwLock<Option<OffsetDateTime>>>,
     db: sqlx::Pool<sqlx::Sqlite>,
     channel: (Sender<TaskEvent>, Receiver<TaskEvent>),
 }
@@ -29,6 +37,9 @@ impl UpdateSongs {
         Self {
             db: pool,
             status: Arc::new(AtomicU8::from(TaskStatus::default() as u8)),
+            started_at: Arc::new(RwLock::new(None)),
+            completed_at: Arc::new(RwLock::new(None)),
+            cancelled_at: Arc::new(RwLock::new(None)),
             info: TaskInfo {
                 id: "update-songs".to_string(),
                 name: "Update Songs".to_string(),
@@ -49,10 +60,17 @@ impl Task for UpdateSongs {
 
         let db = self.db.clone();
         let (tx, _) = self.channel.clone();
+        let started_at = self.started_at.clone();
+        let completed_at = self.completed_at.clone();
+        let cancelled_at = self.cancelled_at.clone();
 
         status.store(TaskStatus::Running.into(), Ordering::Relaxed);
         tokio::spawn(async move {
-            let _ = tx.send(TaskEvent::info("Starting song update"));
+            let _ = tx.send(TaskEvent::start("Starting song update"));
+            let _ = started_at
+                .write()
+                .expect("Failed to set started_at")
+                .replace(OffsetDateTime::now_utc());
 
             let tracks: Vec<Song> = query_as!(Song, "SELECT * FROM songs")
                 .fetch_all(&db)
@@ -61,6 +79,10 @@ impl Task for UpdateSongs {
 
             if tracks.is_empty() {
                 let _ = tx.send(TaskEvent::warning("No Songs found, cancelling update"));
+                let _ = cancelled_at
+                    .write()
+                    .expect("Failed to set cancelled_at")
+                    .replace(OffsetDateTime::now_utc());
 
                 tracing::warn!("No Songs found, cancelling update");
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
@@ -99,6 +121,11 @@ impl Task for UpdateSongs {
             if updated_tracks.is_empty() {
                 tracing::info!("No Songs need updating, cancelling update");
                 let _ = tx.send(TaskEvent::info("No Songs need updating, cancelling update"));
+                let _ = cancelled_at
+                    .write()
+                    .expect("Failed to set cancelled_at")
+                    .replace(OffsetDateTime::now_utc());
+
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
             }
@@ -132,9 +159,36 @@ impl Task for UpdateSongs {
 
             tracing::info!("Song update complete");
             let _ = tx.send(TaskEvent::complete("Song update complete"));
+            let _ = completed_at
+                .write()
+                .expect("Failed to set completed_at")
+                .replace(OffsetDateTime::now_utc());
         });
 
         Ok(())
+    }
+
+    fn state(&self) -> TaskState {
+        let status = self.status.clone();
+
+        TaskState {
+            status: TaskStatus::from(status.load(Ordering::Relaxed)),
+            started_at: *self
+                .started_at
+                .clone()
+                .read()
+                .expect("Failed to read cancelled_at"),
+            completed_at: *self
+                .completed_at
+                .clone()
+                .read()
+                .expect("Failed to read completed_at"),
+            stopped_at: *self
+                .cancelled_at
+                .clone()
+                .read()
+                .expect("Failed to read cancelled_at"),
+        }
     }
 
     fn stop(&mut self) -> Result<(), TaskError> {
@@ -147,10 +201,6 @@ impl Task for UpdateSongs {
         status.store(TaskStatus::Stopped.into(), Ordering::Relaxed);
         tracing::info!("Cancel request received, cancelling update");
         Ok(())
-    }
-
-    fn status(&self) -> TaskStatus {
-        TaskStatus::from(self.status.clone().load(Ordering::Relaxed))
     }
 
     fn info(&self) -> &TaskInfo {
@@ -193,6 +243,10 @@ fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
         || song.track_number != metadata.track_number
         || song.genre != metadata.genre
         || song.mood != metadata.mood
+}
+
+fn read_at_time(arc: Arc<RwLock<Option<OffsetDateTime>>>) -> Option<OffsetDateTime> {
+    *arc.clone().read().expect("Failed to read cancelled_at")
 }
 
 async fn update_song(

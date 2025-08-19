@@ -17,9 +17,12 @@ use futures::Stream;
 use time::OffsetDateTime;
 use tokio_stream::{wrappers::WatchStream, StreamExt};
 
-use crate::{bad_request, task::TaskEventType};
+use crate::{
+    bad_request,
+    task::{TaskEventType, TaskReport},
+};
 
-use super::{Registry, RegistryError, TaskInfo};
+use super::{Registry, RegistryError};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TaskEvent {
@@ -42,13 +45,13 @@ pub fn router() -> Router<Arc<Mutex<Registry>>> {
 
 async fn list_tasks(
     State(registry): State<Arc<Mutex<Registry>>>,
-) -> Result<Json<Vec<TaskInfo>>, impl IntoResponse> {
+) -> Result<Json<Vec<TaskReport>>, impl IntoResponse> {
     let registry = match registry.lock() {
         Ok(registry) => registry,
         Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to lock registry")),
     };
 
-    Ok(Json(registry.list_tasks()))
+    Ok(Json(registry.tasks()))
 }
 
 async fn stop_task(
