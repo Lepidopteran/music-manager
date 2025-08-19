@@ -188,9 +188,7 @@ async fn get_directories(
     Ok(Json(directories_with_space))
 }
 
-async fn get_directory_folders(
-    path: Path<String>,
-) -> Result<Json<Vec<PathBuf>>, impl IntoResponse> {
+async fn get_directory_folders(path: Path<String>) -> Result<Json<Vec<String>>, impl IntoResponse> {
     if path.to_string().trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
     }
@@ -216,9 +214,9 @@ async fn get_directory_folders(
         Ok(entries) => entries
             .filter_map(|entry| {
                 if let Ok(entry) = entry {
-                    if let Ok(file_type) = entry.file_type() {
-                        if file_type.is_dir() {
-                            return Some(entry.path());
+                    if let Ok(metadata) = std::fs::metadata(entry.path()) {
+                        if metadata.is_dir() {
+                            return Some(entry.file_name().to_string_lossy().to_string());
                         }
                     }
                 }
