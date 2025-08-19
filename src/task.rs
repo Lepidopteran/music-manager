@@ -1,6 +1,7 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::Serialize;
 use std::collections::HashMap;
+use time::OffsetDateTime;
 
 use tokio::sync::watch::Receiver;
 
@@ -80,6 +81,20 @@ pub struct TaskEvent {
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
+    pub timestamp: OffsetDateTime,
+}
+
+impl Default for TaskEvent {
+    fn default() -> Self {
+        Self {
+            kind: TaskEventType::default(),
+            message: String::new(),
+            current: None,
+            total: None,
+            step: None,
+            timestamp: OffsetDateTime::now_utc(),
+        }
+    }
 }
 
 impl TaskEvent {
@@ -129,6 +144,7 @@ impl TaskEvent {
             message: message.to_string(),
             current: Some(current),
             total: Some(total),
+            ..Default::default()
         }
     }
 

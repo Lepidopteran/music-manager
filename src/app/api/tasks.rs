@@ -14,6 +14,7 @@ use axum::{
     Json, Router,
 };
 use futures::Stream;
+use time::OffsetDateTime;
 use tokio_stream::{wrappers::WatchStream, StreamExt};
 
 use crate::{bad_request, task::TaskEventType};
@@ -27,6 +28,7 @@ pub struct TaskEvent {
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
+    pub timestamp: OffsetDateTime,
 }
 
 pub fn router() -> Router<Arc<Mutex<Registry>>> {
@@ -127,6 +129,7 @@ async fn events(
                     message,
                     current,
                     total,
+                    timestamp,
                 } = event;
 
                 Ok(Event::default()
@@ -137,6 +140,7 @@ async fn events(
                         message,
                         current,
                         total,
+                        timestamp,
                     })
                     .expect("Failed to serialize event"))
             })
