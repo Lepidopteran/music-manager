@@ -1,5 +1,5 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 
 use tokio::sync::watch::Receiver;
@@ -41,7 +41,7 @@ pub enum TaskError {
 /// Information about the task
 ///
 /// This is used to display the task in the UI
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskInfo {
     pub id: String,
@@ -49,7 +49,17 @@ pub struct TaskInfo {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+impl Default for TaskInfo {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            description: String::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum TaskEventType {
     #[default]
@@ -63,7 +73,7 @@ pub enum TaskEventType {
     Stop,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskEvent {
     pub kind: TaskEventType,
