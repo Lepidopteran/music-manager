@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 
 use fs_extra::dir::get_size;
 use serde::Serialize;

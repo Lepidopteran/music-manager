@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     config,
-    task::{Registry, RegistryError, TaskInfo},
+    task::{Registry, RegistryError},
 };
 
 use std::{
