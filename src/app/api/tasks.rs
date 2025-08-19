@@ -28,6 +28,7 @@ pub struct TaskEvent {
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
+    pub step: Option<u8>,
     pub timestamp: OffsetDateTime,
 }
 
@@ -129,6 +130,7 @@ async fn events(
                     message,
                     current,
                     total,
+                    step,
                     timestamp,
                 } = event;
 
@@ -140,6 +142,7 @@ async fn events(
                         message,
                         current,
                         total,
+                        step,
                         timestamp,
                     })
                     .expect("Failed to serialize event"))

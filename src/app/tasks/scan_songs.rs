@@ -36,6 +36,7 @@ impl ScanSongs {
                 id: "scan-songs".to_string(),
                 name: "Scan Songs".to_string(),
                 description: "Scans directories for songs".to_string(),
+                ..Default::default()
             },
             channel: channel(TaskEvent::initial("scan-songs")),
         }
@@ -134,6 +135,7 @@ impl Task for ScanSongs {
                         format!("Added song \"{}\"", song.display()).as_str(),
                         index as u64,
                         song_count as u64,
+                        None,
                     ))
                     .unwrap();
                 }

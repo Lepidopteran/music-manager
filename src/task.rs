@@ -48,6 +48,18 @@ pub struct TaskInfo {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub steps: u8,
+}
+
+impl TaskInfo {
+    pub fn new(id: &str, name: &str, description: &str, steps: u8) -> Self {
+        Self {
+            id: id.to_string(),
+            name: name.to_string(),
+            description: description.to_string(),
+            steps,
+        }
+    }
 }
 
 impl Default for TaskInfo {
@@ -56,6 +68,7 @@ impl Default for TaskInfo {
             id: String::new(),
             name: String::new(),
             description: String::new(),
+            steps: 1,
         }
     }
 }
@@ -81,6 +94,7 @@ pub struct TaskEvent {
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
+    pub step: Option<u8>,
     pub timestamp: OffsetDateTime,
 }
 
@@ -98,10 +112,19 @@ impl Default for TaskEvent {
 }
 
 impl TaskEvent {
-    pub fn new(kind: TaskEventType, message: String) -> Self {
+    pub fn new(
+        kind: TaskEventType,
+        message: String,
+        current: Option<u64>,
+        total: Option<u64>,
+        step: Option<u8>,
+    ) -> Self {
         Self {
             kind,
             message,
+            step,
+            current,
+            total,
             ..Default::default()
         }
     }
@@ -138,12 +161,18 @@ impl TaskEvent {
         }
     }
 
-    pub fn progress(message: &str, current: u64, total: u64) -> Self {
+    pub fn progress(
+        message: &str,
+        current: u64,
+        total: u64,
+        step: Option<u8>,
+    ) -> Self {
         Self {
             kind: TaskEventType::Progress,
             message: message.to_string(),
             current: Some(current),
             total: Some(total),
+            step,
             ..Default::default()
         }
     }

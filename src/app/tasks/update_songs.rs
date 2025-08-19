@@ -33,6 +33,7 @@ impl UpdateSongs {
                 id: "update-songs".to_string(),
                 name: "Update Songs".to_string(),
                 description: "Updates every song's metadata in the database".to_string(),
+                steps: 2,
             },
             channel: channel(TaskEvent::initial("update-songs")),
         }
@@ -80,6 +81,7 @@ impl Task for UpdateSongs {
                             format!("Comparing metadata {}%", index * 100 / song_count).as_str(),
                             index as u64,
                             song_count as u64,
+                            Some(1),
                         ));
                     }
 
@@ -113,8 +115,16 @@ impl Task for UpdateSongs {
                     return;
                 }
 
+                let title = metadata.title.as_deref().unwrap_or("N/A").to_string();
                 if let Err(err) = update_song(db.clone(), id, metadata).await {
                     tracing::error!("Failed to update song: {}", err);
+                } else {
+                    let _ = tx.send(TaskEvent::progress(
+                        format!("Updated song \"{title}\"").as_str(),
+                        id as u64,
+                        song_count as u64,
+                        Some(2),
+                    ));
                 }
             }
 
