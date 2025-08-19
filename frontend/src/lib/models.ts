@@ -31,14 +31,14 @@ export interface TaskInfo {
 }
 
 export type TaskEventType =
-	| "Initial"
-	| "Info"
-	| "Error"
-	| "Warning"
-	| "Progress"
-	| "Complete"
-	| "Start"
-	| "Stop";
+	| "initial"
+	| "info"
+	| "error"
+	| "warning"
+	| "progress"
+	| "complete"
+	| "start"
+	| "stop";
 
 export interface TaskEvent {
 	kind: TaskEventType;

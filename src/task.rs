@@ -42,6 +42,7 @@ pub enum TaskError {
 ///
 /// This is used to display the task in the UI
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TaskInfo {
     pub id: String,
     pub name: String,
@@ -49,6 +50,7 @@ pub struct TaskInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub enum TaskEventType {
     #[default]
     Initial,
