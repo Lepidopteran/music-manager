@@ -237,11 +237,6 @@ impl Registry {
             .collect()
     }
 
-    /// Gets the information for a task
-    pub fn get_task(&self, name: &str) -> Option<&TaskInfo> {
-        self.tasks.get(name).map(|task| task.info())
-    }
-
     /// Starts a task
     ///
     /// If the task is not found, an error is returned

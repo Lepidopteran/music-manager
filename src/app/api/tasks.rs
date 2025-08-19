@@ -33,28 +33,8 @@ pub fn router() -> Router<Arc<Mutex<Registry>>> {
     Router::new()
         .route("/api/tasks/{name}/stop", get(stop_task))
         .route("/api/tasks/{name}/start", get(start_task))
-        .route("/api/tasks/{name}", get(get_task))
         .route("/api/tasks/events", get(events))
         .route("/api/tasks", get(list_tasks))
-}
-
-async fn get_task(
-    State(registry): State<Arc<Mutex<Registry>>>,
-    Path(name): Path<String>,
-) -> Result<Json<TaskInfo>, impl IntoResponse> {
-    if name.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Task name cannot be empty"));
-    }
-
-    let registry = match registry.lock() {
-        Ok(registry) => registry,
-        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to lock registry")),
-    };
-
-    match registry.get_task(&name) {
-        Some(task) => Ok(Json(task.clone())),
-        None => Err((StatusCode::NOT_FOUND, "Task not found")),
-    }
 }
 
 async fn list_tasks(
