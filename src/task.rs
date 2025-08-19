@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use tokio::sync::watch::Receiver;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize)]
+#[serde(rename_all = "camelCase")]
 #[repr(u8)]
 pub enum TaskStatus {
     #[default]
