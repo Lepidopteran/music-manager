@@ -245,10 +245,6 @@ fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
         || song.mood != metadata.mood
 }
 
-fn read_at_time(arc: Arc<RwLock<Option<OffsetDateTime>>>) -> Option<OffsetDateTime> {
-    *arc.clone().read().expect("Failed to read cancelled_at")
-}
-
 async fn update_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
     id: i64,
