@@ -78,7 +78,7 @@ impl Task for UpdateSongs {
                 .expect("Failed to get tracks");
 
             if tracks.is_empty() {
-                let _ = tx.send(TaskEvent::warning("No Songs found, cancelling update"));
+                let _ = tx.send(TaskEvent::stop("No Songs found, cancelling update"));
                 let _ = cancelled_at
                     .write()
                     .expect("Failed to set cancelled_at")
@@ -120,7 +120,7 @@ impl Task for UpdateSongs {
 
             if updated_tracks.is_empty() {
                 tracing::info!("No Songs need updating, cancelling update");
-                let _ = tx.send(TaskEvent::info("No Songs need updating, cancelling update"));
+                let _ = tx.send(TaskEvent::stop("No Songs need updating, cancelling update"));
                 let _ = cancelled_at
                     .write()
                     .expect("Failed to set cancelled_at")
