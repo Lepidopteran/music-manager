@@ -32,6 +32,7 @@ pub struct TaskEvent {
     pub current: Option<u64>,
     pub total: Option<u64>,
     pub step: Option<u8>,
+    #[serde(with = "time::serde::rfc3339")]
     pub timestamp: OffsetDateTime,
 }
 

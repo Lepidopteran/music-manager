@@ -45,8 +45,11 @@ pub struct TaskReport {
     pub description: String,
     pub steps: u8,
     pub status: TaskStatus,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub completed_at: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub started_at: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub stopped_at: Option<OffsetDateTime>,
 }
 
