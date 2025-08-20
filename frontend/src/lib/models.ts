@@ -24,7 +24,7 @@ export interface Song {
 	year: string | null;
 }
 
-export type TaskStatus = "idle" | "started" | "stopped";
+export type TaskStatus = "idle" | "running" | "stopped";
 
 export interface TaskInfo {
 	id: string;
