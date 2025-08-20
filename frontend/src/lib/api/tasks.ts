@@ -11,10 +11,6 @@ export async function getTasks(): Promise<TaskInfo[]> {
 	return await fetchJson<TaskInfo[]>("/api/tasks");
 }
 
-export async function getTask(id: string): Promise<TaskInfo> {
-	return await fetchJson<TaskInfo>(`/api/tasks/${id}`);
-}
-
 export async function startTask(id: string): Promise<void> {
 	await fetchJson<void>(`/api/tasks/${id}`);
 }

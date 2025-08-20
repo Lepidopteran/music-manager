@@ -24,10 +24,17 @@ export interface Song {
 	year: string | null;
 }
 
+export type TaskStatus = "idle" | "started" | "stopped";
+
 export interface TaskInfo {
-	id: number;
+	id: string;
 	name: string;
 	description: string;
+	steps: number;
+	status: TaskStatus;
+	startedAt: Date | null;
+	stoppedAt: Date | null;
+	completedAt: Date | null;
 }
 
 export type TaskEventType =
@@ -44,6 +51,8 @@ export interface TaskEvent {
 	kind: TaskEventType;
 	source: string;
 	message: string;
+	timestamp: Date;
+	step?: number;
 	current?: number;
 	total?: number;
 }

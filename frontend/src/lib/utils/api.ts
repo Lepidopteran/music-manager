@@ -5,7 +5,6 @@ export interface FetchError extends Error {
 	body: string;
 }
 
-// Utility function to handle fetch requests
 export async function fetchJson<T>(
 	url: string,
 	options?: RequestInit,
@@ -18,6 +17,7 @@ export async function fetchJson<T>(
 			},
 			...options,
 		});
+
 		if (!response.ok) {
 			throw Object.assign(new Error("JSON fetch failed..."), {
 				status: response.status,
@@ -25,7 +25,20 @@ export async function fetchJson<T>(
 				body: await response.text(),
 			}) as FetchError;
 		}
-		return await response.json();
+
+		const json: T = await response.json();
+		if (json && typeof json === "object") {
+			for (const [key, value] of Object.entries(json)) {
+				if (typeof value === "string") {
+					const date = new Date(value);
+					(json as Record<string, unknown>)[key] = isNaN(date.getTime())
+						? value
+						: date;
+				}
+			}
+		}
+
+		return json;
 	} catch (error) {
 		console.error(`Failed to fetch: ${url}`, error);
 		throw error;
@@ -33,7 +46,7 @@ export async function fetchJson<T>(
 }
 
 type MessageEventData<K extends keyof EventSourceEventMap> =
-  EventSourceEventMap[K] extends MessageEvent<infer T> ? T : never;
+	EventSourceEventMap[K] extends MessageEvent<infer T> ? T : never;
 
 /**
  * Adds an event listener to an EventSource for a specific event type.
@@ -43,18 +56,31 @@ type MessageEventData<K extends keyof EventSourceEventMap> =
  * @param handler - A callback function that handles the parsed data from the event.
  */
 export function addSourceEventListener<K extends keyof EventSourceEventMap>(
-  source: EventSource,
-  event: K,
-  handler: (data: MessageEventData<K>) => void,
+	source: EventSource,
+	event: K,
+	handler: (data: MessageEventData<K>) => void,
 ) {
-  source.addEventListener(event, (rawEvent) => {
-    if (rawEvent instanceof MessageEvent) {
-      try {
-        const parsed: MessageEventData<K> = JSON.parse(rawEvent.data);
-        handler(parsed);
-      } catch (error) {
-        console.error(`Failed to parse EventSource message for event "${event}":`, error);
-      }
-    }
-  });
+	source.addEventListener(event, (rawEvent) => {
+		if (rawEvent instanceof MessageEvent) {
+			try {
+				const parsed: MessageEventData<K> = JSON.parse(
+					rawEvent.data,
+					(_, value) => {
+						const date = new Date(value);
+						if (value && typeof value === "string" && !isNaN(date.getTime())) {
+							return date;
+						}
+
+						return value;
+					},
+				);
+				handler(parsed);
+			} catch (error) {
+				console.error(
+					`Failed to parse EventSource message for event "${event}":`,
+					error,
+				);
+			}
+		}
+	});
 }
