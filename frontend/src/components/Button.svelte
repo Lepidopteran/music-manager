@@ -1,8 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
 	import type { Action } from "svelte/action";
+	import type { HTMLButtonAttributes } from "svelte/elements";
 
-	interface Props {
+	interface Props extends HTMLButtonAttributes {
 		type?: "button" | "submit" | "reset";
 		toggleable?: boolean;
 		active?: boolean;
