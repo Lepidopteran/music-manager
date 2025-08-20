@@ -3,6 +3,7 @@
 	import Button from "@components/Button.svelte";
 	import Directories from "@pages/Directories.svelte";
 	import Home from "@pages/Albums.svelte";
+	import Tasks from "@pages/admin/Tasks.svelte";
 	import UniversalRouter, {
 		type Route,
 		type ResolveContext,
@@ -60,6 +61,18 @@
 				};
 			},
 		},
+		{
+			path: "/tasks",
+			name: "Tasks",
+			icon: "mdi:play",
+			action() {
+				return {
+					path: this.path,
+					name: this.name,
+					pageComponent: Tasks,
+				};
+			},
+		}
 	];
 
 	const app = new AppState(routes);
