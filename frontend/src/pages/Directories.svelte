@@ -109,7 +109,7 @@
 	</table>
 
 	<Button
-		color="primary"
+		variant="primary"
 		class="font-bold w-40"
 		onclick={() => (newDirectoryModalOpen = true)}>Add Directory</Button
 	>
@@ -124,7 +124,7 @@
 			bind:value={newDirectory.name}
 		/>
 		<ServerDirectoryExplorer label="Location" required bind:value={newDirectory.path} />
-		<Button color="primary" onclick={handleNewDirectory}>Add</Button>
+		<Button variant="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
 </Modal>
 <Modal
@@ -136,7 +136,7 @@
 	<br />
 	This will not delete the directory, it will just be removed from the list
 	<div class="flex gap-2">
-		<Button color="primary" onclick={handleDeleteDirectory}>Delete</Button>
+		<Button variant="primary" onclick={handleDeleteDirectory}>Delete</Button>
 		<Button onclick={() => (deleteDirectoryModalOpen = false)} class="py-0">
 			Cancel
 		</Button>

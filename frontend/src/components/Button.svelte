@@ -4,19 +4,17 @@
 	import type { HTMLButtonAttributes } from "svelte/elements";
 
 	interface Props extends HTMLButtonAttributes {
-		type?: "button" | "submit" | "reset";
 		toggleable?: boolean;
 		active?: boolean;
-		color?: "primary" | "base" | "secondary" | "ghost" | "none";
+		variant?: "primary" | "base" | "secondary" | "ghost" | "none";
 		children?: Snippet;
-		[key: string]: unknown;
 	}
 
 	let {
 		type = "button",
 		toggleable = false,
 		active = false,
-		color = "base",
+		variant = "base",
 		children,
 		...rest
 	}: Props = $props();
@@ -42,7 +40,7 @@
 
 <button
 	{...rest}
-	class={`btn inline-flex inset-shadow-xs inset-shadow-highlight/25 cursor-pointer rounded-theme ${color === "base" ? "" : `btn-${color}`} ${active ? "btn-active" : ""} ${rest.class || ""}`}
+	class={`btn inline-flex inset-shadow-xs inset-shadow-highlight/25 cursor-pointer rounded-theme ${variant === "base" ? "" : `btn-${variant}`} ${active ? "btn-active" : ""} ${rest.class || ""}`}
 	role={toggleable ? "switch" : "button"}
 	aria-checked={toggleable ? active : undefined}
 	data-active={active || undefined}
