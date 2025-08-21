@@ -45,6 +45,27 @@ export async function fetchJson<T>(
 	}
 }
 
+export async function fetchText(url: string): Promise<string> {
+	try {
+		const response = await fetch(url, {
+			method: "GET",
+		});
+
+		if (!response.ok) {
+			throw Object.assign(new Error("Text fetch failed..."), {
+				status: response.status,
+				statusText: response.statusText,
+				body: await response.text(),
+			}) as FetchError;
+		}
+
+		return await response.text();
+	} catch (error) {
+		console.error(`Failed to fetch: ${url}`, error);
+		throw error;
+	}
+}
+
 type MessageEventData<K extends keyof EventSourceEventMap> =
 	EventSourceEventMap[K] extends MessageEvent<infer T> ? T : never;
 
