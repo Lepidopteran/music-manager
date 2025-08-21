@@ -28,11 +28,12 @@ mod tasks;
 mod ui;
 
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
-pub type Tasks = Arc<Mutex<Registry>>;
+pub type TaskRegistry = Arc<Mutex<Registry>>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
+    pub tasks: TaskRegistry,
     pub db: Database,
 }
 
@@ -40,7 +41,7 @@ pub struct AppState {
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
     let tasks = setup_tasks(db.clone());
     let app = Router::new()
-        .merge(api::tasks::router().with_state(tasks))
+        .merge(api::tasks::router())
         .merge(api::songs::router())
         .merge(api::albums::router())
         .merge(api::directories::router())
@@ -48,6 +49,7 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .merge(api::info::router())
         .with_state(AppState {
             settings: settings.clone(),
+            tasks,
             db,
         })
         .merge(ui::router())
@@ -154,6 +156,12 @@ pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+impl FromRef<AppState> for TaskRegistry {
+    fn from_ref(state: &AppState) -> Self {
+        state.tasks.clone()
+    }
 }
 
 impl FromRef<AppState> for sqlx::Pool<sqlx::Sqlite> {

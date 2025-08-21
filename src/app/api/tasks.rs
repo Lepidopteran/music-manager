@@ -1,7 +1,4 @@
-use std::{
-    convert::Infallible,
-    sync::{Arc, Mutex},
-};
+use std::convert::Infallible;
 
 use axum::{
     extract::{Path, State},
@@ -18,11 +15,12 @@ use time::OffsetDateTime;
 use tokio_stream::{wrappers::WatchStream, StreamExt};
 
 use crate::{
+    app::{AppState, TaskRegistry},
     bad_request,
     task::{TaskEventType, TaskReport},
 };
 
-use super::{Registry, RegistryError};
+use super::RegistryError;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TaskEvent {
@@ -36,7 +34,7 @@ pub struct TaskEvent {
     pub timestamp: OffsetDateTime,
 }
 
-pub fn router() -> Router<Arc<Mutex<Registry>>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/tasks/{name}/stop", get(stop_task))
         .route("/api/tasks/{name}/start", get(start_task))
@@ -45,9 +43,9 @@ pub fn router() -> Router<Arc<Mutex<Registry>>> {
 }
 
 async fn list_tasks(
-    State(registry): State<Arc<Mutex<Registry>>>,
+    State(tasks): State<TaskRegistry>,
 ) -> Result<Json<Vec<TaskReport>>, impl IntoResponse> {
-    let registry = match registry.lock() {
+    let registry = match tasks.lock() {
         Ok(registry) => registry,
         Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to lock registry")),
     };
@@ -56,14 +54,14 @@ async fn list_tasks(
 }
 
 async fn stop_task(
-    State(registry): State<Arc<Mutex<Registry>>>,
+    State(tasks): State<TaskRegistry>,
     Path(name): Path<String>,
 ) -> Result<(), impl IntoResponse> {
     if name.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Task name cannot be empty".into()));
     }
 
-    let mut registry = match registry.lock() {
+    let mut registry = match tasks.lock() {
         Ok(registry) => registry,
         Err(_) => {
             return Err((
@@ -87,7 +85,7 @@ async fn stop_task(
 }
 
 async fn start_task(
-    State(registry): State<Arc<Mutex<Registry>>>,
+    State(tasks): State<TaskRegistry>,
     Path(name): Path<String>,
 ) -> Result<(), impl IntoResponse> {
     if name.trim().is_empty() {
@@ -97,7 +95,7 @@ async fn start_task(
         ));
     }
 
-    let mut registry = match registry.lock() {
+    let mut registry = match tasks.lock() {
         Ok(registry) => registry,
         Err(_) => {
             return Err((
@@ -121,9 +119,9 @@ async fn start_task(
 }
 
 async fn events(
-    State(registry): State<Arc<Mutex<Registry>>>,
+    State(tasks): State<TaskRegistry>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let registry = registry.lock().unwrap();
+    let registry = tasks.lock().unwrap();
     let tasks = registry.list();
     let streams = tasks.iter().filter_map(|task| {
         let task_name = task.clone();
