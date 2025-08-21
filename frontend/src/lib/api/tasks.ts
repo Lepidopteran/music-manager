@@ -1,5 +1,5 @@
 import type { TaskEvent, TaskInfo } from "@lib/models";
-import { fetchJson } from "@lib/utils/api";
+import { fetchJson, fetchText } from "@lib/utils/api";
 
 declare global {
 	interface EventSourceEventMap {
@@ -12,11 +12,11 @@ export async function getTasks(): Promise<TaskInfo[]> {
 }
 
 export async function startTask(id: string): Promise<void> {
-	await fetchJson<void>(`/api/tasks/${id}`);
+	await fetchText(`/api/tasks/${id}/start`);
 }
 
 export async function stopTask(id: string): Promise<void> {
-	await fetchJson<void>(`/api/tasks/${id}`);
+	await fetchText(`/api/tasks/${id}/stop`);
 }
 
 export async function getEventStream(): Promise<EventSource> {
