@@ -5,6 +5,7 @@
 	interface Props {
 		event: TaskEvent;
 		class?: ClassValue;
+		[key: string]: unknown;
 	}
 
 	let { event, class: className, ...rest }: Props = $props();
