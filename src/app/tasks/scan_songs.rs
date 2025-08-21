@@ -64,6 +64,8 @@ impl Task for ScanSongs {
         let cancelled_at = self.cancelled_at.clone();
         let (tx, _) = self.channel.clone();
 
+        tx.send(TaskEvent::start("Starting song scan")).unwrap();
+
         status.store(TaskStatus::Running.into(), Ordering::Relaxed);
         tokio::spawn(async move {
             let _ = started_at
@@ -107,7 +109,7 @@ impl Task for ScanSongs {
 
             if song_paths.is_empty() {
                 tracing::warn!("No songs found");
-                tx.send(TaskEvent::warning("No songs found, stopping task..."))
+                tx.send(TaskEvent::stop("No songs found, stopping task..."))
                     .unwrap();
                 status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                 return;
@@ -123,7 +125,7 @@ impl Task for ScanSongs {
 
             if song_paths.is_empty() {
                 tracing::warn!("No new songs found");
-                tx.send(TaskEvent::warning("No new songs found, stopping task..."))
+                tx.send(TaskEvent::stop("No new songs found, stopping task..."))
                     .unwrap();
                 let _ = cancelled_at
                     .write()
