@@ -29,13 +29,14 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         return index().await;
     }
 
+
     match Asset::get(path.as_str()) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
             ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
         }
         None => {
-            if path.contains(".") || path == "/api" {
+            if path.contains(".") || path.contains("api/") {
                 return (StatusCode::NOT_FOUND, "404 Not Found").into_response();
             }
 
