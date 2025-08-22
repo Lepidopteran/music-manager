@@ -12,9 +12,9 @@ use axum::{
 use futures::Stream;
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::{broadcast::Sender, watch::Receiver};
+use tokio::sync::broadcast::Sender;
 use tokio_stream::{
-    wrappers::{BroadcastStream, WatchStream},
+    wrappers::BroadcastStream,
     StreamExt,
 };
 

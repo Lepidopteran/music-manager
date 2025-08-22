@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    app::events::{AppEvent, TaskEvent},
+    app::events::TaskEvent,
     config::Settings,
     paths::{app_cache_dir, app_config_dir, app_data_dir, metadata_history_dir},
 };
