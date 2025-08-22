@@ -1,11 +1,21 @@
 use color_eyre::owo_colors::OwoColorize;
-use tokio::signal;
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
 
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::{Arc, Mutex},
+};
+
 use crate::{
+    app::events::{AppEvent, TaskEvent},
     config::Settings,
     paths::{app_cache_dir, app_config_dir, app_data_dir, metadata_history_dir},
+};
+
+use tokio::{
+    signal,
+    sync::broadcast::{channel, Sender},
 };
 
 use super::{
@@ -13,17 +23,14 @@ use super::{
     task::{Registry, RegistryError},
 };
 
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{Arc, Mutex},
-};
-
 use axum::{
     extract::{FromRef, MatchedPath, Request},
+    response::sse::Event,
     Router,
 };
 
 mod api;
+mod events;
 mod tasks;
 mod ui;
 
@@ -34,12 +41,14 @@ pub type TaskRegistry = Arc<Mutex<Registry>>;
 pub struct AppState {
     pub settings: Settings,
     pub tasks: TaskRegistry,
+    pub event_sender: Sender<Event>,
     pub db: Database,
 }
 
 /// Start the server
 pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
-    let tasks = setup_tasks(db.clone());
+    let (tx, _) = channel(1024);
+    let tasks = setup_tasks(db.clone(), tx.clone());
     let app = Router::new()
         .merge(api::tasks::router())
         .merge(api::songs::router())
@@ -47,7 +56,9 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .merge(api::directories::router())
         .merge(api::cover_art::router())
         .merge(api::info::router())
+        .nest("/api", events::router())
         .with_state(AppState {
+            event_sender: tx,
             settings: settings.clone(),
             tasks,
             db,
@@ -120,7 +131,7 @@ async fn shutdown_signal() {
 }
 
 /// Set up the tasks that can run in the background
-fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
+fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>, tx: Sender<Event>) -> Arc<Mutex<Registry>> {
     let mut registry = Registry::default();
 
     let scan_songs_pool = pool.clone();
@@ -135,6 +146,27 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>) -> Arc<Mutex<Registry>> {
         registry.register(move || Box::new(tasks::UpdateSongs::new(refresh_songs_pool.clone())));
     if let Err(RegistryError::AlreadyExists) = err {
         tracing::warn!("Task already registered");
+    }
+
+    for task in registry.list() {
+        if let Some(channel) = registry.get_event_channel(&task) {
+            let channel = channel.clone();
+            let sender = tx.clone();
+            let name = task.clone();
+            tokio::spawn(async move {
+                let mut channel = channel;
+
+                // TODO: Maybe use mpsc for task events.
+                loop {
+                    let event = channel.borrow_and_update().clone();
+                    let _ = sender.send(Event::from(TaskEvent::new(&name, event)));
+
+                    if channel.changed().await.is_err() {
+                        break;
+                    }
+                }
+            });
+        }
     }
 
     Arc::new(Mutex::new(registry))
@@ -156,6 +188,12 @@ pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+impl FromRef<AppState> for Sender<Event> {
+    fn from_ref(state: &AppState) -> Self {
+        state.event_sender.clone()
+    }
 }
 
 impl FromRef<AppState> for TaskRegistry {

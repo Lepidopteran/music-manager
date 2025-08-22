@@ -3,7 +3,7 @@
 	import Event from "@components/Event.svelte";
 	import Progress from "@components/Progress.svelte";
 	import type { TaskEvent, TaskInfo } from "@lib/models";
-	import { taskEventsSource } from "@lib/state/event-sources.svelte";
+	import { eventSource } from "@lib/state/server-events.svelte";
 	import { addSourceEventListener } from "@lib/utils/api";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade, slide } from "svelte/transition";
@@ -14,7 +14,7 @@
 	let tasks: Array<TaskInfo> = $state([]);
 
 	const events: Array<TaskEvent> = $state([]);
-	addSourceEventListener(taskEventsSource, "task-event", (event) => {
+	addSourceEventListener(eventSource, "task-event", (event) => {
 		events.push(event);
 
 		tasks = tasks.map((task) => {
