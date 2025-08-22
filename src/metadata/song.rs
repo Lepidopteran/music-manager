@@ -103,27 +103,23 @@ impl SongFile {
             (ItemKey::DiscNumber, self.metadata.disc_number.clone()),
             (ItemKey::Year, self.metadata.year.clone()),
         ] {
-            if let Some(value) = value {
-                let item = TagItem::new_checked(
-                    self.tag_type.into(),
-                    key.clone(),
-                    ItemValue::Text(value.to_string()),
-                );
+            let item = TagItem::new_checked(
+                self.tag_type.into(),
+                key.clone(),
+                ItemValue::Text(value.clone().unwrap_or_default()),
+            );
 
-                if let Some(item) = item {
-                    tag.insert(item);
-                }
+            if let Some(item) = item {
+                tag.insert(item);
             }
         }
 
-        if let Some(genres) = &self.metadata.genre {
-            tag.remove_key(&ItemKey::Genre);
-            for genre in genres.split(",") {
-                tag.push(TagItem::new(
-                    ItemKey::Genre,
-                    ItemValue::Text(genre.trim().to_string()),
-                ));
-            }
+        tag.remove_key(&ItemKey::Genre);
+        for genre in self.metadata.genre.clone().unwrap_or_default().split(",") {
+            tag.push(TagItem::new(
+                ItemKey::Genre,
+                ItemValue::Text(genre.trim().to_string()),
+            ));
         }
 
         match self.tag_type {
