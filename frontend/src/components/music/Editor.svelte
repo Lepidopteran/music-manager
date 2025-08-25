@@ -1,4 +1,6 @@
 <script lang="ts">
+	import TextInput from "@components/TextInput.svelte";
+	import Icon from "@components/Icon.svelte";
 	import type { Album, Song } from "@lib/models";
 	import Cover from "./Cover.svelte";
 	import { isSong } from "@lib/utils/model-guards";
@@ -7,6 +9,7 @@
 
 	interface Props {
 		selectedItem: Album | Song | null;
+		canEdit?: boolean;
 		[props: string]: unknown;
 	}
 
@@ -16,7 +19,7 @@
 			.replace(/^./, (str) => str.toUpperCase());
 	}
 
-	let { selectedItem, ...rest }: Props = $props();
+	let { selectedItem = $bindable(null), ...rest }: Props = $props();
 
 	let imageHeight: number | null | undefined = $state();
 	let imageWidth: number | null | undefined = $state();
@@ -64,7 +67,7 @@
 
 <div
 	{...rest}
-	class={`space-y-2 relative h-full overflow-y-auto pt-2 bg-base-100 ${rest.class || ""}`}
+	class={`space-y-2 relative h-full overflow-y-auto pt-6 ${rest.class || ""}`}
 >
 	{#if selectedItem}
 		<div class="text-center text-sm">
@@ -96,34 +99,40 @@
 				</p>
 			{/if}
 		</div>
-		<h2 class="text-2xl font-bold text-center">{selectedItem.title}</h2>
-		<p class="text-center">{selectedItem.artist}</p>
+		<div class="flex flex-col gap-2 mx-auto justify-center items-center">
+			<TextInput
+				variant="ghost"
+				class="font-bold text-center text-2xl truncate"
+				placeholder={isSong(selectedItem) ? "Title..." : "Album Title..."}
+				bind:value={selectedItem.title as string}
+			></TextInput>
+			<TextInput
+				variant="ghost"
+				class="text-center block"
+				placeholder={isSong(selectedItem) ? "Artist..." : "Album Artist..."}
+				bind:value={selectedItem.artist as string}
+			></TextInput>
+		</div>
 		<div class="space-y-2 mt-2 px-2 md:w-3/5 mx-auto">
 			{#if isSong(selectedItem)}
 				{#each Object.entries(selectedItem) as [key, value]}
 					{#if value && !excludedFields.includes(key)}
-						<div
-							class="p-2 bg-base/25 rounded-theme inset-shadow-sm inset-shadow-black/25 border border-black/25 grow shrink-0"
-						>
-							<p class="text-sm font-bold text-base-950/50">
-								{renameField(key)}
-							</p>
-							<p class="text truncate">{value}</p>
-						</div>
+						<TextInput
+							class="w-full"
+							label={renameField(key)}
+							floatingLabel={true}
+							bind:value={selectedItem[key as keyof Song] as string}
+						/>
 					{/if}
 				{/each}
 			{:else}
 				{#each mapTracksToFields(selectedItem.tracks).entries() as [key, value]}
-					<div
-						class="p-2 bg-base/25 rounded-theme inset-shadow-sm inset-shadow-black/25 border border-black/25 grow shrink-0"
-					>
-						<p class="text-sm font-bold text-base-950/50">
-							{renameField(key)}
-						</p>
-						<p class="text truncate">
-							{value}
-						</p>
-					</div>
+					<TextInput
+						class="w-full"
+						label={renameField(key)}
+						floatingLabel={true}
+						bind:value={selectedItem[key as keyof Album] as string}
+					/>
 				{/each}
 			{/if}
 		</div>

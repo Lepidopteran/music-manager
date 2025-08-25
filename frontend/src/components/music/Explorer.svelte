@@ -1,9 +1,6 @@
 <script lang="ts">
 	import type { Action } from "svelte/action";
 	import type { Album, Song } from "@lib/models";
-	import AlbumCover from "@components/music/Cover.svelte";
-	import Button from "@components/Button.svelte";
-	import Icon from "@iconify/svelte";
 	interface Props {
 		albums?: Array<Album>;
 		sortBy?: "name";
