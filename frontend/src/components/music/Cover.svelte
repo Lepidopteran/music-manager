@@ -3,6 +3,7 @@
 	import MissingCover from "./MissingCover.svelte";
 
 	import { isAlbum } from "@utils/model-guards";
+	import { untrack } from "svelte";
 
 	let failedToLoad = $state(false);
 	let image: HTMLImageElement;
@@ -34,7 +35,7 @@
 		...rest
 	}: Props = $props();
 
-	let src: string = $state(getCoverUrl(item, artType));
+	let src: string = $state("");
 
 	function onload() {
 		container.classList.remove("motion-safe:animate-pulse");
@@ -66,12 +67,6 @@
 		}
 	}
 
-	function getCoverUrl(item: Album | Song, artType: "front" | "back") {
-		return isAlbum(item)
-			? `/api/albums/${encodeURIComponent(item.title)}/cover-art/${artType}.jpg`
-			: `/api/songs/${item.id}/cover-art/${artType}.jpg`;
-	}
-
 	$effect(() => {
 		container.classList.add("motion-safe:animate-pulse");
 		image.classList.add("opacity-0", "pointer-events-none");
@@ -79,7 +74,9 @@
 		imageHeight = null;
 		imageWidth = null;
 
-		src = getCoverUrl(item, artType);
+		src = isAlbum(item)
+			? `/api/albums/${encodeURIComponent(untrack(() => item.title))}/cover-art/${artType}.jpg`
+			: `/api/songs/${item.id}/cover-art/${artType}.jpg`;
 
 		if (onLoading) {
 			onLoading();
