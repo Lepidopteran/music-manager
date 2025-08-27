@@ -13,7 +13,7 @@ use lofty::{
 };
 use lofty::{prelude::*, read_from, tag::Tag};
 use serde::{Deserialize, Serialize};
-
+use time::OffsetDateTime;
 use super::{
     file::SongFileType,
     item::{ItemKey, TagType},
@@ -69,10 +69,12 @@ pub struct SongFile {
     tag_type: TagType,
     /// The type of file
     file_type: SongFileType,
+    #[serde(with = "time::serde::rfc3339")]
     /// System time when the file was created
-    created: SystemTime,
+    created: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     /// System time when the file was last modified
-    last_modified: SystemTime,
+    last_modified: OffsetDateTime,
     /// The size of the file
     size: u64,
     /// Metadata contained in the file
@@ -96,8 +98,8 @@ impl SongFile {
             size: path_metadata.len(),
             file_type: SongFileType::from(tagged_file.file_type()),
             metadata: read_metadata_from_path(path).ok(),
-            last_modified: path_metadata.modified()?,
-            created: path_metadata.created()?,
+            last_modified: OffsetDateTime::from(path_metadata.modified()?),
+            created: OffsetDateTime::from(path_metadata.created()?),
             tag_type,
         })
     }
@@ -196,11 +198,11 @@ impl SongFile {
         self.size
     }
 
-    pub fn last_modified(&self) -> SystemTime {
+    pub fn last_modified(&self) -> OffsetDateTime {
         self.last_modified
     }
 
-    pub fn created(&self) -> SystemTime {
+    pub fn created(&self) -> OffsetDateTime {
         self.created
     }
 }
