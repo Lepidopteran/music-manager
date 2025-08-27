@@ -9,7 +9,7 @@ use lofty::{
     config::WriteOptions,
     id3::v2::Id3v2Tag,
     probe::Probe,
-    tag::{ItemValue, TagItem},
+    tag::{ItemKey as LoftyKey, ItemValue, TagItem},
 };
 use lofty::{prelude::*, read_from, tag::Tag};
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,39 @@ use super::{
     Result,
 };
 
-pub type Metadata = BTreeMap<ItemKey, String>;
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Metadata {
+    #[serde(flatten)]
+    fields: BTreeMap<ItemKey, String>,
+    #[serde(default = "BTreeMap::new")]
+    unknown: BTreeMap<String, String>,
+}
+
+impl Metadata {
+    pub fn new(items: BTreeMap<ItemKey, String>, unknown: BTreeMap<String, String>) -> Self {
+        Self {
+            fields: items,
+            unknown,
+        }
+    }
+
+    pub fn insert(&mut self, key: ItemKey, value: String) {
+        self.fields.insert(key, value);
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&ItemKey, &String)> {
+        self.fields.iter()
+    }
+
+    pub fn get(&self, key: &ItemKey) -> Option<&String> {
+        self.fields.get(key)
+    }
+
+    pub fn get_unknown(&self, key: &String) -> Option<&String> {
+        self.unknown.get(key)
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum SongError {
@@ -109,7 +141,7 @@ impl SongFile {
             for (key, value) in metadata.iter() {
                 let key = key.clone().into();
 
-                let split: Vec<_> = value.split(',').collect();
+                let split: Vec<_> = value.split(',').map(|s| s.trim()).collect();
 
                 if split.len() == 1 {
                     let item =
@@ -188,19 +220,41 @@ pub fn read_metadata_from_path(path: &Path) -> Result<Metadata> {
 
     let items = keys
         .iter()
-        .map(|key| {
-            let value = (
-                ItemKey::from(key.clone()),
-                tag.get_strings(key)
-                    .map(std::string::ToString::to_string)
-                    .collect::<Vec<String>>()
-                    .join(", "),
-            );
+        .filter_map(|key| match key {
+            LoftyKey::Unknown(_) => None,
+            _ => {
+                let value = (
+                    key.clone().into(),
+                    tag.get_strings(key)
+                        .map(|string| string.trim().replace("\0", "").to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
 
-            log::debug!("{key:?}: {value:?}");
-            value
+                log::trace!("{key:?}: {value:?}");
+                Some(value)
+            }
         })
-        .collect();
+        .collect::<BTreeMap<ItemKey, String>>();
 
-    Ok(items)
+    let unknown = keys
+        .iter()
+        .filter_map(|key| match key {
+            LoftyKey::Unknown(field_name) => {
+                let value = (
+                    field_name.to_string(),
+                    tag.get_strings(key)
+                        .map(|string| string.trim().replace("\0", "").to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
+
+                log::trace!("{key:?}: {value:?}");
+                Some(value)
+            }
+            _ => None,
+        })
+        .collect::<BTreeMap<String, String>>();
+
+    Ok(Metadata::new(items, unknown))
 }
