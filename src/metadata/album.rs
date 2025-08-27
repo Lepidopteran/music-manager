@@ -1,4 +1,6 @@
-use super::{Error, SongMetadata};
+use crate::metadata::item::ItemKey;
+
+use super::{Error, Metadata as SongMetadata};
 
 #[derive(Debug, Clone, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,8 +32,8 @@ impl TryFrom<Vec<SongMetadata>> for Album {
 
     fn try_from(tracks: Vec<SongMetadata>) -> Result<Self, Self::Error> {
         let (first, rest) = tracks.split_first().ok_or(AlbumError::NoTracks)?;
-        let title = match &first.album {
-            Some(title) => title.clone(),
+        let title: String = match &first.get(&ItemKey::Album).cloned() {
+            Some(title) => title.to_string(),
             None => return Err(AlbumError::NoAlbum.into()),
         };
 
@@ -39,19 +41,22 @@ impl TryFrom<Vec<SongMetadata>> for Album {
             return Ok(Self {
                 title,
                 tracks: tracks.to_vec(),
-                artist: first.album_artist.clone(),
+                artist: first.get(&ItemKey::AlbumArtist).cloned(),
                 ..Default::default()
             });
         }
 
-        if !rest.iter().all(|song| song.album == first.album) {
+        if !rest
+            .iter()
+            .all(|song| song.get(&ItemKey::Album) == first.get(&ItemKey::Album))
+        {
             return Err(AlbumError::MixedTracks.into());
         }
 
         Ok(Self {
             title,
             tracks: tracks.to_vec(),
-            artist: first.album_artist.clone(),
+            artist: first.get(&ItemKey::AlbumArtist).cloned(),
             ..Default::default()
         })
     }

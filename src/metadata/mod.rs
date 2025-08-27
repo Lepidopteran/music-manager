@@ -3,14 +3,14 @@ mod cover_art;
 mod song;
 mod file;
 
-pub mod tags;
+pub mod item;
 pub use {album::*, cover_art::*, song::*};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Album error: {0}")]
     Album(#[from] AlbumError),
-    #[error("Cover art error: {0}")]
+    #[error("Song error: {0}")]
     Song(#[from] SongError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

@@ -1,0 +1,238 @@
+//! Contains tag types and utility functions.
+
+/// Duplicate of [`TagType`](lofty::tag::TagType) from [lofty](https://crates.io/crates/lofty), except with [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize) traits implemented.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TagType {
+    Ape,
+    Id3v1,
+    Id3v2,
+    Mp4Ilst,
+    VorbisComments,
+    RiffInfo,
+    AiffText,
+}
+
+/// The Item Keys that a [lofty::tag::Tag] can have, essentially is [lofty::tag::ItemKey] but reduced and copies some names from [MusicBrainz Picard Tag Mapping](https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html) spec.
+/// Additionally, this enum has the [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize) traits implemented and maps to [lofty::tag::ItemKey].
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ItemKey {
+    Album,
+    AlbumArtist,
+    AlbumSort,
+    Artist,
+    ArtistSort,
+    Artists,
+    Barcode,
+    Bpm,
+    CatalogNumber,
+    Comment,
+    Composer,
+    ComposerSortOrder,
+    Conductor,
+    Copyright,
+    Director,
+    DiscNumber,
+    DiscTotal,
+    EncodedBy,
+    EncoderSettings,
+    Engineer,
+    Genre,
+    Grouping,
+    Key,
+    Isrc,
+    Language,
+    License,
+    Lyricist,
+    Lyrics,
+    Mood,
+    Movement,
+    MovementNumber,
+    MovementTotal,
+    MusicBrainzRecordingId,
+    MusicBrainzTrackId,
+    MusicBrainzReleaseId,
+    MusicBrainzReleaseGroupId,
+    MusicBrainzArtistId,
+    MusicBrainzReleaseArtistId,
+    MusicBrainzWorkId,
+    OriginalAlbum,
+    OriginalArtist,
+    OriginalFileName,
+    OriginalReleaseDate,
+    Performer,
+    Producer,
+    Label,
+    ReleaseDate,
+    RecordingDate,
+    Title,
+    TitleSort,
+    TrackNumber,
+    TrackTotal,
+    Website,
+    Work,
+    Writer,
+    Year,
+    Unknown,
+}
+
+impl From<ItemKey> for lofty::tag::ItemKey {
+    fn from(value: ItemKey) -> Self {
+        match value {
+            ItemKey::Album => lofty::tag::ItemKey::AlbumTitle,
+            ItemKey::AlbumArtist => lofty::tag::ItemKey::AlbumArtist,
+            ItemKey::AlbumSort => lofty::tag::ItemKey::AlbumArtistSortOrder,
+            ItemKey::Artist => lofty::tag::ItemKey::TrackArtist,
+            ItemKey::ArtistSort => lofty::tag::ItemKey::TrackArtistSortOrder,
+            ItemKey::Artists => lofty::tag::ItemKey::TrackArtists,
+            ItemKey::Barcode => lofty::tag::ItemKey::Barcode,
+            ItemKey::Bpm => lofty::tag::ItemKey::Bpm,
+            ItemKey::CatalogNumber => lofty::tag::ItemKey::CatalogNumber,
+            ItemKey::Comment => lofty::tag::ItemKey::Comment,
+            ItemKey::Composer => lofty::tag::ItemKey::Composer,
+            ItemKey::ComposerSortOrder => lofty::tag::ItemKey::ComposerSortOrder,
+            ItemKey::Conductor => lofty::tag::ItemKey::Conductor,
+            ItemKey::Copyright => lofty::tag::ItemKey::CopyrightMessage,
+            ItemKey::Director => lofty::tag::ItemKey::Director,
+            ItemKey::DiscNumber => lofty::tag::ItemKey::DiscNumber,
+            ItemKey::DiscTotal => lofty::tag::ItemKey::DiscTotal,
+            ItemKey::EncodedBy => lofty::tag::ItemKey::EncodedBy,
+            ItemKey::EncoderSettings => lofty::tag::ItemKey::EncoderSettings,
+            ItemKey::Engineer => lofty::tag::ItemKey::Engineer,
+            ItemKey::Genre => lofty::tag::ItemKey::Genre,
+            ItemKey::Grouping => lofty::tag::ItemKey::ContentGroup,
+            ItemKey::Key => lofty::tag::ItemKey::InitialKey,
+            ItemKey::Isrc => lofty::tag::ItemKey::Isrc,
+            ItemKey::Language => lofty::tag::ItemKey::Language,
+            ItemKey::License => lofty::tag::ItemKey::CopyrightMessage,
+            ItemKey::Lyricist => lofty::tag::ItemKey::Lyricist,
+            ItemKey::Lyrics => lofty::tag::ItemKey::Lyrics,
+            ItemKey::Mood => lofty::tag::ItemKey::Mood,
+            ItemKey::Movement => lofty::tag::ItemKey::Movement,
+            ItemKey::MovementNumber => lofty::tag::ItemKey::MovementNumber,
+            ItemKey::MovementTotal => lofty::tag::ItemKey::MovementTotal,
+            ItemKey::MusicBrainzRecordingId => lofty::tag::ItemKey::MusicBrainzRecordingId,
+            ItemKey::MusicBrainzTrackId => lofty::tag::ItemKey::MusicBrainzTrackId,
+            ItemKey::MusicBrainzReleaseId => lofty::tag::ItemKey::MusicBrainzReleaseId,
+            ItemKey::MusicBrainzReleaseGroupId => lofty::tag::ItemKey::MusicBrainzReleaseGroupId,
+            ItemKey::MusicBrainzArtistId => lofty::tag::ItemKey::MusicBrainzArtistId,
+            ItemKey::MusicBrainzReleaseArtistId => lofty::tag::ItemKey::MusicBrainzReleaseArtistId,
+            ItemKey::MusicBrainzWorkId => lofty::tag::ItemKey::MusicBrainzWorkId,
+            ItemKey::OriginalAlbum => lofty::tag::ItemKey::OriginalAlbumTitle,
+            ItemKey::OriginalArtist => lofty::tag::ItemKey::OriginalArtist,
+            ItemKey::OriginalFileName => lofty::tag::ItemKey::OriginalFileName,
+            ItemKey::OriginalReleaseDate => lofty::tag::ItemKey::OriginalReleaseDate,
+            ItemKey::Performer => lofty::tag::ItemKey::Performer,
+            ItemKey::Producer => lofty::tag::ItemKey::Producer,
+            ItemKey::Label => lofty::tag::ItemKey::Label,
+            ItemKey::ReleaseDate => lofty::tag::ItemKey::ReleaseDate,
+            ItemKey::RecordingDate => lofty::tag::ItemKey::RecordingDate,
+            ItemKey::Title => lofty::tag::ItemKey::TrackTitle,
+            ItemKey::TitleSort => lofty::tag::ItemKey::TrackTitleSortOrder,
+            ItemKey::TrackNumber => lofty::tag::ItemKey::TrackNumber,
+            ItemKey::TrackTotal => lofty::tag::ItemKey::TrackTotal,
+            ItemKey::Website => lofty::tag::ItemKey::TrackArtistUrl,
+            ItemKey::Work => lofty::tag::ItemKey::Work,
+            ItemKey::Writer => lofty::tag::ItemKey::Writer,
+            ItemKey::Year => lofty::tag::ItemKey::Year,
+            ItemKey::Unknown => lofty::tag::ItemKey::Unknown(String::new()),
+        }
+    }
+}
+
+impl From<lofty::tag::ItemKey> for ItemKey {
+    fn from(value: lofty::tag::ItemKey) -> Self {
+        match value {
+            lofty::tag::ItemKey::AlbumTitle => ItemKey::Album,
+            lofty::tag::ItemKey::AlbumArtist => ItemKey::AlbumArtist,
+            lofty::tag::ItemKey::AlbumArtistSortOrder => ItemKey::AlbumSort,
+            lofty::tag::ItemKey::TrackArtist => ItemKey::Artist,
+            lofty::tag::ItemKey::TrackArtistSortOrder => ItemKey::ArtistSort,
+            lofty::tag::ItemKey::TrackArtists => ItemKey::Artists,
+            lofty::tag::ItemKey::Bpm => ItemKey::Bpm,
+            lofty::tag::ItemKey::Barcode => ItemKey::Barcode,
+            lofty::tag::ItemKey::CatalogNumber => ItemKey::CatalogNumber,
+            lofty::tag::ItemKey::Comment => ItemKey::Comment,
+            lofty::tag::ItemKey::Composer => ItemKey::Composer,
+            lofty::tag::ItemKey::ComposerSortOrder => ItemKey::ComposerSortOrder,
+            lofty::tag::ItemKey::Conductor => ItemKey::Conductor,
+            lofty::tag::ItemKey::CopyrightMessage => ItemKey::Copyright,
+            lofty::tag::ItemKey::Director => ItemKey::Director,
+            lofty::tag::ItemKey::DiscNumber => ItemKey::DiscNumber,
+            lofty::tag::ItemKey::DiscTotal => ItemKey::DiscTotal,
+            lofty::tag::ItemKey::EncodedBy => ItemKey::EncodedBy,
+            lofty::tag::ItemKey::EncoderSettings => ItemKey::EncoderSettings,
+            lofty::tag::ItemKey::Engineer => ItemKey::Engineer,
+            lofty::tag::ItemKey::Genre => ItemKey::Genre,
+            lofty::tag::ItemKey::ContentGroup => ItemKey::Grouping,
+            lofty::tag::ItemKey::InitialKey => ItemKey::Key,
+            lofty::tag::ItemKey::Isrc => ItemKey::Isrc,
+            lofty::tag::ItemKey::Language => ItemKey::Language,
+            lofty::tag::ItemKey::Lyricist => ItemKey::Lyricist,
+            lofty::tag::ItemKey::Lyrics => ItemKey::Lyrics,
+            lofty::tag::ItemKey::Mood => ItemKey::Mood,
+            lofty::tag::ItemKey::Movement => ItemKey::Movement,
+            lofty::tag::ItemKey::MovementNumber => ItemKey::MovementNumber,
+            lofty::tag::ItemKey::MovementTotal => ItemKey::MovementTotal,
+            lofty::tag::ItemKey::MusicBrainzRecordingId => ItemKey::MusicBrainzRecordingId,
+            lofty::tag::ItemKey::MusicBrainzTrackId => ItemKey::MusicBrainzTrackId,
+            lofty::tag::ItemKey::MusicBrainzReleaseId => ItemKey::MusicBrainzReleaseId,
+            lofty::tag::ItemKey::MusicBrainzReleaseGroupId => ItemKey::MusicBrainzReleaseGroupId,
+            lofty::tag::ItemKey::MusicBrainzArtistId => ItemKey::MusicBrainzArtistId,
+            lofty::tag::ItemKey::MusicBrainzReleaseArtistId => ItemKey::MusicBrainzReleaseArtistId,
+            lofty::tag::ItemKey::MusicBrainzWorkId => ItemKey::MusicBrainzWorkId,
+            lofty::tag::ItemKey::OriginalAlbumTitle => ItemKey::OriginalAlbum,
+            lofty::tag::ItemKey::OriginalArtist => ItemKey::OriginalArtist,
+            lofty::tag::ItemKey::OriginalFileName => ItemKey::OriginalFileName,
+            lofty::tag::ItemKey::OriginalReleaseDate => ItemKey::OriginalReleaseDate,
+            lofty::tag::ItemKey::Performer => ItemKey::Performer,
+            lofty::tag::ItemKey::Producer => ItemKey::Producer,
+            lofty::tag::ItemKey::Label => ItemKey::Label,
+            lofty::tag::ItemKey::ReleaseDate => ItemKey::ReleaseDate,
+            lofty::tag::ItemKey::RecordingDate => ItemKey::RecordingDate,
+            lofty::tag::ItemKey::TrackTitle => ItemKey::Title,
+            lofty::tag::ItemKey::TrackTitleSortOrder => ItemKey::TitleSort,
+            lofty::tag::ItemKey::TrackNumber => ItemKey::TrackNumber,
+            lofty::tag::ItemKey::TrackTotal => ItemKey::TrackTotal,
+            lofty::tag::ItemKey::TrackArtistUrl => ItemKey::Website,
+            lofty::tag::ItemKey::Work => ItemKey::Work,
+            lofty::tag::ItemKey::Writer => ItemKey::Writer,
+            lofty::tag::ItemKey::Year => ItemKey::Year,
+            _ => ItemKey::Unknown,
+        }
+    }
+}
+
+impl From<TagType> for lofty::tag::TagType {
+    fn from(value: TagType) -> Self {
+        match value {
+            TagType::Ape => lofty::tag::TagType::Ape,
+            TagType::Id3v1 => lofty::tag::TagType::Id3v1,
+            TagType::Id3v2 => lofty::tag::TagType::Id3v2,
+            TagType::Mp4Ilst => lofty::tag::TagType::Mp4Ilst,
+            TagType::VorbisComments => lofty::tag::TagType::VorbisComments,
+            TagType::RiffInfo => lofty::tag::TagType::RiffInfo,
+            TagType::AiffText => lofty::tag::TagType::AiffText,
+        }
+    }
+}
+
+impl From<lofty::tag::TagType> for TagType {
+    fn from(value: lofty::tag::TagType) -> Self {
+        match value {
+            lofty::tag::TagType::Ape => TagType::Ape,
+            lofty::tag::TagType::Id3v1 => TagType::Id3v1,
+            lofty::tag::TagType::Id3v2 => TagType::Id3v2,
+            lofty::tag::TagType::Mp4Ilst => TagType::Mp4Ilst,
+            lofty::tag::TagType::VorbisComments => TagType::VorbisComments,
+            lofty::tag::TagType::RiffInfo => TagType::RiffInfo,
+            lofty::tag::TagType::AiffText => TagType::AiffText,
+
+            // NOTE: Unsure why this is needed.
+            _ => TagType::Id3v2,
+        }
+    }
+}

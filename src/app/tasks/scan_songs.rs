@@ -5,7 +5,8 @@ use tokio::sync::watch::{channel, Receiver, Sender};
 use walkdir::{DirEntry, WalkDir};
 
 use crate::{
-    metadata::SongMetadata,
+    get_metadata_field,
+    metadata::{item::ItemKey, read_metadata_from_path},
     task::{TaskEvent, TaskState},
 };
 
@@ -233,7 +234,7 @@ async fn add_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
     path: PathBuf,
 ) -> Result<SqliteQueryResult, sqlx::Error> {
-    let metadata = match SongMetadata::from_path(&path) {
+    let metadata = match read_metadata_from_path(&path) {
         Ok(song) => Some(song),
         Err(err) => {
             tracing::warn!("Failed to read tags: {}", err);
@@ -249,42 +250,31 @@ async fn add_song(
 
     let path = path.to_string_lossy().to_string();
 
-    match metadata {
-        Some(song) => {
-            let SongMetadata {
-                title,
-                album,
-                album_artist,
-                disc_number,
-                artist,
-                year,
-                track_number,
-                genre,
-                mood,
-            } = song;
+    let title = get_metadata_field(&metadata, ItemKey::Title);
+    let album = get_metadata_field(&metadata, ItemKey::Album);
+    let album_artist = get_metadata_field(&metadata, ItemKey::AlbumArtist);
+    let disc_number = get_metadata_field(&metadata, ItemKey::DiscNumber);
+    let artist = get_metadata_field(&metadata, ItemKey::Artist);
+    let year = get_metadata_field(&metadata, ItemKey::Year);
+    let track_number = get_metadata_field(&metadata, ItemKey::TrackNumber);
+    let genre = get_metadata_field(&metadata, ItemKey::Genre);
+    let mood = get_metadata_field(&metadata, ItemKey::Mood);
 
-            query!(
-                "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                path,
-                title,
-                album,
-                album_artist,
-                disc_number,
-                artist,
-                year,
-                track_number,
-                genre,
-                mood
-            )
-            .execute(&pool)
-            .await
-        }
-        None => {
-            query!("INSERT INTO songs (path) VALUES (?)", path,)
-                .execute(&pool)
-                .await
-        }
-    }
+    query!(
+        "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        path,
+        title,
+        album,
+        album_artist,
+        disc_number,
+        artist,
+        year,
+        track_number,
+        genre,
+        mood
+    )
+    .execute(&pool)
+    .await
 }
 
 fn scan_song_paths(

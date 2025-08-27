@@ -8,7 +8,7 @@ use tokio::{
 
 use crate::{
     db::Song,
-    metadata::SongMetadata,
+    metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
     task::{TaskEvent, TaskState},
 };
 
@@ -142,7 +142,11 @@ impl Task for UpdateSongs {
                     return;
                 }
 
-                let title = metadata.title.as_deref().unwrap_or("N/A").to_string();
+                let title = metadata
+                    .get(&ItemKey::Title)
+                    .cloned()
+                    .unwrap_or("N/A".to_string());
+
                 if let Err(err) = update_song(db.clone(), id, metadata).await {
                     tracing::error!("Failed to update song: {}", err);
                 } else {
@@ -216,7 +220,7 @@ fn get_updated_metadata(song: &Song) -> Option<(i64, SongMetadata)> {
     let path = PathBuf::from(&song.path);
     tracing::debug!("Getting metadata for: {}", path.display());
 
-    let metadata = match SongMetadata::from_path(&path) {
+    let metadata = match read_metadata_from_path(&path) {
         Ok(song) => Some(song),
         Err(err) => {
             tracing::warn!("Failed to read tags: {}", err);
@@ -234,15 +238,15 @@ fn get_updated_metadata(song: &Song) -> Option<(i64, SongMetadata)> {
 }
 
 fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
-    song.title != metadata.title
-        || song.album != metadata.album
-        || song.album_artist != metadata.album_artist
-        || song.disc_number != metadata.disc_number
-        || song.artist != metadata.artist
-        || song.year != metadata.year
-        || song.track_number != metadata.track_number
-        || song.genre != metadata.genre
-        || song.mood != metadata.mood
+    song.title != metadata.get(&ItemKey::Title).cloned()
+        || song.album != metadata.get(&ItemKey::Album).cloned()
+        || song.album_artist != metadata.get(&ItemKey::AlbumArtist).cloned()
+        || song.disc_number != metadata.get(&ItemKey::DiscNumber).cloned()
+        || song.artist != metadata.get(&ItemKey::Artist).cloned()
+        || song.year != metadata.get(&ItemKey::Year).cloned()
+        || song.track_number != metadata.get(&ItemKey::TrackNumber).cloned()
+        || song.genre != metadata.get(&ItemKey::Genre).cloned()
+        || song.mood != metadata.get(&ItemKey::Mood).cloned()
 }
 
 async fn update_song(
@@ -250,19 +254,29 @@ async fn update_song(
     id: i64,
     metadata: SongMetadata,
 ) -> Result<(), sqlx::Error> {
-    tracing::info!("Updating song: {id}, {:?}", metadata);
+    tracing::info!("Updating song: {id}, {:#?}", metadata);
+
+    let title = metadata.get(&ItemKey::Title).cloned();
+    let album = metadata.get(&ItemKey::Album).cloned();
+    let album_artist = metadata.get(&ItemKey::AlbumArtist).cloned();
+    let disc_number = metadata.get(&ItemKey::DiscNumber).cloned();
+    let artist = metadata.get(&ItemKey::Artist).cloned();
+    let year = metadata.get(&ItemKey::Year).cloned();
+    let track_number = metadata.get(&ItemKey::TrackNumber).cloned();
+    let genre = metadata.get(&ItemKey::Genre).cloned();
+    let mood = metadata.get(&ItemKey::Mood).cloned();
 
     query!(
         "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
-        metadata.title,
-        metadata.album,
-        metadata.album_artist,
-        metadata.disc_number,
-        metadata.artist,
-        metadata.year,
-        metadata.track_number,
-        metadata.genre,
-        metadata.mood,
+        title,
+        album,
+        album_artist,
+        disc_number,
+        artist,
+        year,
+        track_number,
+        genre,
+        mood,
         id
     )
     .execute(&pool)

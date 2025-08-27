@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, HashSet},
     fs::File,
     path::{Path, PathBuf},
     time::SystemTime,
@@ -15,9 +16,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     file::SongFileType,
-    tags::{sanitize_tag, TagType},
+    item::{ItemKey, TagType},
     Result,
 };
+
+pub type Metadata = BTreeMap<ItemKey, String>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SongError {
@@ -34,36 +37,36 @@ pub struct SongFile {
     tag_type: TagType,
     /// The type of file
     file_type: SongFileType,
-    /// Metadata contained in the file
-    metadata: SongMetadata,
     /// System time when the file was created
     created: SystemTime,
     /// System time when the file was last modified
     last_modified: SystemTime,
     /// The size of the file
     size: u64,
+    /// Metadata contained in the file
+    metadata: Option<Metadata>,
 }
 
 impl SongFile {
     /// Opens a song file and returns a [`SongFile`]
     pub fn open(path: &Path) -> Result<Self> {
         let path_metadata = path.metadata()?;
-
         let tagged_file = Probe::open(path)?.read()?;
+        let tag = tagged_file.primary_tag().or(tagged_file.first_tag());
 
-        let tag = match tagged_file.primary_tag() {
-            Some(tag) => tag,
-            None => tagged_file.first_tag().ok_or(SongError::NoTag)?,
+        let tag_type = match tag {
+            Some(tag) => tag.tag_type().into(),
+            None => tagged_file.file_type().primary_tag_type().into(),
         };
 
         Ok(Self {
             path: path.to_path_buf(),
             size: path_metadata.len(),
-            tag_type: tag.tag_type().into(),
             file_type: SongFileType::from(tagged_file.file_type()),
+            metadata: read_metadata_from_path(path).ok(),
             last_modified: path_metadata.modified()?,
             created: path_metadata.created()?,
-            metadata: SongMetadata::from(tag),
+            tag_type,
         })
     }
 
@@ -71,60 +74,63 @@ impl SongFile {
         &self.path
     }
 
-    pub fn metadata(&self) -> &SongMetadata {
+    pub fn metadata(&self) -> &Option<Metadata> {
         &self.metadata
     }
 
-    pub fn metadata_mut(&mut self) -> &mut SongMetadata {
+    pub fn metadata_mut(&mut self) -> &mut Option<Metadata> {
         &mut self.metadata
     }
 
-    pub fn read(&mut self) -> Result<()> {
-        self.metadata = SongMetadata::from_path(&self.path)?;
+    pub fn remove_metadata(&mut self) {
+        self.metadata = None;
+    }
+
+    pub fn set_metadata(&mut self, metadata: Metadata) {
+        self.metadata = Some(metadata);
+    }
+
+    pub fn reload_metadata(&mut self) -> Result<()> {
+        self.set_metadata(read_metadata_from_path(&self.path)?);
         Ok(())
     }
 
     pub fn write(&mut self) -> Result<()> {
         let mut file = File::open(&self.path)?;
-
         let mut tagged_file = read_from(&mut file)?;
-
+        let tag_type = self.tag_type.into();
         let tag = match tagged_file.primary_tag_mut() {
             Some(tag) => tag,
-            None => return Err(SongError::NoTag.into()),
+            None => &mut Tag::new(tag_type),
         };
 
-        for (key, value) in &[
-            (ItemKey::TrackTitle, self.metadata.title.clone()),
-            (ItemKey::TrackArtist, self.metadata.artist.clone()),
-            (ItemKey::AlbumTitle, self.metadata.album.clone()),
-            (ItemKey::AlbumArtist, self.metadata.album_artist.clone()),
-            (ItemKey::TrackNumber, self.metadata.track_number.clone()),
-            (ItemKey::DiscNumber, self.metadata.disc_number.clone()),
-            (ItemKey::Year, self.metadata.year.clone()),
-        ] {
-            if let Some(value) = value {
-                let item = TagItem::new_checked(
-                    self.tag_type.into(),
-                    key.clone(),
-                    ItemValue::Text(value.to_string()),
-                );
+        tag.clear();
+        if let Some(metadata) = &self.metadata {
+            for (key, value) in metadata.iter() {
+                let key = key.clone().into();
 
-                if let Some(item) = item {
-                    tag.insert(item);
+                let split: Vec<_> = value.split(',').collect();
+
+                if split.len() == 1 {
+                    let item =
+                        TagItem::new_checked(tag_type, key, ItemValue::Text(value.to_string()));
+
+                    if let Some(item) = item {
+                        tag.insert(item);
+                    }
+                } else {
+                    for value in split {
+                        let item = TagItem::new_checked(
+                            tag_type,
+                            key.clone(),
+                            ItemValue::Text(value.to_string()),
+                        );
+
+                        if let Some(item) = item {
+                            tag.push(item);
+                        }
+                    }
                 }
-            } else {
-                tag.remove_key(key);
-            }
-        }
-
-        tag.remove_key(&ItemKey::Genre);
-        if let Some(genres) = &self.metadata.genre {
-            for genre in genres.split(",") {
-                tag.push(TagItem::new(
-                    ItemKey::Genre,
-                    ItemValue::Text(genre.trim().to_string()),
-                ));
             }
         }
 
@@ -167,56 +173,34 @@ impl SongFile {
     }
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct SongMetadata {
-    pub title: Option<String>,
-    pub artist: Option<String>,
-    pub album: Option<String>,
-    pub album_artist: Option<String>,
-    pub genre: Option<String>,
-    pub track_number: Option<String>,
-    pub disc_number: Option<String>,
-    pub mood: Option<String>,
-    pub year: Option<String>,
-}
+pub fn read_metadata_from_path(path: &Path) -> Result<Metadata> {
+    let tagged_file = Probe::open(path)?.read()?;
 
-impl SongMetadata {
-    pub fn from_path(path: &Path) -> Result<Self> {
-        let tagged_file = Probe::open(path)?.read()?;
+    let tag = match tagged_file.primary_tag() {
+        Some(tag) => tag,
+        None => tagged_file.first_tag().ok_or(SongError::NoTag)?,
+    };
 
-        let tag = match tagged_file.primary_tag() {
-            Some(tag) => tag,
-            None => tagged_file.first_tag().ok_or(SongError::NoTag)?,
-        };
+    let keys = tag
+        .items()
+        .map(|item| item.clone().into_key())
+        .collect::<HashSet<lofty::tag::ItemKey>>();
 
-        Ok(Self::from(tag))
-    }
-}
-
-impl From<&Tag> for SongMetadata {
-    fn from(tag: &Tag) -> Self {
-        Self {
-            title: tag.title().as_deref().map(sanitize_tag),
-            artist: tag.artist().as_deref().map(sanitize_tag),
-            album: tag.album().as_deref().map(sanitize_tag),
-            album_artist: tag.get_string(&ItemKey::AlbumArtist).map(sanitize_tag),
-            mood: tag.get_string(&ItemKey::Mood).map(sanitize_tag),
-            genre: Some(
-                tag.get_strings(&ItemKey::Genre)
+    let items = keys
+        .iter()
+        .map(|key| {
+            let value = (
+                ItemKey::from(key.clone()),
+                tag.get_strings(key)
                     .map(std::string::ToString::to_string)
                     .collect::<Vec<String>>()
                     .join(", "),
-            ),
-            track_number: tag.track().map(|track| track.to_string()),
-            disc_number: tag.disk().map(|disc| disc.to_string()),
-            year: tag.year().map(|year| year.to_string()),
-        }
-    }
-}
+            );
 
-impl From<SongFile> for SongMetadata {
-    fn from(file: SongFile) -> Self {
-        file.metadata
-    }
+            log::debug!("{key:?}: {value:?}");
+            value
+        })
+        .collect();
+
+    Ok(items)
 }

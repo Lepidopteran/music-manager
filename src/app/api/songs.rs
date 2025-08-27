@@ -11,11 +11,10 @@ use sqlx::{query_as, query_scalar};
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
 
-
 use crate::{
     app::AppState,
     db::Song,
-    metadata::{SongFile, SongMetadata},
+    metadata::{item::ItemKey, Metadata as SongMetadata, SongFile},
     paths::metadata_history_dir,
     utils::*,
 };
@@ -26,7 +25,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
         .route("/api/songs/{id}", get(get_song))
-        .route("/api/songs/{id}/refresh", post(refresh_song_details))
+        .route("/api/songs/{id}/file-info", get(get_song_file))
+        .route("/api/songs/{id}/refresh", get(refresh_song_details))
         .route("/api/songs/{id}", put(edit_song))
         .route(
             "/api/songs/{id}/metadata/restore/{timestamp}",
@@ -50,10 +50,30 @@ async fn get_song(
         .map_err(internal_error)
 }
 
+async fn get_song_file(
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    Path(song_id): Path<SongId>,
+) -> Result<Json<SongFile>, (StatusCode, String)> {
+    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
+        .fetch_one(&db)
+        .await
+        .map(PathBuf::from)
+        .map_err(internal_error)?;
+
+
+    let file = spawn_blocking(move || {
+        SongFile::open(&path).map_err(|err| (StatusCode::FORBIDDEN, err.to_string()))
+    })
+    .await
+    .map_err(bad_request)??;
+
+    Ok(Json(file))
+}
+
 async fn refresh_song_details(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
-) -> Result<Json<SongMetadata>, (StatusCode, String)> {
+) -> Result<Json<Option<SongMetadata>>, (StatusCode, String)> {
     let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
         .fetch_one(&db)
         .await
@@ -68,15 +88,15 @@ async fn refresh_song_details(
 
     let metadata = file.metadata().clone();
 
-    sqlx::query("UPDATE songs SET title = ?, artist = ?, album = ?, album_artist = ?, genre = ?, track_number = ?, disc_number = ?, year = ? WHERE id = ?")
-        .bind(metadata.title.clone())
-        .bind(metadata.artist.clone())
-        .bind(metadata.album.clone())
-        .bind(metadata.album_artist.clone())
-        .bind(metadata.genre.clone())
-        .bind(metadata.track_number.clone())
-        .bind(metadata.disc_number.clone())
-        .bind(metadata.year.clone())
+    sqlx::query("UPDATE songs SET title = ?, artist = ?, album = ?, album_artist = ?, genre = ?, track_number = ?, disc_number = ?, mood = ? WHERE id = ?")
+        .bind(get_metadata_field(&metadata, ItemKey::Title))
+        .bind(get_metadata_field(&metadata, ItemKey::Artist))
+        .bind(get_metadata_field(&metadata, ItemKey::Album))
+        .bind(get_metadata_field(&metadata, ItemKey::AlbumArtist))
+        .bind(get_metadata_field(&metadata, ItemKey::Genre))
+        .bind(get_metadata_field(&metadata, ItemKey::TrackNumber))
+        .bind(get_metadata_field(&metadata, ItemKey::DiscNumber))
+        .bind(get_metadata_field(&metadata, ItemKey::Mood))
         .bind(song_id)
         .execute(&db)
         .await
@@ -198,7 +218,7 @@ fn update_metadata(
     let mut song = SongFile::open(path)?;
     let original_metadata = song.metadata_mut();
 
-    if original_metadata == new_metadata {
+    if original_metadata.as_ref() == Some(new_metadata) {
         return Ok(());
     }
 
@@ -217,8 +237,7 @@ fn update_metadata(
     )?;
 
     tracing::info!("Original metadata: {original_metadata:#?}");
-
-    *original_metadata = new_metadata.clone();
+    song.set_metadata(new_metadata.clone());
 
     tracing::info!("Updated metadata: {:#?}", song.metadata());
     song.write()?;
