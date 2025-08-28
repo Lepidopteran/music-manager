@@ -143,7 +143,7 @@ impl SongFile {
             for (key, value) in metadata.iter() {
                 let key = key.clone().into();
 
-                let split: Vec<_> = value.split(',').map(|s| s.trim()).collect();
+                let split: Vec<_> = value.split(';').map(|s| s.trim()).collect();
 
                 if split.len() == 1 {
                     let item =
@@ -230,7 +230,7 @@ pub fn read_metadata_from_path(path: &Path) -> Result<Metadata> {
                     tag.get_strings(key)
                         .map(|string| string.trim().replace("\0", "").to_string())
                         .collect::<Vec<String>>()
-                        .join(", "),
+                        .join("; "),
                 );
 
                 log::trace!("{key:?}: {value:?}");
@@ -248,7 +248,7 @@ pub fn read_metadata_from_path(path: &Path) -> Result<Metadata> {
                     tag.get_strings(key)
                         .map(|string| string.trim().replace("\0", "").to_string())
                         .collect::<Vec<String>>()
-                        .join(", "),
+                        .join("; "),
                 );
 
                 log::trace!("{key:?}: {value:?}");
