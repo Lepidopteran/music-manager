@@ -135,7 +135,7 @@ impl Task for UpdateSongs {
                 format!("Updating {song_count} song(s)...").as_str(),
             ));
 
-            for (id, metadata) in updated_tracks {
+            for (index, (id, metadata)) in updated_tracks.iter().cloned().enumerate() {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                     status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                     tracing::info!("Refresh metadata cancelled");
@@ -152,7 +152,7 @@ impl Task for UpdateSongs {
                 } else {
                     let _ = tx.send(TaskEvent::progress(
                         format!("Updated song \"{title}\"").as_str(),
-                        id as u64,
+                        index as u64,
                         song_count as u64,
                         Some(2),
                     ));
