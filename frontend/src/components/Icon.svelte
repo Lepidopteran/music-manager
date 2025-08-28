@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { icons as mingcute } from "@iconify-json/mingcute";
-	import json from "@iconify-json/mingcute/icons.json";
 
 	import {
-		iconToHTML,
 		iconToSVG,
-		replaceIDs,
 		getIconData,
 	} from "@iconify/utils";
+
+	import type { Icons } from "@lib/icons";
 	import type { ClassValue } from "svelte/elements";
 
-	type IconName = keyof typeof json.icons;
 
 	interface Props {
-		name: IconName;
+		name: Icons;
 		hFlip?: boolean;
 		vFlip?: boolean;
 		rotate?: number | string;
