@@ -1,20 +1,23 @@
 <script lang="ts">
-	import Icon from "@iconify/svelte";
+	import Icon from "@components/Icon.svelte";
 	import Button from "@components/Button.svelte";
 	import Directories from "@pages/Directories.svelte";
 	import Home from "@pages/Albums.svelte";
 	import Tasks from "@pages/admin/Tasks.svelte";
+	import Logo from "./components/Logo.svelte";
+	import type { Metadata } from "@lib/models";
+	import type { Icons } from "@lib/icons";
+
 	import UniversalRouter, {
 		type Route,
 		type ResolveContext,
 	} from "universal-router";
-	import Logo from "./components/Logo.svelte";
 
 	let menuOpen = $state(true);
 	let theme = $state("dark");
 
 	interface Page extends Route {
-		icon?: string;
+		icon?: Icons;
 	}
 
 	class AppState {
@@ -40,7 +43,7 @@
 		{
 			path: "/",
 			name: "Albums",
-			icon: "mdi:album",
+			icon: "music-fill",
 			action() {
 				return {
 					path: this.path,
@@ -52,7 +55,7 @@
 		{
 			path: "/directories",
 			name: "Directories",
-			icon: "mdi:folder",
+			icon: "folder-fill",
 			action() {
 				return {
 					path: this.path,
@@ -64,7 +67,7 @@
 		{
 			path: "/tasks",
 			name: "Tasks",
-			icon: "mdi:play",
+			icon: "play-fill",
 			action() {
 				return {
 					path: this.path,
@@ -72,7 +75,7 @@
 					pageComponent: Tasks,
 				};
 			},
-		}
+		},
 	];
 
 	const app = new AppState(routes);
@@ -119,7 +122,7 @@
 				class="group size-10 sm:hidden"
 			>
 				<Icon
-					icon="mdi:menu"
+					name="menu-line"
 					class="text-2xl group-data-[active=true]:text-primary transition"
 				/>
 			</Button>
@@ -135,14 +138,16 @@
 	>
 		<nav>
 			{#each routes as route}
-				{@const icon = route.icon as string}
+				{@const icon = route.icon}
 				<a
 					href={route.path as string}
 					onclick={handleNavitionClick}
-					class="font-semibold px-4 flex items-center gap-2 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
+					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
 					data-active={route.path === app.path || undefined}
 				>
-					<Icon {icon} class="text-xl" />
+					{#if icon}
+						<Icon name={icon} size="1.25em" />
+					{/if}
 					{route.name}
 				</a>
 			{/each}

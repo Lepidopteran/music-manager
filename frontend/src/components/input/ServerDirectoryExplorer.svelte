@@ -4,7 +4,7 @@
 	import { untrack } from "svelte";
 
 	import TextInput from "@components/TextInput.svelte";
-	import Icon from "@iconify/svelte";
+	import Icon from "@components/Icon.svelte";
 
 	interface Props {
 		value: string;
@@ -153,7 +153,7 @@
 						}
 					}}
 				>
-					<Icon icon="mdi:folder" class="inline mr-1" inline={true} />
+					<Icon name="folder-fill" class="inline mr-1" inline={true} />
 					{directory}
 				</li>
 			{/each}

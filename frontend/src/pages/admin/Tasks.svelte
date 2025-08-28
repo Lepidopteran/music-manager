@@ -7,7 +7,7 @@
 	import { addSourceEventListener } from "@lib/utils/api";
 	import { onMount } from "svelte";
 	import Button from "@components/Button.svelte";
-	import Icon from "@iconify/svelte";
+	import Icon from "@components/Icon.svelte";
 
 	let tasks: Array<TaskInfo> = $state([]);
 	const events: Array<[TaskEvent, number]> = $state([]);
@@ -93,9 +93,9 @@
 								}}
 							>
 								{#if task.status === "running"}
-									<Icon icon="mingcute:stop-fill" />
+									<Icon name="stop-fill" />
 								{:else}
-									<Icon icon="mingcute:play-fill" />
+									<Icon name="play-fill" />
 								{/if}
 							</Button>
 						</div>
