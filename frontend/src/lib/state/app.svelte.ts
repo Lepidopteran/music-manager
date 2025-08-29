@@ -11,7 +11,7 @@ import type { Component } from "svelte";
 export interface Page extends Route {
 	path: string;
 	name: string;
-	component?: Component<{ state: AppState; [key: string]: unknown }>;
+	component?: Component<{ app: AppState; [key: string]: unknown }>;
 	props?: Record<string, unknown>;
 	icon?: Icons;
 	children?: Array<Page>;
@@ -19,7 +19,7 @@ export interface Page extends Route {
 }
 
 export interface PageComponentProps {
-	state: AppState;
+	app: AppState;
 	[key: string]: unknown;
 }
 

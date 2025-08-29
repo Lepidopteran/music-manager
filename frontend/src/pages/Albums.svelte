@@ -8,7 +8,7 @@
 
 	let selectedItem: Album | Song | null = $state(null);
 
-	let { state: appState }: PageComponentProps = $props();
+	let { app }: PageComponentProps = $props();
 </script>
 
 {#await getAlbums() then albums}

@@ -130,7 +130,7 @@
 	>
 		{#each routes as route}
 			<div hidden={route.path !== app.path}>
-				<route.component state={app} />
+				<route.component app={app} />
 			</div>
 		{/each}
 	</main>
