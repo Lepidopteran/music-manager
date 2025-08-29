@@ -10,7 +10,7 @@
 		"check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "1.9.4",
+		"@biomejs/biome": "^2.2.2",
 		"@iconify-json/mingcute": "^1.2.5",
 		"@iconify/svelte": "^4.2.0",
 		"@iconify/types": "^2.0.0",
