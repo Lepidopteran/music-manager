@@ -33,6 +33,6 @@
 		"@tailwindcss/vite": "^4.1.12",
 		"prettier-plugin-svelte": "^3.4.0",
 		"tailwindcss": "^4.1.12",
-		"universal-router": "^9.2.1"
+		"universal-router": "^10.0.1"
 	}
 }
