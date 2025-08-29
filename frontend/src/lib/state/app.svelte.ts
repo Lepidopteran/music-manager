@@ -1,4 +1,3 @@
-import Home from "@pages/Albums.svelte";
 import type { Song, SongMetadata } from "@lib/models";
 import type { Icons } from "@lib/icons";
 
@@ -7,16 +6,27 @@ import UniversalRouter, {
 	type Route,
 } from "universal-router";
 import { getSongs } from "@api/song";
+import type { Component } from "svelte";
 
 export interface Page extends Route {
+	path: string;
+	name: string;
+	component?: Component<{ state: AppState; [key: string]: unknown }>;
+	props?: Record<string, unknown>;
 	icon?: Icons;
+	children?: Array<Page>;
+	action?: () => void;
+}
+
+export interface PageComponentProps {
+	state: AppState;
+	[key: string]: unknown;
 }
 
 export class AppState {
 	private _router: UniversalRouter;
 	private _path = $state("/");
 	private _name = $state("Home");
-	private _pageComponent = $state(Home);
 	private _tracks = $state<Array<Song>>([]);
 	private _updatedTracks = $state<Array<Song>>([]);
 	private _fetchingTracks = $state(false);
@@ -45,11 +55,10 @@ export class AppState {
 	}
 
 	async changePage(input: string | ResolveContext) {
-		const { path, name, pageComponent } = await this._router.resolve(input);
+		const { path, name } = await this._router.resolve(input);
 
 		this._path = path;
 		this._name = name;
-		this._pageComponent = pageComponent;
 	}
 
 	get path() {
@@ -58,10 +67,6 @@ export class AppState {
 
 	get name() {
 		return this._name;
-	}
-
-	get pageComponent() {
-		return this._pageComponent;
 	}
 
 	get tracks() {

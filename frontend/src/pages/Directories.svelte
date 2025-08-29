@@ -1,11 +1,9 @@
 <script lang="ts">
 	import type { Directory, NewDirectory } from "@lib/models";
 
-	import Icon from "@iconify/svelte";
 	import Button from "@components/Button.svelte";
 	import Modal from "@components/Modal.svelte";
 	import TextInput from "@components/TextInput.svelte";
-
 	import { formatBytes } from "@utils/bytes";
 	import { onMount } from "svelte";
 
@@ -15,6 +13,7 @@
 		deleteDirectory,
 	} from "@api/directory";
 	import ServerDirectoryExplorer from "@components/input/ServerDirectoryExplorer.svelte";
+	import type { AppState, PageComponentProps } from "@lib/state/app.svelte";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -49,6 +48,8 @@
 	onMount(async () => {
 		directories.push(...(await getDirectories()));
 	});
+
+	let props: PageComponentProps = $props();
 </script>
 
 <div class="flex flex-col gap-4 p-4">
@@ -123,7 +124,11 @@
 			placeholder="Name"
 			bind:value={newDirectory.name}
 		/>
-		<ServerDirectoryExplorer label="Location" required bind:value={newDirectory.path} />
+		<ServerDirectoryExplorer
+			label="Location"
+			required
+			bind:value={newDirectory.path}
+		/>
 		<Button variant="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
 </Modal>

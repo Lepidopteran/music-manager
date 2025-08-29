@@ -8,6 +8,7 @@
 	import { onMount } from "svelte";
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
+	import type { PageComponentProps } from "@lib/state/app.svelte";
 
 	let tasks: Array<TaskInfo> = $state([]);
 	const events: Array<[TaskEvent, number]> = $state([]);
@@ -46,6 +47,8 @@
 	onMount(async () => {
 		tasks = await getTasks();
 	});
+
+	let props: PageComponentProps = $props();
 </script>
 
 <div>

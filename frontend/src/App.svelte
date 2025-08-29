@@ -15,6 +15,7 @@
 			path: "/",
 			name: "Albums",
 			icon: "music-fill",
+			component: Home,
 			action() {
 				return {
 					path: this.path,
@@ -27,11 +28,11 @@
 			path: "/directories",
 			name: "Directories",
 			icon: "folder-fill",
+			component: Directories,
 			action() {
 				return {
 					path: this.path,
 					name: this.name,
-					pageComponent: Directories,
 				};
 			},
 		},
@@ -39,17 +40,18 @@
 			path: "/tasks",
 			name: "Tasks",
 			icon: "play-fill",
+			component: Tasks,
 			action() {
 				return {
 					path: this.path,
 					name: this.name,
-					pageComponent: Tasks,
 				};
 			},
 		},
 	];
 
 	const app = new AppState(routes);
+
 	async function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
 
@@ -126,6 +128,10 @@
 	<main
 		class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
 	>
-		<app.pageComponent appState={app} />
+		{#each routes as route}
+			<div hidden={route.path !== app.path}>
+				<route.component state={app} />
+			</div>
+		{/each}
 	</main>
 </div>
