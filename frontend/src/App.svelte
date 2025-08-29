@@ -5,39 +5,10 @@
 	import Home from "@pages/Albums.svelte";
 	import Tasks from "@pages/admin/Tasks.svelte";
 	import Logo from "./components/Logo.svelte";
-	import type { Metadata } from "@lib/models";
-	import type { Icons } from "@lib/icons";
-
-	import UniversalRouter, {
-		type Route,
-		type ResolveContext,
-	} from "universal-router";
+	import { AppState, type Page } from "@lib/state/app.svelte";
 
 	let menuOpen = $state(true);
 	let theme = $state("dark");
-
-	interface Page extends Route {
-		icon?: Icons;
-	}
-
-	class AppState {
-		path = $state("/");
-		name = $state("Home");
-		pageComponent = $state(Home);
-		router: UniversalRouter;
-
-		constructor(routes: Array<Route>) {
-			this.router = new UniversalRouter(routes);
-		}
-
-		async changePage(input: string | ResolveContext) {
-			const { path, name, pageComponent } = await this.router.resolve(input);
-
-			this.path = path;
-			this.name = name;
-			this.pageComponent = pageComponent;
-		}
-	}
 
 	const routes: Array<Page> = [
 		{
@@ -79,7 +50,6 @@
 	];
 
 	const app = new AppState(routes);
-
 	async function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
 
@@ -156,6 +126,6 @@
 	<main
 		class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
 	>
-		<app.pageComponent />
+		<app.pageComponent appState={app} />
 	</main>
 </div>
