@@ -1,14 +1,14 @@
 <script lang="ts">
 	import TextInput from "@components/TextInput.svelte";
 	import Icon from "@components/Icon.svelte";
-	import type { Album, Song } from "@lib/models";
+	import type { Album, DatabaseSong } from "@lib/models";
 	import Cover from "./Cover.svelte";
 	import { isSong } from "@lib/utils/model-guards";
 
 	const excludedFields = ["title", "artist", "id", "path", "parentPath"];
 
 	interface Props {
-		selectedItem: Album | Song | null;
+		selectedItem: Album | DatabaseSong | null;
 		canEdit?: boolean;
 		[props: string]: unknown;
 	}
@@ -33,7 +33,7 @@
 		failedToLoad = false;
 	}
 
-	function mapTracksToFields(tracks: Array<Song>): Map<string, string> {
+	function mapTracksToFields(tracks: Array<DatabaseSong>): Map<string, string> {
 		if (!tracks.length) return new Map();
 
 		const map = new Map<string, string>();
@@ -41,7 +41,7 @@
 		const rest = tracks.slice(1);
 
 		if (!rest.length) {
-			for (const [key, value] of Object.entries(first as Song)) {
+			for (const [key, value] of Object.entries(first as DatabaseSong)) {
 				if (!value || excludedFields.includes(key)) continue;
 				map.set(key, value);
 			}
@@ -53,7 +53,7 @@
 			for (const [key, value] of Object.entries(track)) {
 				if (!value || excludedFields.includes(key)) continue;
 
-				if (value === first?.[key as keyof Song]) {
+				if (value === first?.[key as keyof DatabaseSong]) {
 					map.set(key, value);
 				} else {
 					map.set(key, `Different across (${tracks.length}) tracks`);
@@ -128,7 +128,7 @@
 							label={renameField(key)}
 							floatingLabel={true}
 							{suffixChild}
-							bind:value={selectedItem[key as keyof Song] as string}
+							bind:value={selectedItem[key as keyof DatabaseSong] as string}
 						/>
 					{/if}
 				{/each}
