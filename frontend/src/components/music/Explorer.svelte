@@ -1,32 +1,36 @@
 <script lang="ts">
 	import type { Action } from "svelte/action";
-	import type { Album, Song } from "@lib/models";
+	import type { Song } from "@lib/models";
+	import { SvelteMap } from "svelte/reactivity";
+	type Album = SvelteMap<string, Song[]>;
+
+	// TODO: Add song array support
+	// TODO: Add sorting
+	// TODO: Add search
+	// TODO: Add filtering
+
 	interface Props {
-		albums?: Array<Album>;
+		items?: Album | null;
 		sortBy?: "name";
-		onItemChange?: (item: Album | Song) => void;
+		onItemChange?: (item: [string, Song[]] | Song) => void;
 		[key: string]: unknown;
 	}
 
 	let {
-		albums = [],
+		items = null,
 		sortBy = "name",
 		albumClick,
 		onItemChange,
 		...rest
 	}: Props = $props();
 
-	let sortedAlbums = $state(sortAlbums(albums, sortBy));
-	let selectedItem: Album | Song | null = $state(null);
-
-	function sortAlbums(albums: Array<Album>, mode: "name"): Array<Album> {
-		if (mode === "name") {
-			return [...albums].sort((a, b) => a.title.localeCompare(b.title));
+	let sortedItems = $derived.by(() => {
+		if (items instanceof SvelteMap) {
+			return [...items.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 		}
+	});
 
-		return [...albums];
-	}
-
+	let selectedItem: Song | [string, Song[]] | null = $state(null);
 	let selectedElement: HTMLElement | null = null;
 
 	const selectElement: Action = (node) => {
@@ -48,7 +52,7 @@
 		});
 	};
 
-	function selectItem(item: Album | Song) {
+	function selectItem(item: Song | [string, Song[]]) {
 		selectedItem = item;
 
 		if (onItemChange) {
@@ -57,19 +61,19 @@
 	}
 </script>
 
-{#if albums.length}
+{#if items && items.size > 0}
 	<div class={`flex flex-col overflow-y-auto ${rest.class}`}>
-		{#each sortedAlbums as album}
+		{#each items as [group, tracks]}
 			<details>
 				<summary
 					use:selectElement
-					onclick={() => selectItem(album)}
+					onclick={() => selectItem([group, items.get(group) as Song[]])}
 					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[selected=true]:bg-primary/25"
 				>
-					{album.title}
+					{group}
 				</summary>
 				<ul>
-					{#each album.tracks as track}
+					{#each tracks as track}
 						<li
 							class="pl-4 py-1 data-[selected=true]:bg-primary/25"
 							role="treeitem"
@@ -78,7 +82,7 @@
 							aria-label={`${track.title} by ${track.artist}`}
 							use:selectElement
 						>
-							{track.title}
+							{track.title || track}
 						</li>
 					{/each}
 				</ul>
@@ -87,6 +91,6 @@
 	</div>
 {:else}
 	<div class="h-full flex items-center justify-center">
-		No albums to be displayed :(
+		No items to be displayed :(
 	</div>
 {/if}

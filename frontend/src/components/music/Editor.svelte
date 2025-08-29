@@ -1,16 +1,17 @@
 <script lang="ts">
 	import TextInput from "@components/TextInput.svelte";
 	import Icon from "@components/Icon.svelte";
-	import type { Album, DatabaseSong } from "@lib/models";
+	import type { Song } from "@lib/models";
 	import Cover from "./Cover.svelte";
 	import { isSong } from "@lib/utils/model-guards";
 
 	const excludedFields = ["title", "artist", "id", "path", "parentPath"];
 
+	type Album = [string, Song[]];
+
 	interface Props {
-		selectedItem: Album | DatabaseSong | null;
+		selectedItem: Album | Song | null;
 		canEdit?: boolean;
-		[props: string]: unknown;
 	}
 
 	function renameField(key: string) {
@@ -19,7 +20,7 @@
 			.replace(/^./, (str) => str.toUpperCase());
 	}
 
-	let { selectedItem = $bindable(null), ...rest }: Props = $props();
+	let { selectedItem = $bindable() }: Props = $props();
 
 	let imageHeight: number | null | undefined = $state();
 	let imageWidth: number | null | undefined = $state();
@@ -33,17 +34,17 @@
 		failedToLoad = false;
 	}
 
-	function mapTracksToFields(tracks: Array<DatabaseSong>): Map<string, string> {
-		if (!tracks.length) return new Map();
+	function mapTracksToFields(tracks: [string, Song[]]): Map<string, string> {
+		if (!tracks[1].length) return new Map();
 
 		const map = new Map<string, string>();
-		const first = tracks.at(0);
-		const rest = tracks.slice(1);
+		const first = tracks[1].at(0);
+		const rest = tracks[1].slice(1);
 
 		if (!rest.length) {
-			for (const [key, value] of Object.entries(first as DatabaseSong)) {
+			for (const [key, value] of Object.entries(first as Song)) {
 				if (!value || excludedFields.includes(key)) continue;
-				map.set(key, value);
+				map.set(key, value as string);
 			}
 
 			return map;
@@ -53,10 +54,10 @@
 			for (const [key, value] of Object.entries(track)) {
 				if (!value || excludedFields.includes(key)) continue;
 
-				if (value === first?.[key as keyof DatabaseSong]) {
+				if (first && value === first[key as keyof Song]) {
 					map.set(key, value);
 				} else {
-					map.set(key, `Different across (${tracks.length}) tracks`);
+					map.set(key, `Different across (${tracks[1].length}) tracks`);
 				}
 			}
 		}
@@ -69,10 +70,7 @@
 	<Icon name="edit-3-line" />
 {/snippet}
 
-<div
-	{...rest}
-	class={`space-y-2 relative h-full overflow-y-auto pt-6 ${rest.class || ""}`}
->
+<div class={`space-y-2 relative h-full overflow-y-auto pt-6`}>
 	{#if selectedItem}
 		<div class="text-center text-sm">
 			<Cover
@@ -103,24 +101,34 @@
 				</p>
 			{/if}
 		</div>
-		<div class="flex flex-col gap-2 mx-auto justify-center items-center md:w-3/5">
+		<div
+			class="flex flex-col gap-2 mx-auto justify-center items-center md:w-3/5"
+		>
 			<TextInput
 				variant="ghost"
 				class="font-bold text-center text-2xl truncate w-full"
-				placeholder={isSong(selectedItem) ? "Title..." : "Album Title..."}
-				bind:value={selectedItem.title as string}
+				placeholder={!Array.isArray(selectedItem)
+					? "Title..."
+					: "Album Title..."}
+				value={!Array.isArray(selectedItem)
+					? selectedItem.title
+					: selectedItem[0]}
 				{suffixChild}
 			></TextInput>
 			<TextInput
 				variant="ghost"
 				class="text-center block w-full"
-				placeholder={isSong(selectedItem) ? "Artist..." : "Album Artist..."}
-				bind:value={selectedItem.artist as string}
+				placeholder={!Array.isArray(selectedItem)
+					? "Artist..."
+					: "Album Artist..."}
+				value={!Array.isArray(selectedItem)
+					? selectedItem.artist
+					: selectedItem[1][0].artist}
 				{suffixChild}
 			></TextInput>
 		</div>
 		<div class="space-y-2 mt-2 px-2 md:w-3/5 mx-auto">
-			{#if isSong(selectedItem)}
+			{#if !Array.isArray(selectedItem)}
 				{#each Object.entries(selectedItem) as [key, value]}
 					{#if value && !excludedFields.includes(key)}
 						<TextInput
@@ -128,12 +136,12 @@
 							label={renameField(key)}
 							floatingLabel={true}
 							{suffixChild}
-							bind:value={selectedItem[key as keyof DatabaseSong] as string}
+							value={selectedItem[key as keyof Song] as string}
 						/>
 					{/if}
 				{/each}
 			{:else}
-				{#each mapTracksToFields(selectedItem.tracks).entries() as [key, value]}
+				{#each mapTracksToFields(selectedItem).entries() as [key, value]}
 					<TextInput
 						class="w-full"
 						label={renameField(key)}

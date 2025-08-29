@@ -1,6 +1,8 @@
 <script lang="ts">
-	import type { Album, Song } from "@lib/models";
+	import type { Song } from "@lib/models";
 	import MissingCover from "./MissingCover.svelte";
+
+	type Album = [string, Song[]];
 
 	import { isAlbum } from "@utils/model-guards";
 	import { untrack } from "svelte";
@@ -74,8 +76,8 @@
 		imageHeight = null;
 		imageWidth = null;
 
-		src = isAlbum(item)
-			? `/api/albums/${encodeURIComponent(untrack(() => item.title))}/cover-art/${artType}.jpg`
+		src = Array.isArray(item) 
+			? `/api/albums/${encodeURIComponent(untrack(() => item[0]))}/cover-art/${artType}.jpg`
 			: `/api/songs/${item.id}/cover-art/${artType}.jpg`;
 
 		if (onLoading) {
@@ -91,7 +93,7 @@
 	<img
 		{onload}
 		{onerror}
-		alt={alt || `Cover art for ${item.title}`}
+		alt={alt || `Cover art for ${Array.isArray(item) ? item[1][0].album : item.title}`}
 		bind:this={image}
 		class="size-full object-cover motion-safe:transition duration-300 ease-in-out"
 		decoding="async"

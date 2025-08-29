@@ -6,18 +6,12 @@
 	import { getAlbums } from "@api/album";
 	import type { PageComponentProps } from "@lib/state/app.svelte";
 
-	let selectedItem: Album | Song | null = $state(null);
+	let selectedItem: [string, Song[]] | Song | null = $state(null);
 
 	let { app }: PageComponentProps = $props();
 </script>
 
-{#await getAlbums() then albums}
-	<div class="grid md:grid-cols-2 h-full">
-		<Explorer
-			{albums}
-			onItemChange={(item) => (selectedItem = item)}
-			class="h-full"
-		/>
-		<Editor bind:selectedItem={selectedItem} />
-	</div>
-{/await}
+<div class="grid md:grid-cols-2 h-svh">
+	<Explorer items={app.albums} onItemChange={(item) => (selectedItem = item)} ></Explorer>
+	<Editor bind:selectedItem={selectedItem} />
+</div>

@@ -140,6 +140,7 @@ export interface SongMetadata {
 
 export interface Song extends SongMetadata {
 	id: number;
+	path: string;
 }
 
 export type TaskStatus = "idle" | "running" | "stopped";
