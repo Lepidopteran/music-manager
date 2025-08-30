@@ -39,6 +39,7 @@ export class AppState {
 	private _editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
 	private _artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	private _albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
+	selectedItem: Song | [string, Song[]] | null = $state(null);
 
 	private _worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
