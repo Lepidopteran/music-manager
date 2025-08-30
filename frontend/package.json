@@ -31,6 +31,7 @@
 		"@fontsource-variable/jetbrains-mono": "^5.2.6",
 		"@iconify/utils": "^2.3.0",
 		"@tailwindcss/vite": "^4.1.12",
+		"paneforge": "^1.0.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"tailwindcss": "^4.1.12",
 		"universal-router": "^10.0.1"
