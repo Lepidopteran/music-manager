@@ -28,6 +28,8 @@ export interface PageComponentProps {
 	[key: string]: unknown;
 }
 
+export type Item = Song | [string, Song[]];
+
 export class AppState {
 	private _router: UniversalRouter;
 	private _path = $state("/");
@@ -39,7 +41,7 @@ export class AppState {
 	private _editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
 	private _artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	private _albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
-	selectedItem: Song | [string, Song[]] | null = $state(null);
+	private _selectedItem: Item | null = $state(null);
 
 	private _worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
@@ -183,4 +185,40 @@ export class AppState {
 	get fetchingTracks() {
 		return this._fetchingTracks;
 	}
+
+	get selectedItem() {
+		return this._selectedItem;
+	}
+
+	set selectedItem(item: Item | null) {
+		if (isItemEqual(this._selectedItem, item)) {
+			return;
+		}
+
+		this._selectedItem = item;
+	}
+}
+
+export function isSong(item: Item): item is Song {
+	return (item as Song).id !== undefined;
+}
+
+export function isGroup(item: Item): item is [string, Song[]] {
+	return (item as [string, Song[]])[1] !== undefined;
+}
+
+export function isItemEqual(a: Item | null, b: Item | null): boolean {
+	if (a === null || b === null) {
+		return a === b;
+	}
+
+	if (isSong(a) && isSong(b)) {
+		return a.id === b.id;
+	}
+
+	if (isGroup(a) && isGroup(b)) {
+		return a[0] === b[0];
+	}
+
+	return false;
 }
