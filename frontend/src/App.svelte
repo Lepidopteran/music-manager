@@ -20,7 +20,7 @@
 
 	const routes: Array<Page> = [
 		{
-			path: "/albums",
+			path: "/",
 			name: "Albums",
 			icon: "album-2-fill",
 			component: Albums,
