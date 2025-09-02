@@ -1,16 +1,15 @@
 <script lang="ts">
 	import TextInput from "@components/TextInput.svelte";
 	import Icon from "@components/Icon.svelte";
-	import type { Song } from "@lib/models";
 	import Cover from "./Cover.svelte";
-	import { isSong } from "@lib/utils/model-guards";
+
+	import { isSong, type Item } from "@lib/state/app.svelte";
+	import type { Song } from "@lib/models";
 
 	const excludedFields = ["title", "artist", "id", "path", "parentPath"];
 
-	type Album = [string, Song[]];
-
 	interface Props {
-		selectedItem: Album | Song | null;
+		selectedItem: Item | null;
 		canEdit?: boolean;
 	}
 
@@ -34,12 +33,12 @@
 		failedToLoad = false;
 	}
 
-	function mapTracksToFields(tracks: [string, Song[]]): Map<string, string> {
-		if (!tracks[1].length) return new Map();
+	function mapTracksToFields(songs: Song[]): Map<string, string> {
+		if (!songs.length) return new Map();
 
 		const map = new Map<string, string>();
-		const first = tracks[1].at(0);
-		const rest = tracks[1].slice(1);
+		const first = songs.at(0);
+		const rest = songs.slice(1);
 
 		if (!rest.length) {
 			for (const [key, value] of Object.entries(first as Song)) {
@@ -57,7 +56,7 @@
 				if (first && value === first[key as keyof Song]) {
 					map.set(key, value);
 				} else {
-					map.set(key, `Different across (${tracks[1].length}) tracks`);
+					map.set(key, `Different across (${songs.length}) tracks`);
 				}
 			}
 		}
@@ -107,12 +106,12 @@
 			<TextInput
 				variant="ghost"
 				class="font-bold text-center text-2xl truncate w-full"
-				placeholder={!Array.isArray(selectedItem)
+				placeholder={isSong(selectedItem)
 					? "Title..."
 					: "Album Title..."}
-				value={!Array.isArray(selectedItem)
-					? selectedItem.title
-					: selectedItem[0]}
+				value={isSong(selectedItem)
+					? selectedItem.song.title
+					: selectedItem.label}
 				{suffixChild}
 			></TextInput>
 			<TextInput
@@ -121,27 +120,27 @@
 				placeholder={!Array.isArray(selectedItem)
 					? "Artist..."
 					: "Album Artist..."}
-				value={!Array.isArray(selectedItem)
-					? selectedItem.artist
-					: selectedItem[1][0].artist}
+				value={isSong(selectedItem)
+					? selectedItem.song.artist
+					: selectedItem.songs[0].artist}
 				{suffixChild}
 			></TextInput>
 		</div>
 		<div class="space-y-2 mt-2 px-2 md:w-3/5 mx-auto">
-			{#if !Array.isArray(selectedItem)}
-				{#each Object.entries(selectedItem) as [key, value]}
+			{#if isSong(selectedItem)}
+				{#each Object.entries(selectedItem.song) as [key, value]}
 					{#if value && !excludedFields.includes(key)}
 						<TextInput
 							class="w-full"
 							label={renameField(key)}
 							floatingLabel={true}
 							{suffixChild}
-							value={selectedItem[key as keyof Song] as string}
+							bind:value={selectedItem.song[key as keyof Song] as string}
 						/>
 					{/if}
 				{/each}
 			{:else}
-				{#each mapTracksToFields(selectedItem).entries() as [key, value]}
+				{#each mapTracksToFields(selectedItem.songs).entries() as [key, value]}
 					<TextInput
 						class="w-full"
 						label={renameField(key)}

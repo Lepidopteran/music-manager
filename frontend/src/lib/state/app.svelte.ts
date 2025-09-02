@@ -28,7 +28,9 @@ export interface PageComponentProps {
 	[key: string]: unknown;
 }
 
-export type Item = Song | [string, Song[]];
+export type Item =
+	| { type: "song"; song: Song }
+	| { type: "group"; label: string; songs: Song[] };
 
 export class AppState {
 	private _router: UniversalRouter;
@@ -199,12 +201,12 @@ export class AppState {
 	}
 }
 
-export function isSong(item: Item): item is Song {
-	return (item as Song).id !== undefined;
+export function isSong(item: Item): item is Extract<Item, { type: "song" }> {
+	return (item).type === "song";
 }
 
-export function isGroup(item: Item): item is [string, Song[]] {
-	return (item as [string, Song[]])[1] !== undefined;
+export function isGroup(item: Item): item is Extract<Item, { type: "group" }> {
+	return (item).type === "group";
 }
 
 export function isItemEqual(a: Item | null, b: Item | null): boolean {
@@ -213,11 +215,11 @@ export function isItemEqual(a: Item | null, b: Item | null): boolean {
 	}
 
 	if (isSong(a) && isSong(b)) {
-		return a.id === b.id;
+		return a.song.id === b.song.id;
 	}
 
 	if (isGroup(a) && isGroup(b)) {
-		return a[0] === b[0];
+		return a.label === b.label;
 	}
 
 	return false;
