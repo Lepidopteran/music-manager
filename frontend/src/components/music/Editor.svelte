@@ -38,16 +38,6 @@
 	function onCoverLoad() {
 		failedToLoad = false;
 	}
-
-	$inspect(selectedItem).with((type, value) => {
-		if (type === "update" && value && isGroup(value)) {
-			console.table(
-				value.songs.map((song) => ({
-					...song,
-				})),
-			);
-		}
-	});
 </script>
 
 {#snippet suffixChild()}
