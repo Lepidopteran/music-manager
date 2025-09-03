@@ -27,6 +27,7 @@ export interface PageComponentProps {
 	app: AppState;
 	[key: string]: unknown;
 }
+import { match } from "ts-pattern";
 
 export type Item =
 	| { type: "song"; song: Song }
@@ -58,28 +59,27 @@ export class AppState {
 		$inspect(`Organizing albums: ${this._organizingAlbums}`);
 
 		this._worker.onmessage = (event: MessageEvent<SongWorkerResponse>) => {
-			const { type, payload } = event.data;
+			const { data } = event;
 
-			console.log(type, payload);
-			switch (type) {
-				case "initialize":
-					this._tracks = payload;
-					break;
-				case "groupArtists":
-					for (const [key, value] of payload) {
+			match(data)
+				.with({ type: "initialize" }, (data) => {
+					this._tracks = data.payload;
+				})
+				.with({ type: "groupArtists" }, (data) => {
+					for (const [key, value] of data.payload) {
 						this._artists.set(key, value);
 					}
 
 					this._organizingArtists = false;
-					break;
-				case "groupAlbums":
-					for (const [key, value] of payload) {
+				})
+				.with({ type: "groupAlbums" }, (data) => {
+					for (const [key, value] of data.payload) {
 						this._albums.set(key, value);
 					}
 
 					this._organizingAlbums = false;
-					break;
-			}
+				})
+				.exhaustive();
 		};
 
 		$effect(() => {
