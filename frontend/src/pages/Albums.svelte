@@ -28,23 +28,38 @@
 		{#each app.albums as [group, tracks]}
 			<details>
 				<summary
-					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[selected=true]:bg-primary/25"
+					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[edited=true]:bg-yellow-500/25 data-[selected=true]:bg-primary/25"
 					aria-label={group}
 					data-selected={isSelectedItem(group)}
+					data-edited={tracks.some((track) => app.editedTracks.has(track.id.toString()))}
 					onclick={() =>
-						(app.selectedItem = { type: "group", label: group, songs: tracks })}
+						(app.selectedItem = {
+							type: "group",
+							label: group,
+							songs: tracks.map(
+								(song) => app.editedTracks.get(song.id.toString()) || song,
+							),
+						})}
 				>
 					{group}
 				</summary>
 				<ul>
 					{#each tracks as track}
+						{@const trackIdString = track.id.toString()}
 						<li
-							class="pl-4 py-1 data-[selected=true]:bg-primary/25 select-none cursor-pointer hover:bg-primary/5"
+							class="pl-4 py-1 data-[selected=true]:bg-primary/25 data-[edited=true]:bg-yellow-500/10 select-none cursor-pointer hover:bg-primary/5"
 							aria-label={`${track.title} by ${track.artist}`}
 							data-selected={isSelectedItem(track)}
-							onclick={() => (app.selectedItem = { type: "song", song: track })}
+							data-edited={app.editedTracks.has(track.id.toString())}
+							onclick={() =>
+								(app.selectedItem = {
+									type: "song",
+									song: app.editedTracks.get(trackIdString) || track,
+								})}
 						>
-							{track.title || track}
+							{app.editedTracks.get(trackIdString)?.title ||
+								track.title ||
+								track.path}
 						</li>
 					{/each}
 				</ul>
