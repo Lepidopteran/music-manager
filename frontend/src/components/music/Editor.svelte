@@ -39,37 +39,6 @@
 		failedToLoad = false;
 	}
 
-	function mapTracksToFields(songs: Song[]): Map<string, string | null> {
-		if (!songs.length) return new Map();
-
-		const map = new Map<string, string | null>();
-		const first = songs.at(0);
-		const rest = songs.slice(1);
-
-		if (!rest.length) {
-			for (const [key, value] of Object.entries(first as Song)) {
-				if (!value || excludedFields.includes(key as keyof Song)) continue;
-				map.set(key, value as string);
-			}
-
-			return map;
-		}
-
-		for (const track of rest) {
-			for (const [key, value] of Object.entries(track)) {
-				if (!value || excludedFields.includes(key as keyof Song)) continue;
-
-				if (first && value === first[key as keyof Song]) {
-					map.set(key, value);
-				} else {
-					map.set(key, null);
-				}
-			}
-		}
-
-		return map;
-	}
-
 	$inspect(selectedItem).with((type, value) => {
 		if (type === "update" && value && isGroup(value)) {
 			console.table(
