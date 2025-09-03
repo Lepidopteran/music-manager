@@ -148,7 +148,7 @@
 				].sort() as Array<keyof Song>}
 
 				{#each keys as key}
-					{#if !excludedFields.includes(key) && selectedItem.songs.every((song) => song[key] !== null && song[key] !== undefined)}
+					{#if !excludedFields.includes(key) && selectedItem.songs.some((song) => song[key] !== null && song[key] !== undefined)}
 						<TextInput
 							class="w-full"
 							label={renameField(key)}
