@@ -21,7 +21,11 @@ export type Item =
 export interface Page extends Route {
 	path: string;
 	name: string;
-	component?: Component<{ app: AppState; [key: string]: unknown }>;
+	component?: Component<{
+		app: AppState;
+		visible: boolean;
+		[key: string]: unknown;
+	}>;
 	props?: Record<string, unknown>;
 	icon?: Icons;
 	children?: Array<Page>;
@@ -36,6 +40,7 @@ export interface PageAction {
 
 export interface PageComponentProps {
 	app: AppState;
+	visible: boolean;
 	[key: string]: unknown;
 }
 
