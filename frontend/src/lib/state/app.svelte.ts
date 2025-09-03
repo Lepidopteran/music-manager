@@ -96,6 +96,13 @@ export class AppState {
 				.exhaustive();
 		};
 
+		// TODO: Consider trying an alternative way to update updatedTracks
+		$effect(() => {
+			if (this._selectedItem) {
+				this._editItem(this._selectedItem);
+			}
+		});
+
 		$effect(() => {
 			if (this._tracks.length > 0) {
 				if (this.autoOrganizeArtists) {
@@ -121,21 +128,6 @@ export class AppState {
 		}
 	}
 
-	editTrack(track: Song) {
-		const original = this._tracks.find((t) => t.id === track.id) as Song;
-
-		if (
-			this._editedTracks.has(track.id.toString()) &&
-			JSON.stringify(original) === JSON.stringify(track)
-		) {
-			this._editedTracks.delete(track.id.toString());
-
-			return;
-		}
-
-		this._editedTracks.set(track.id.toString(), track);
-	}
-
 	async fetchTracks() {
 		const tracks: Array<Song> = (await getSongs()) as Array<Song>;
 		this._sendMessage({
@@ -145,7 +137,9 @@ export class AppState {
 	}
 
 	async changePage(input: string | ResolveContext) {
-		const { path, name, callback } = (await this._router.resolve(input)) as PageAction;
+		const { path, name, callback } = (await this._router.resolve(
+			input,
+		)) as PageAction;
 
 		this._path = path;
 		this._name = name;
@@ -169,6 +163,36 @@ export class AppState {
 
 	private _sendMessage(message: SongWorkerRequest) {
 		this._worker.postMessage(message);
+	}
+
+	private _editItem(item: Item) {
+		if (isGroup(item)) {
+			for (const song of item.songs) {
+				this._editItem({ type: "song", song });
+			}
+
+			return;
+		}
+
+		const original = this._tracks.find((t) => t.id === item.song.id);
+
+		if (
+			original &&
+			// @ts-expect-error
+			Object.keys(original).every((key: keyof Song) => {
+				// TODO: compare unknown field
+				if (key === "unknown") {
+					return true;
+				}
+
+				return original[key] === item.song[key];
+			})
+		) {
+			this._editedTracks.delete(item.song.id.toString());
+			return;
+		}
+
+		this._editedTracks.set(item.song.id.toString(), item.song);
 	}
 
 	get path() {
@@ -219,7 +243,6 @@ export class AppState {
 		this._selectedItem = item;
 	}
 }
-
 
 export function isSong(item: Item): item is Extract<Item, { type: "song" }> {
 	return item.type === "song";
