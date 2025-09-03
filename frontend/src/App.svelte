@@ -159,7 +159,7 @@
 			<Pane minSize={onMobile.current ? 0 : 30}>
 				{#each routes as route}
 					<div class="h-full" hidden={route.path !== app.path}>
-						<route.component {app} />
+						<route.component {app} visible={route.path === app.path} />
 					</div>
 				{/each}
 			</Pane>
