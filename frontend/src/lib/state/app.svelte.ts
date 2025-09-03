@@ -220,12 +220,13 @@ export class AppState {
 	}
 }
 
+
 export function isSong(item: Item): item is Extract<Item, { type: "song" }> {
-	return (item).type === "song";
+	return item.type === "song";
 }
 
 export function isGroup(item: Item): item is Extract<Item, { type: "group" }> {
-	return (item).type === "group";
+	return item.type === "group";
 }
 
 export function isItemEqual(a: Item | null, b: Item | null): boolean {
