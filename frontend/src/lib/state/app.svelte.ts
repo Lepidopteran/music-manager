@@ -12,6 +12,11 @@ import type {
 	SongWorkerRequest,
 	SongWorkerResponse,
 } from "@lib/worker-messages";
+import { match } from "ts-pattern";
+
+export type Item =
+	| { type: "song"; song: Song }
+	| { type: "group"; label: string; songs: Song[] };
 
 export interface Page extends Route {
 	path: string;
@@ -20,18 +25,19 @@ export interface Page extends Route {
 	props?: Record<string, unknown>;
 	icon?: Icons;
 	children?: Array<Page>;
-	action?: () => void;
+	action?: () => PageAction;
+}
+
+export interface PageAction {
+	name: string;
+	path: string;
+	callback?: (app: AppState) => void;
 }
 
 export interface PageComponentProps {
 	app: AppState;
 	[key: string]: unknown;
 }
-import { match } from "ts-pattern";
-
-export type Item =
-	| { type: "song"; song: Song }
-	| { type: "group"; label: string; songs: Song[] };
 
 export class AppState {
 	private _router: UniversalRouter;
@@ -130,10 +136,14 @@ export class AppState {
 	}
 
 	async changePage(input: string | ResolveContext) {
-		const { path, name } = await this._router.resolve(input);
+		const { path, name, callback } = (await this._router.resolve(input)) as PageAction;
 
 		this._path = path;
 		this._name = name;
+
+		if (callback) {
+			callback(this);
+		}
 	}
 
 	scheduleOrganizeArtists() {
