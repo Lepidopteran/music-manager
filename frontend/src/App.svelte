@@ -28,6 +28,11 @@
 				return {
 					path: this.path,
 					name: this.name,
+					callback: (app) => {
+						if (!app.autoOrganizeAlbums) {
+							app.autoOrganizeAlbums = true;
+						}
+					}
 				};
 			},
 		},

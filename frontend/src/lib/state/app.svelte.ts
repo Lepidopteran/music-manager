@@ -56,6 +56,9 @@ export class AppState {
 		new URL("../workers/song.ts", import.meta.url),
 	);
 
+	autoOrganizeArtists = $state(false);
+	autoOrganizeAlbums = $state(false);
+
 	constructor(routes: Array<Route>) {
 		this._router = new UniversalRouter(routes);
 		this._fetchingTracks = true;
@@ -90,14 +93,15 @@ export class AppState {
 
 		$effect(() => {
 			if (this._tracks.length > 0) {
-				this.scheduleOrganizeAlbums();
-				this.scheduleOrganizeArtists();
+				if (this.autoOrganizeArtists) {
+					this.scheduleOrganizeArtists();
+				}
+
+				if (this.autoOrganizeAlbums) {
+					this.scheduleOrganizeAlbums();
+				}
 			}
 		});
-
-		$inspect(this._tracks.length, "Tracks");
-		$inspect(this._artists.size, "Artists");
-		$inspect(this._albums.size, "Albums");
 
 		this.fetchTracks();
 	}
