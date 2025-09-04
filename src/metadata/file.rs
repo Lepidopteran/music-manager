@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 /// Similar to [`FileType`] from [lofty](https://crates.io/crates/lofty), except with [`Serialize`] and [`Deserialize`] traits implemented.
 #[non_exhaustive]
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum SongFileType {
     Aac,
     Aiff,
