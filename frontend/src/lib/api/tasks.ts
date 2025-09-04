@@ -1,4 +1,4 @@
-import type { TaskEvent, TaskInfo } from "@lib/models";
+import type { TaskInfo } from "@bindings/TaskInfo";
 import { fetchJson, fetchText } from "@lib/utils/api";
 
 export async function getTasks(): Promise<TaskInfo[]> {

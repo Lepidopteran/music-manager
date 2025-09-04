@@ -10,6 +10,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@api": resolve(__dirname, "src/lib/api"),
+			"@bindings": resolve(__dirname, "src/lib/bindings"),
 			"@actions": resolve(__dirname, "src/lib/actions"),
 			"@assets": resolve(__dirname, "src/assets"),
 			"@components": resolve(__dirname, "src/components"),

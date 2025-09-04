@@ -1,9 +1,12 @@
 //! Contains tag types and utility functions.
 
+use ts_rs::TS;
+
 /// Duplicate of [`TagType`](lofty::tag::TagType) from [lofty](https://crates.io/crates/lofty), except with [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize) traits implemented.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum TagType {
     Ape,
     Id3v1,
@@ -18,8 +21,9 @@ pub enum TagType {
 ///
 /// Additionally, this enum has the [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize) traits implemented and maps to and from Lofty [`ItemKey`](lofty::tag::ItemKey).
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "SongMetadataKey")]
 pub enum ItemKey {
     Album,
     AlbumArtist,

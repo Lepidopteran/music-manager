@@ -1,12 +1,14 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::Serialize;
+use ts_rs::TS;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
 use tokio::sync::watch::Receiver;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 #[repr(u8)]
 pub enum TaskStatus {
     #[default]
@@ -37,18 +39,22 @@ pub struct TaskState {
     pub completed_at: Option<OffsetDateTime>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "TaskInfo", export)]
 pub struct TaskReport {
     pub id: String,
     pub name: String,
     pub description: String,
     pub steps: u8,
     pub status: TaskStatus,
+    #[ts(type = "Date")]
     #[serde(with = "time::serde::rfc3339::option")]
     pub completed_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339::option")]
+    #[ts(type = "Date")]
     pub started_at: Option<OffsetDateTime>,
+    #[ts(type = "Date")]
     #[serde(with = "time::serde::rfc3339::option")]
     pub stopped_at: Option<OffsetDateTime>,
 }
@@ -113,8 +119,9 @@ impl Default for TaskInfo {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum TaskEventType {
     #[default]
     Initial,
@@ -127,14 +134,16 @@ pub enum TaskEventType {
     Stop,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct TaskEvent {
     pub kind: TaskEventType,
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
     pub step: Option<u8>,
+    #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 }
 

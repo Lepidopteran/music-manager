@@ -1,5 +1,6 @@
-import { fetchJson } from "../utils/api";
-import type { Directory, NewDirectory } from "../models";
+import type { Directory } from "@bindings/Directory";
+import type { NewDirectory } from "@bindings/NewDirectory";
+import { fetchJson } from "@utils/api";
 
 /**
  * Fetch the list of directories.

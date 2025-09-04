@@ -2,15 +2,19 @@
 
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
+use ts_rs::TS;
 
-#[derive(Deserialize, Serialize, FromRow)]
+#[derive(Deserialize, Serialize, FromRow, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename = "NewDirectory", export)]
 pub struct Directory {
     pub name: String,
     pub path: String,
 }
 
-#[derive(Deserialize, Serialize, FromRow, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, FromRow, Debug, Clone, TS, Default)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "DatabaseSong", export)]
 pub struct Song {
     pub id: i64,
     pub path: String,

@@ -14,18 +14,22 @@ use lofty::{
 use lofty::{prelude::*, read_from, tag::Tag};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use ts_rs::TS;
 use super::{
     file::SongFileType,
     item::{ItemKey, TagType},
     Result,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "SongMetadata")]
+#[ts(export)]
 pub struct Metadata {
     #[serde(flatten)]
     fields: BTreeMap<ItemKey, String>,
     #[serde(default = "BTreeMap::new")]
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     unknown: BTreeMap<String, String>,
 }
 
@@ -60,8 +64,9 @@ pub enum SongError {
     NoTag,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct SongFile {
     /// The path to the file
     path: PathBuf,
@@ -69,9 +74,11 @@ pub struct SongFile {
     tag_type: TagType,
     /// The type of file
     file_type: SongFileType,
+    #[ts(type = "Date")]
     #[serde(with = "time::serde::rfc3339")]
     /// System time when the file was created
     created: OffsetDateTime,
+    #[ts(type = "Date")]
     #[serde(with = "time::serde::rfc3339")]
     /// System time when the file was last modified
     last_modified: OffsetDateTime,

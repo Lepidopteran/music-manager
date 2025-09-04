@@ -1,4 +1,4 @@
-import type { Album } from "../models";
+import type { Album } from "@bindings/Album";
 import { fetchJson } from "../utils/api";
 
 export async function getAlbums(): Promise<Album[]> {

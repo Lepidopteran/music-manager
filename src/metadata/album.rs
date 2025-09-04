@@ -1,9 +1,13 @@
+use ts_rs::TS;
+
 use crate::metadata::item::ItemKey;
 
 use super::{Error, Metadata as SongMetadata};
 
-#[derive(Debug, Clone, Default, serde::Serialize)]
+#[derive(Debug, Clone, Default, TS, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "Album")]
+#[ts(export)]
 pub struct Album {
     pub title: String,
     pub tracks: Vec<SongMetadata>,

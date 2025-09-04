@@ -1,10 +1,12 @@
 use lofty::file::FileType;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// Similar to [`FileType`] from [lofty](https://crates.io/crates/lofty), except with [`Serialize`] and [`Deserialize`] traits implemented.
 #[non_exhaustive]
-#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum SongFileType {
     Aac,
     Aiff,

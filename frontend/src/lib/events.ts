@@ -1,4 +1,4 @@
-import type { TaskEvent } from "./models";
+import type { TaskEvent } from "@bindings/TaskEvent";
 
 declare global {
 	interface EventSourceEventMap {

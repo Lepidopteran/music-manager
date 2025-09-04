@@ -1,4 +1,4 @@
-import type { Song, SongMetadata } from "@lib/models";
+import type { Song } from "@lib/models";
 import type { Icons } from "@lib/icons";
 import { SvelteMap } from "svelte/reactivity";
 
@@ -7,12 +7,13 @@ import UniversalRouter, {
 	type Route,
 } from "universal-router";
 import { getSongs } from "@api/song";
-import { type Component, untrack } from "svelte";
+import type { Component } from "svelte";
 import type {
 	SongWorkerRequest,
 	SongWorkerResponse,
 } from "@lib/worker-messages";
 import { match } from "ts-pattern";
+import type { SongMetadata } from "@bindings/SongMetadata";
 
 export type Item =
 	| { type: "song"; song: Song }
@@ -118,7 +119,7 @@ export class AppState {
 		this.fetchTracks();
 	}
 
-	extendTrackInfo(id: number, info: SongMetadata) {
+	extendTrackInfo(id: bigint, info: SongMetadata) {
 		const track = this._tracks.find((track) => track.id === id);
 
 		if (track) {

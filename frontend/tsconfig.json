@@ -18,6 +18,7 @@
 		"baseUrl": ".",
 		"paths": {
 			"@api/*": ["src/lib/api/*"],
+			"@bindings/*": ["src/lib/bindings/*"],
 			"@actions/*": ["src/lib/actions/*"],
 			"@assets/*": ["src/assets/*"],
 			"@components/*": ["src/components/*"],

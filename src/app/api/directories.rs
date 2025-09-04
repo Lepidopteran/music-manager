@@ -12,6 +12,7 @@ use axum::{
 
 use sqlx::error::ErrorKind;
 use sysinfo::Disks;
+use ts_rs::TS;
 
 use crate::{
     app::{AppState, Database},
@@ -19,8 +20,9 @@ use crate::{
     utils::*,
 };
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 struct Directory {
     name: String,
     path: String,

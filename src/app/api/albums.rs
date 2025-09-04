@@ -8,10 +8,12 @@ use axum::{
     Json, Router,
 };
 use sqlx::query_as;
+use ts_rs::TS;
 
 use crate::{app::AppState, db::Song, utils::*};
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, TS)]
+#[ts(rename = "Album", export)]
 pub struct Album {
     title: String,
     artist: Option<String>,

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { Directory, NewDirectory } from "@lib/models";
+	import type { NewDirectory } from "@bindings/NewDirectory";
+	import type { Directory } from "@bindings/Directory";
 
 	import Button from "@components/Button.svelte";
 	import Modal from "@components/Modal.svelte";
