@@ -134,16 +134,14 @@ pub enum TaskEventType {
     Stop,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct TaskEvent {
     pub kind: TaskEventType,
     pub message: String,
     pub current: Option<u64>,
     pub total: Option<u64>,
     pub step: Option<u8>,
-    #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 }
 

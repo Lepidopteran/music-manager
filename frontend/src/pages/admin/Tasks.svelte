@@ -2,13 +2,14 @@
 	import { getTasks, startTask, stopTask } from "@api/tasks";
 	import Event from "@components/Event.svelte";
 	import Progress from "@components/Progress.svelte";
-	import type { TaskEvent, TaskInfo } from "@lib/models";
 	import { eventSource } from "@lib/state/server-events.svelte";
 	import { addSourceEventListener } from "@lib/utils/api";
 	import { onMount } from "svelte";
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import type { PageComponentProps } from "@lib/state/app.svelte";
+	import type { TaskEvent } from "@bindings/TaskEvent";
+	import type { TaskInfo } from "@bindings/TaskInfo";
 
 	let tasks: Array<TaskInfo> = $state([]);
 	const events: Array<[TaskEvent, number]> = $state([]);

@@ -17,13 +17,15 @@ use tokio_stream::{
     wrappers::BroadcastStream,
     StreamExt,
 };
+use ts_rs::TS;
 
 use crate::{
     app::AppState,
     task::{TaskEvent as TaskReport, TaskEventType},
 };
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, TS)]
+#[ts(export)]
 pub struct TaskEvent {
     pub source: String,
     pub kind: TaskEventType,
@@ -32,6 +34,7 @@ pub struct TaskEvent {
     pub total: Option<u64>,
     pub step: Option<u8>,
     #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 }
 
