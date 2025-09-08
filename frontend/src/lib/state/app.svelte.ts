@@ -6,7 +6,6 @@ import UniversalRouter, {
 	type ResolveContext,
 	type Route,
 } from "universal-router";
-import { getSongs } from "@api/song";
 import type { Component } from "svelte";
 import type {
 	SongWorkerRequest,
@@ -14,9 +13,10 @@ import type {
 } from "@lib/worker-messages";
 import { match } from "ts-pattern";
 import type { SongMetadata } from "@bindings/SongMetadata";
+import type { SongFile } from "@bindings/SongFile";
 
 export type Item =
-	| { type: "song"; song: Song }
+	| { type: "song"; song: Song, fileInfo?: SongFile }
 	| { type: "group"; label: string; songs: Song[] };
 
 export interface Page extends Route {
@@ -52,7 +52,7 @@ export class AppState {
 	private _fetchingTracks = $state(false);
 	private _organizingArtists = $state(false);
 	private _organizingAlbums = $state(false);
-	private _tracks: Array<Song> = $state([]);
+	private _tracks: SvelteMap<string, Song> = $state(new SvelteMap());
 	private _editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
 	private _artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	private _albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
@@ -78,7 +78,7 @@ export class AppState {
 
 			match(data)
 				.with({ type: "initialize" }, (data) => {
-					this._tracks = data.payload;
+					this._tracks = new SvelteMap(data.payload);
 				})
 				.with({ type: "groupArtists" }, (data) => {
 					for (const [key, value] of data.payload) {
@@ -105,7 +105,7 @@ export class AppState {
 		});
 
 		$effect(() => {
-			if (this._tracks.length > 0) {
+			if (this._tracks.size > 0) {
 				if (this.autoOrganizeArtists) {
 					this.scheduleOrganizeArtists();
 				}
@@ -119,11 +119,12 @@ export class AppState {
 		this.fetchTracks();
 	}
 
-	extendTrackInfo(id: bigint, info: SongMetadata) {
-		const track = this._tracks.find((track) => track.id === id);
+	extendTrackInfo(id: string, info: SongMetadata) {
+		const track = this._tracks.get(id);
 
 		if (track) {
 			Object.assign(track, info);
+			this._tracks.set(id, track);
 		} else {
 			throw new Error("Track not found");
 		}
@@ -175,7 +176,7 @@ export class AppState {
 			return;
 		}
 
-		const original = this._tracks.find((t) => t.id === item.song.id);
+		const original = this._tracks.get(item.song.id);
 
 		if (
 			original &&

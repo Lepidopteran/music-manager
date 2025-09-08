@@ -6,6 +6,6 @@ export type SongWorkerRequest =
 	| { type: "groupAlbums"; };
 
 export type SongWorkerResponse =
-	| { type: "initialize"; payload: Song[] }
+	| { type: "initialize"; payload: Map<string, Song> }
 	| { type: "groupArtists"; payload: Map<string, Array<Song>> }
 	| { type: "groupAlbums"; payload: Map<string, Array<Song>> };

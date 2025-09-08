@@ -8,6 +8,7 @@ pub mod utils;
 pub mod db;
 pub mod paths;
 pub mod logging;
+pub mod migration;
 
 pub use args::*;
 pub use utils::*;

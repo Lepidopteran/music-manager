@@ -2,6 +2,7 @@ use color_eyre::eyre::Result;
 use sqlx::{query, sqlite::SqliteQueryResult};
 use time::OffsetDateTime;
 use tokio::sync::watch::{channel, Receiver, Sender};
+use uuid::Uuid;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::{
@@ -250,6 +251,7 @@ async fn add_song(
 
     let path = path.to_string_lossy().to_string();
 
+    let uuid = Uuid::new_v4().to_string();
     let title = get_metadata_field(&metadata, ItemKey::Title);
     let album = get_metadata_field(&metadata, ItemKey::Album);
     let album_artist = get_metadata_field(&metadata, ItemKey::AlbumArtist);
@@ -261,7 +263,8 @@ async fn add_song(
     let mood = get_metadata_field(&metadata, ItemKey::Mood);
 
     query!(
-        "INSERT INTO songs (path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        uuid,
         path,
         title,
         album,

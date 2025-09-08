@@ -16,7 +16,7 @@ pub struct Directory {
 #[serde(rename_all = "camelCase")]
 #[ts(rename = "DatabaseSong", export)]
 pub struct Song {
-    pub id: i64,
+    pub id: String,
     pub path: String,
     pub title: Option<String>,
     pub artist: Option<String>,

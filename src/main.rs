@@ -3,9 +3,9 @@ use std::{env, fs::File, path::PathBuf};
 use clap::Parser;
 use color_eyre::owo_colors::OwoColorize;
 use dotenvy::dotenv;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::{migrate::Migrator, sqlite::SqlitePoolOptions};
 
-use muusik::{app, config, create_default_database, logging, Args};
+use muusik::{app, config, create_default_database, logging, migration::run_migrations, Args};
 
 #[tokio::main]
 async fn main() {
@@ -53,10 +53,6 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations");
-
+    run_migrations(&pool).await.expect("Failed to run migrations");
     app::serve(settings, pool).await;
 }

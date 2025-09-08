@@ -19,7 +19,7 @@ onmessage = (event: MessageEvent<SongWorkerRequest>) => {
 			songs = event.data.payload;
 			sendMessage({
 				type,
-				payload: songs,
+				payload: new Map(songs.map((song) => [song.id, song])),
 			});
 			break;
 		case "groupArtists":

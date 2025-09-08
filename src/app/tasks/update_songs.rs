@@ -116,7 +116,7 @@ impl Task for UpdateSongs {
                 .into_iter()
                 .filter_map(Result::ok)
                 .flatten()
-                .collect::<Vec<(i64, SongMetadata)>>();
+                .collect::<Vec<(String, SongMetadata)>>();
 
             if updated_tracks.is_empty() {
                 tracing::info!("No Songs need updating, cancelling update");
@@ -147,7 +147,7 @@ impl Task for UpdateSongs {
                     .cloned()
                     .unwrap_or("N/A".to_string());
 
-                if let Err(err) = update_song(db.clone(), id, metadata).await {
+                if let Err(err) = update_song(db.clone(), &id, metadata).await {
                     tracing::error!("Failed to update song: {}", err);
                 } else {
                     let _ = tx.send(TaskEvent::progress(
@@ -216,7 +216,7 @@ impl Task for UpdateSongs {
     }
 }
 
-fn get_updated_metadata(song: &Song) -> Option<(i64, SongMetadata)> {
+fn get_updated_metadata(song: &Song) -> Option<(String, SongMetadata)> {
     let path = PathBuf::from(&song.path);
     tracing::debug!("Getting metadata for: {}", path.display());
 
@@ -230,7 +230,7 @@ fn get_updated_metadata(song: &Song) -> Option<(i64, SongMetadata)> {
 
     metadata.and_then(|metadata| {
         if song_metadata_changed(song, &metadata) {
-            Some((song.id, metadata))
+            Some((song.id.to_string(), metadata))
         } else {
             None
         }
@@ -251,7 +251,7 @@ fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
 
 async fn update_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
-    id: i64,
+    id: &str,
     metadata: SongMetadata,
 ) -> Result<(), sqlx::Error> {
     tracing::info!("Updating song: {id}, {:#?}", metadata);
