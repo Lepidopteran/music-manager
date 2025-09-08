@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT path FROM directories",
+  "describe": {
+    "columns": [
+      {
+        "name": "path",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f9a771892f8cc75ee3ab088ec5fc6ad77ad05c5840d4bf147e874452aa1c4599"
+}

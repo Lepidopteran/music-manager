@@ -55,13 +55,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install sqlx-cli
 ```
 
-### Initializing the Database
-
-```bash
-sqlx database create
-sqlx migrate run
-```
-
 ### Building/Running
 
 ```bash
