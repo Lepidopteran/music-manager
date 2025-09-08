@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, put},
+    routing::{get, put},
     Json, Router,
 };
 use sqlx::{query_as, query_scalar};
@@ -19,7 +19,7 @@ use crate::{
     utils::*,
 };
 
-type SongId = i32;
+type SongId = String;
 
 pub fn router() -> Router<AppState> {
     Router::new()

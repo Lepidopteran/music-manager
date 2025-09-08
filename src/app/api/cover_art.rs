@@ -52,7 +52,7 @@ pub fn router() -> Router<AppState> {
 
 async fn get_song_cover_art(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path((song_id, cover_type)): Path<(i32, String)>,
+    Path((song_id, cover_type)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<Response, impl IntoResponse> {
     let cover_type = cover_type
@@ -117,7 +117,7 @@ async fn get_song_cover_art(
 
 async fn get_song_cover_art_metadata(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(song_id): Path<i32>,
+    Path(song_id): Path<String>,
 ) -> Result<Json<Vec<CoverArtMetadata>>, impl IntoResponse> {
     let path = match query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
         .fetch_one(&db)
