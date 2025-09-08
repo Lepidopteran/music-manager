@@ -14,6 +14,7 @@ import type {
 import { match } from "ts-pattern";
 import type { SongMetadata } from "@bindings/SongMetadata";
 import type { SongFile } from "@bindings/SongFile";
+import { getSongs } from "@api/song";
 
 export type Item =
 	| { type: "song"; song: Song, fileInfo?: SongFile }
