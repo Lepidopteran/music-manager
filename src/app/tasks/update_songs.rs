@@ -116,7 +116,7 @@ impl Task for UpdateSongs {
                 .into_iter()
                 .filter_map(Result::ok)
                 .flatten()
-                .collect::<Vec<(String, SongMetadata)>>();
+                .collect::<Vec<(String, SongMetadata, _)>>();
 
             if updated_tracks.is_empty() {
                 tracing::info!("No Songs need updating, cancelling update");
@@ -135,29 +135,53 @@ impl Task for UpdateSongs {
                 format!("Updating {song_count} song(s)...").as_str(),
             ));
 
-            for (index, (id, metadata)) in updated_tracks.iter().cloned().enumerate() {
+            let mut db_tx = db.begin().await.expect("Failed to begin transaction");
+
+            for (index, (id, metadata, created_at)) in updated_tracks.iter().cloned().enumerate() {
                 if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
                     status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
                     tracing::info!("Refresh metadata cancelled");
                     return;
                 }
 
-                let title = metadata
-                    .get(&ItemKey::Title)
-                    .cloned()
-                    .unwrap_or("N/A".to_string());
+                let result = query("UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ?, file_created_at = ? WHERE id = ?")
+                    .bind(metadata.get(&ItemKey::Title).cloned())
+                    .bind(metadata.get(&ItemKey::Album).cloned())
+                    .bind(metadata.get(&ItemKey::AlbumArtist).cloned())
+                    .bind(metadata.get(&ItemKey::DiscNumber).cloned())
+                    .bind(metadata.get(&ItemKey::Artist).cloned())
+                    .bind(metadata.get(&ItemKey::Year).cloned())
+                    .bind(metadata.get(&ItemKey::TrackNumber).cloned())
+                    .bind(metadata.get(&ItemKey::Genre).cloned())
+                    .bind(metadata.get(&ItemKey::Mood).cloned())
+                    .bind(created_at)
+                    .bind(id)
+                    .execute(&mut *db_tx)
+                    .await;
 
-                if let Err(err) = update_song(db.clone(), &id, metadata).await {
+                if let Err(err) = result {
                     tracing::error!("Failed to update song: {}", err);
-                } else {
+                } 
+
+                if index % 100 == 0 {
                     let _ = tx.send(TaskEvent::progress(
-                        format!("Updated song \"{title}\"").as_str(),
+                        format!("Updating songs with new metadata {}%", index * 100 / song_count).as_str(),
                         index as u64,
                         song_count as u64,
                         Some(2),
                     ));
                 }
             }
+
+            tx.send(TaskEvent::progress(
+                format!("Updated {song_count} song(s)... saving changes").as_str(),
+                song_count as u64,
+                song_count as u64,
+                Some(2),
+            ))
+            .unwrap();
+
+            db_tx.commit().await.expect("Failed to commit transaction");
 
             status.store(TaskStatus::Idle.into(), Ordering::Relaxed);
 
@@ -216,9 +240,15 @@ impl Task for UpdateSongs {
     }
 }
 
-fn get_updated_metadata(song: &Song) -> Option<(String, SongMetadata)> {
+fn get_updated_metadata(song: &Song) -> Option<(String, SongMetadata, Option<OffsetDateTime>)> {
     let path = PathBuf::from(&song.path);
     tracing::debug!("Getting metadata for: {}", path.display());
+
+    let created_date = path
+        .metadata()
+        .and_then(|metadata| metadata.created())
+        .ok()
+        .map(OffsetDateTime::from);
 
     let metadata = match read_metadata_from_path(&path) {
         Ok(song) => Some(song),
@@ -229,15 +259,19 @@ fn get_updated_metadata(song: &Song) -> Option<(String, SongMetadata)> {
     };
 
     metadata.and_then(|metadata| {
-        if song_metadata_changed(song, &metadata) {
-            Some((song.id.to_string(), metadata))
+        if song_metadata_changed(song, &metadata, created_date) {
+            Some((song.id.to_string(), metadata, created_date))
         } else {
             None
         }
     })
 }
 
-fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
+fn song_metadata_changed(
+    song: &Song,
+    metadata: &SongMetadata,
+    created_at: Option<OffsetDateTime>,
+) -> bool {
     song.title != metadata.get(&ItemKey::Title).cloned()
         || song.album != metadata.get(&ItemKey::Album).cloned()
         || song.album_artist != metadata.get(&ItemKey::AlbumArtist).cloned()
@@ -247,12 +281,14 @@ fn song_metadata_changed(song: &Song, metadata: &SongMetadata) -> bool {
         || song.track_number != metadata.get(&ItemKey::TrackNumber).cloned()
         || song.genre != metadata.get(&ItemKey::Genre).cloned()
         || song.mood != metadata.get(&ItemKey::Mood).cloned()
+        || song.file_created_at != created_at
 }
 
 async fn update_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
     id: &str,
     metadata: SongMetadata,
+    created_at: Option<OffsetDateTime>,
 ) -> Result<(), sqlx::Error> {
     tracing::info!("Updating song: {id}, {:#?}", metadata);
 
@@ -267,7 +303,7 @@ async fn update_song(
     let mood = metadata.get(&ItemKey::Mood).cloned();
 
     query!(
-        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
+        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ?, file_created_at = ? WHERE id = ?",
         title,
         album,
         album_artist,
@@ -277,6 +313,7 @@ async fn update_song(
         track_number,
         genre,
         mood,
+        created_at,
         id
     )
     .execute(&pool)

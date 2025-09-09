@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
+use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
 #[derive(Deserialize, Serialize, FromRow, TS)]
@@ -27,4 +28,10 @@ pub struct Song {
     pub disc_number: Option<String>,
     pub year: Option<String>,
     pub mood: Option<String>,
+    #[ts(type = "Date")]
+    pub added_at: Option<OffsetDateTime>,
+    #[ts(type = "Date")]
+    pub updated_at: Option<OffsetDateTime>,
+    #[ts(type = "Date")]
+    pub file_created_at: Option<OffsetDateTime>,
 }

@@ -1,0 +1,5 @@
+-- Add up migration script here
+
+ALTER TABLE songs ADD COLUMN added_at DATETIME DEFAULT NULL;
+ALTER TABLE songs ADD COLUMN updated_at DATETIME DEFAULT NULL;
+ALTER TABLE songs ADD COLUMN file_created_at DATETIME DEFAULT NULL;

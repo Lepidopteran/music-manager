@@ -7,7 +7,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     get_metadata_field,
-    metadata::{item::ItemKey, read_metadata_from_path},
+    metadata::{item::ItemKey, SongFile},
     task::{TaskEvent, TaskState},
 };
 
@@ -234,14 +234,16 @@ impl Task for ScanSongs {
 async fn add_song(
     pool: sqlx::Pool<sqlx::Sqlite>,
     path: PathBuf,
-) -> Result<SqliteQueryResult, sqlx::Error> {
-    let metadata = match read_metadata_from_path(&path) {
-        Ok(song) => Some(song),
-        Err(err) => {
-            tracing::warn!("Failed to read tags: {}", err);
-            None
-        }
-    };
+) -> color_eyre::eyre::Result<SqliteQueryResult> {
+    let file = SongFile::open(&path)?;
+    let metadata = file.metadata();
+
+    if metadata.is_none() {
+        tracing::warn!(
+            "No song tag metadata found for song: {}",
+            path.to_string_lossy().to_string()
+        );
+    }
 
     tracing::info!(
         "Adding song: {}, {:?}",
@@ -252,32 +254,38 @@ async fn add_song(
     let path = path.to_string_lossy().to_string();
 
     let uuid = Uuid::new_v4().to_string();
-    let title = get_metadata_field(&metadata, ItemKey::Title);
-    let album = get_metadata_field(&metadata, ItemKey::Album);
-    let album_artist = get_metadata_field(&metadata, ItemKey::AlbumArtist);
-    let disc_number = get_metadata_field(&metadata, ItemKey::DiscNumber);
-    let artist = get_metadata_field(&metadata, ItemKey::Artist);
-    let year = get_metadata_field(&metadata, ItemKey::Year);
-    let track_number = get_metadata_field(&metadata, ItemKey::TrackNumber);
-    let genre = get_metadata_field(&metadata, ItemKey::Genre);
-    let mood = get_metadata_field(&metadata, ItemKey::Mood);
+    let title = get_metadata_field(metadata, ItemKey::Title);
+    let album = get_metadata_field(metadata, ItemKey::Album);
+    let album_artist = get_metadata_field(metadata, ItemKey::AlbumArtist);
+    let disc_number = get_metadata_field(metadata, ItemKey::DiscNumber);
+    let artist = get_metadata_field(metadata, ItemKey::Artist);
+    let year = get_metadata_field(metadata, ItemKey::Year);
+    let track_number = get_metadata_field(metadata, ItemKey::TrackNumber);
+    let genre = get_metadata_field(metadata, ItemKey::Genre);
+    let mood = get_metadata_field(metadata, ItemKey::Mood);
+    let added_at = OffsetDateTime::now_utc();
+    let file_created_at = file.created();
 
-    query!(
-        "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        uuid,
-        path,
-        title,
-        album,
-        album_artist,
-        disc_number,
-        artist,
-        year,
-        track_number,
-        genre,
-        mood
+    Ok(
+        query!(
+            "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            uuid,
+            path,
+            title,
+            album,
+            album_artist,
+            disc_number,
+            artist,
+            year,
+            track_number,
+            genre,
+            mood,
+            added_at,
+            file_created_at
+        )
+        .execute(&pool)
+        .await?
     )
-    .execute(&pool)
-    .await
 }
 
 fn scan_song_paths(

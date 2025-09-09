@@ -118,7 +118,7 @@ async fn get_songs(
 async fn get_song_metadata_history(
     Path(song_id): Path<SongId>,
 ) -> Result<Json<HashMap<UtcDateTime, SongMetadata>>, impl IntoResponse> {
-    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+    let metadata_dir = metadata_history_dir().join(&song_id);
 
     if !metadata_dir.exists() {
         return Err((StatusCode::NOT_FOUND, "No metadata found".to_string()));
@@ -165,7 +165,7 @@ async fn restore_metadata(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path((song_id, timestamp)): Path<(SongId, UtcDateTime)>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let metadata_dir = metadata_history_dir().join(song_id.to_string());
+    let metadata_dir = metadata_history_dir().join(&song_id);
     let path = metadata_dir.join(format!("{}.json", timestamp.unix_timestamp_nanos()));
 
     if !path.exists() {
@@ -222,7 +222,7 @@ fn update_metadata(
         return Ok(());
     }
 
-    let metadata_dir = metadata_history_dir().join(id.to_string());
+    let metadata_dir = metadata_history_dir().join(&id);
 
     if !metadata_dir.exists() {
         std::fs::create_dir_all(&metadata_dir)?;
