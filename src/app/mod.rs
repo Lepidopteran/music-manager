@@ -135,15 +135,7 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>, tx: Sender<Event>) -> Arc<Mutex<R
     let mut registry = Registry::default();
 
     let scan_songs_pool = pool.clone();
-    let refresh_songs_pool = pool.clone();
-
     let err = registry.register(move || Box::new(tasks::ScanSongs::new(scan_songs_pool.clone())));
-    if let Err(RegistryError::AlreadyExists) = err {
-        tracing::warn!("Task already registered");
-    }
-
-    let err =
-        registry.register(move || Box::new(tasks::UpdateSongs::new(refresh_songs_pool.clone())));
     if let Err(RegistryError::AlreadyExists) = err {
         tracing::warn!("Task already registered");
     }
