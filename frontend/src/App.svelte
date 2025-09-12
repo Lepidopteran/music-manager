@@ -24,16 +24,11 @@
 			name: "Albums",
 			icon: "album-2-fill",
 			component: Albums,
-			action() {
-				return {
-					path: this.path,
-					name: this.name,
-					callback: (app) => {
-						if (!app.autoOrganizeAlbums) {
-							app.autoOrganizeAlbums = true;
-						}
-					}
-				};
+			displayEditor: true,
+			callback: (app) => {
+				if (!app.autoOrganizeAlbums) {
+					app.autoOrganizeAlbums = true;
+				}
 			},
 		},
 		{
@@ -52,7 +47,7 @@
 
 	const app = new AppState(routes);
 
-	async function handleNavitionClick(event: MouseEvent) {
+	function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
 
 		if (!(target instanceof HTMLAnchorElement)) {
@@ -63,13 +58,13 @@
 		event.preventDefault();
 
 		window.history.pushState({}, "", path);
-		await app.changePage(path);
+		app.changePage(path);
 	}
 
-	app.changePage({ pathname: window.location.pathname });
+	app.changePage(window.location.pathname);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(["/albums", "/songs", "/"].includes(app.path));
+	let editorEnabled = $derived(app.page?.displayEditor || false);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -87,15 +82,14 @@
 	});
 </script>
 
-<svelte:window
-	onpopstate={() => app.changePage({ pathname: window.location.pathname })}
-/>
+<svelte:window onpopstate={() => app.changePage(window.location.pathname)} />
 
 <div
 	class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full"
 >
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
+		hidden={app.page?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -120,17 +114,16 @@
 	<aside
 		class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
 	>
-		<nav>
-			{#each routes as route}
-				{@const icon = route.icon}
+		<nav hidden={app.page?.hideNavigation}>
+			{#each routes.filter((route) => !route.hideNavigation && !route.hidden) as route}
 				<a
 					href={route.path as string}
 					onclick={handleNavitionClick}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
 					data-active={route.path === app.path || undefined}
 				>
-					{#if icon}
-						<Icon name={icon} size="1.25em" />
+					{#if route.icon}
+						<Icon name={route.icon} size="1.25em" />
 					{/if}
 					{route.name}
 				</a>

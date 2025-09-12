@@ -2,16 +2,13 @@ import type { Song } from "@lib/models";
 import type { Icons } from "@lib/icons";
 import { SvelteMap } from "svelte/reactivity";
 
-import UniversalRouter, {
-	type ResolveContext,
-	type Route,
-} from "universal-router";
 import type { Component } from "svelte";
 import type {
 	SongWorkerRequest,
 	SongWorkerResponse,
 } from "@lib/worker-messages";
 import { match } from "ts-pattern";
+import { match as matchPath, type MatchFunction } from "path-to-regexp";
 import type { SongMetadata } from "@bindings/SongMetadata";
 import type { SongFile } from "@bindings/SongFile";
 import { getSongs } from "@api/song";
@@ -20,25 +17,55 @@ export type Item =
 	| { type: "song"; song: Song; fileInfo?: SongFile }
 	| { type: "group"; label: string; songs: Song[] };
 
-export interface Page extends Route {
+export interface Page {
 	path: string;
 	name: string;
+	children?: Array<Page>;
+	hidden?: boolean;
+	hideNavigation?: boolean;
+	hideHeader?: boolean;
+	displayEditor?: boolean;
+	props?: Record<string, unknown>;
+	icon?: Icons;
+	callback?: (app: AppState) => void;
 	component?: Component<{
 		app: AppState;
 		visible: boolean;
 		[key: string]: unknown;
 	}>;
-	props?: Record<string, unknown>;
-	icon?: Icons;
-	children?: Array<Page>;
-	action?: () => PageAction;
 }
 
-export interface PageAction {
-	name: string;
+interface Route {
 	path: string;
+	name: string;
+	children?: Array<Route>;
+	hidden?: boolean;
+	hideNavigation?: boolean;
+	hideHeader?: boolean;
+	displayEditor?: boolean;
+	props?: Record<string, unknown>;
+	icon?: Icons;
 	callback?: (app: AppState) => void;
+	matcher: MatchFunction<object>;
+	component?: Component<{
+		app: AppState;
+		visible: boolean;
+		[key: string]: unknown;
+	}>;
 }
+
+export type PageResponse = null | {
+	path: string;
+	name: string;
+	params: Record<string, string>;
+	hidden?: boolean;
+	hideHeader?: boolean;
+	hideNavigation?: boolean;
+	displayEditor?: boolean;
+	props?: Record<string, unknown>;
+	child?: PageResponse;
+	icon?: Icons;
+};
 
 export interface PageComponentProps {
 	app: AppState;
@@ -46,10 +73,17 @@ export interface PageComponentProps {
 	[key: string]: unknown;
 }
 
+function mapPageToRoute(page: Page): Route {
+	return {
+		...page,
+		matcher: matchPath(page.path, {
+			end: !(page.children && page.children.length > 0),
+		}),
+		children: page.children?.map(mapPageToRoute),
+	};
+}
+
 export class AppState {
-	private _router: UniversalRouter;
-	private _path = $state("/");
-	private _name = $state("Home");
 	private _fetchingTracks = $state(false);
 	private _organizingArtists = $state(false);
 	private _organizingAlbums = $state(false);
@@ -58,6 +92,9 @@ export class AppState {
 	private _artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	private _albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	private _selectedItem: Item | null = $state(null);
+	private _routes: Array<Route>;
+	private _page: PageResponse = $state(null);
+	private _path = $derived(this._page?.path || "/");
 
 	private _worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
@@ -66,16 +103,8 @@ export class AppState {
 	autoOrganizeArtists = $state(false);
 	autoOrganizeAlbums = $state(false);
 
-	constructor(routes: Array<Page>) {
-		this._router = new UniversalRouter(
-			routes.map((route) => {
-				return {
-					...route,
-					action: route.action || (() => ({ name: route.name, path: route.path })),
-				};
-			}),
-		);
-
+	constructor(pages: Array<Page>) {
+		this._routes = pages.map(mapPageToRoute);
 		this._fetchingTracks = true;
 
 		$inspect(`Fetching tracks: ${this._fetchingTracks}`);
@@ -147,13 +176,9 @@ export class AppState {
 		});
 	}
 
-	async changePage(input: string | ResolveContext) {
-		const { path, name, callback } = (await this._router.resolve(
-			input,
-		)) as PageAction;
-
-		this._path = path;
-		this._name = name;
+	changePage(path: string) {
+		this._page = this._resolveRoute(path, this._routes);
+		const callback = this._routes.find((route) => route.path === path)?.callback;
 
 		if (callback) {
 			callback(this);
@@ -170,6 +195,34 @@ export class AppState {
 		this._albums.clear();
 		this._sendMessage({ type: "groupAlbums" });
 		this._organizingAlbums = true;
+	}
+
+	private _resolveRoute(path: string, routes: Array<Route>): PageResponse {
+		for (const route of routes) {
+			const match = route.matcher(path);
+
+			if (match) {
+				const params = (match.params || {}) as Record<string, string>;
+
+				return {
+					props: route.props,
+					path: route.path,
+					name: route.name,
+					icon: route.icon,
+					hidden: route.hidden,
+					hideHeader: route.hideHeader,
+					hideNavigation: route.hideNavigation,
+					displayEditor: route.displayEditor,
+					params,
+					child: this._resolveRoute(
+						path.slice(route.path.length) || "/",
+						route.children || [],
+					),
+				};
+			}
+		}
+
+		return null;
 	}
 
 	private _sendMessage(message: SongWorkerRequest) {
@@ -206,12 +259,12 @@ export class AppState {
 		this._editedTracks.set(item.song.id.toString(), item.song);
 	}
 
-	get path() {
-		return this._path;
+	get page() {
+		return this._page;
 	}
 
-	get name() {
-		return this._name;
+	get path() {
+		return this._path;
 	}
 
 	get tracks() {
