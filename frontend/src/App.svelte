@@ -41,24 +41,12 @@
 			name: "Directories",
 			icon: "folder-fill",
 			component: Directories,
-			action() {
-				return {
-					path: this.path,
-					name: this.name,
-				};
-			},
 		},
 		{
 			path: "/tasks",
 			name: "Tasks",
 			icon: "play-fill",
 			component: Tasks,
-			action() {
-				return {
-					path: this.path,
-					name: this.name,
-				};
-			},
 		},
 	];
 

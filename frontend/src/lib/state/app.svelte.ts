@@ -66,8 +66,16 @@ export class AppState {
 	autoOrganizeArtists = $state(false);
 	autoOrganizeAlbums = $state(false);
 
-	constructor(routes: Array<Route>) {
-		this._router = new UniversalRouter(routes);
+	constructor(routes: Array<Page>) {
+		this._router = new UniversalRouter(
+			routes.map((route) => {
+				return {
+					...route,
+					action: route.action || (() => ({ name: route.name, path: route.path })),
+				};
+			}),
+		);
+
 		this._fetchingTracks = true;
 
 		$inspect(`Fetching tracks: ${this._fetchingTracks}`);
