@@ -17,7 +17,7 @@ import type { SongFile } from "@bindings/SongFile";
 import { getSongs } from "@api/song";
 
 export type Item =
-	| { type: "song"; song: Song, fileInfo?: SongFile }
+	| { type: "song"; song: Song; fileInfo?: SongFile }
 	| { type: "group"; label: string; songs: Song[] };
 
 export interface Page extends Route {
