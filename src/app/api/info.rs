@@ -4,21 +4,29 @@ use axum::{
     Json, Router,
 };
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::app::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 struct AppInfo {
+    /// The version number of the application
     version: String,
+    /// The name of the application
     name: String,
+    /// System information that the application is running on
     system: SystemInfo,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 struct SystemInfo {
+    /// The name of the operating system, e.g. "Windows", "Ubuntu", "Darwin"
     os: String,
+    /// The name of the computer
     name: String,
 }
 
