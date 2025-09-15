@@ -2,6 +2,7 @@
 	import type { Snippet } from "svelte";
 	import type { Action } from "svelte/action";
 	import Button from "./Button.svelte";
+	import type { ClassValue } from "svelte/elements";
 
 	let dialog: HTMLDialogElement;
 
@@ -12,6 +13,8 @@
 		showClose?: boolean;
 		canSoftClose?: boolean;
 		open?: boolean;
+		class?: ClassValue;
+		contentContainerElement?: HTMLDivElement;
 		[key: string]: unknown;
 	}
 
@@ -21,6 +24,8 @@
 		showTitle = true,
 		showClose = true,
 		canSoftClose = true,
+		class: className,
+		contentContainerElement: contentContainer = $bindable(),
 		open = $bindable(false),
 		...rest
 	}: Props = $props();
@@ -59,7 +64,7 @@
 
 <dialog
 	{...rest}
-	class={`m-auto max-sm:w-11/12 bg-base-200 max-w-lg rounded-theme-lg shadow-lg inset-shadow-xs inset-shadow-highlight/25 backdrop:backdrop-blur ${rest.class || ""}`}
+	class={`m-auto max-sm:w-11/12 bg-base-200 max-w-lg rounded-theme-lg shadow-lg inset-shadow-xs inset-shadow-highlight/25 backdrop:backdrop-blur`}
 	bind:this={dialog}
 	use:closeAction
 >
@@ -90,7 +95,17 @@
 			{/if}
 		</div>
 	{/if}
-	<div class="h-full p-4 overflow-y-auto">
+	<div class={["dialog-content", className]} bind:this={contentContainer}>
 		{@render children?.()}
 	</div>
 </dialog>
+
+<style>
+	@layer components {
+		.dialog-content {
+			padding: calc(var(--spacing) * 4);
+			height: 100%;
+			overflow-y: auto;
+		}
+	}
+</style>
