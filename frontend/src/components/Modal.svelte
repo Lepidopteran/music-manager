@@ -34,7 +34,11 @@
 				event.clientY < top ||
 				event.clientY > bottom
 			) {
-				if (!canSoftClose || node.contains(event.target as HTMLElement)) return;
+				if (
+					!canSoftClose ||
+					(node.contains(event.target as HTMLElement) && event.target !== node)
+				)
+					return;
 				open = false;
 			}
 		};
