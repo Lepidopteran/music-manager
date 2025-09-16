@@ -12,6 +12,11 @@
         "name": "path",
         "ordinal": 1,
         "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -19,7 +24,8 @@
     },
     "nullable": [
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "c9273e3082a656e0702000487b9e93cf11ff38bdec6c194570ffede24176fcc0"

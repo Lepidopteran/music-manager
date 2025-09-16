@@ -5,12 +5,12 @@ use sqlx::prelude::FromRow;
 use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
-#[derive(Deserialize, Serialize, FromRow, TS)]
+#[derive(Deserialize, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
-#[ts(rename = "NewDirectory", export)]
 pub struct Directory {
     pub name: String,
     pub path: String,
+    pub display_name: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, FromRow, Debug, Clone, TS, Default)]

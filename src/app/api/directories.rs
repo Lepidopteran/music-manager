@@ -1,6 +1,5 @@
-
 use fs_extra::dir::get_size;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use axum::{
     extract::{Path, State},
@@ -24,11 +23,28 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 struct Directory {
+    /// The name of the directory.
     name: String,
+    /// The path of the directory.
     path: String,
+    /// The display name of the directory, only used in the UI.
+    display_name: Option<String>,
+    /// The size of the directory takes up in bytes.
     path_size: Option<u64>,
+    /// The free space of the hard drive the directory is stored on.
     free_space: Option<u64>,
+    /// The total space of the hard drive the directory is stored on.
     total_space: Option<u64>,
+}
+
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+struct NewDirectory {
+    /// The path of the directory.
+    path: String,
+    /// The display name of the directory, only used in the UI.
+    display_name: Option<String>,
 }
 
 pub fn router() -> Router<AppState> {
@@ -44,12 +60,8 @@ pub fn router() -> Router<AppState> {
 
 async fn add_directory(
     State(db): State<Database>,
-    Json(directory): Json<DirectoryDB>,
+    Json(directory): Json<NewDirectory>,
 ) -> Result<Json<Directory>, impl IntoResponse> {
-    if directory.name.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Name cannot be empty".to_string()));
-    }
-
     if directory.path.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
     }
@@ -91,41 +103,32 @@ async fn add_directory(
         }
     }
 
-    let result = match sqlx::query!(
-        "INSERT INTO directories (name, path) VALUES (?, ?)",
-        directory.name,
-        directory.path
+    let uuid = uuid::Uuid::new_v4().to_string();
+
+    let _ = sqlx::query!(
+        "INSERT INTO directories (name, path, display_name) VALUES (?, ?, ?)",
+        uuid,
+        directory.path,
+        directory.display_name
     )
     .execute(&db)
     .await
-    {
-        Ok(result) if result.rows_affected() > 0 => directory,
-        Ok(_) => directory,
-        Err(err) => match err {
-            sqlx::Error::Database(err) if err.kind() == ErrorKind::UniqueViolation => {
-                tracing::error!("\"{}\" already exists", directory.name);
-                return Err((
-                    StatusCode::CONFLICT,
-                    format!("\"{}\" already exists", directory.name),
-                ));
-            }
-            _ => return Err(internal_error(err)),
-        },
-    };
+    .map_err(internal_error)?;
 
     let disks = Disks::new_with_refreshed_list();
     let disk = disks.iter().find(|disk| {
-        result
+        directory
             .path
             .contains(&disk.mount_point().to_string_lossy().to_string())
     });
 
     Ok(Json(Directory {
-        path_size: get_size(&result.path).ok(),
+        name: uuid,
+        path_size: get_size(&directory.path).ok(),
+        path: directory.path,
+        display_name: directory.display_name,
         free_space: disk.map(|disk| disk.available_space()),
         total_space: disk.map(|disk| disk.total_space()),
-        name: result.name,
-        path: result.path,
     }))
 }
 
@@ -154,18 +157,12 @@ async fn remove_directory(
 
 async fn get_directories(
     State(db): State<Database>,
-) -> Result<Json<Vec<Directory>>, impl IntoResponse> {
+) -> Result<Json<Vec<Directory>>, (StatusCode, String)> {
     let disks = Disks::new_with_refreshed_list();
-    let directories = match sqlx::query_as!(DirectoryDB, "SELECT * FROM directories")
+    let directories = sqlx::query_as!(DirectoryDB, "SELECT * FROM directories")
         .fetch_all(&db)
         .await
-    {
-        Ok(directories) => directories,
-        Err(err) => {
-            tracing::error!("{}", err);
-            return Err(internal_error(err));
-        }
-    };
+        .map_err(internal_error)?;
 
     let directories_with_space: Vec<Directory> = directories
         .into_iter()
@@ -177,10 +174,11 @@ async fn get_directories(
             });
 
             disk.map(|disk| Directory {
+                name: directory.name,
                 path_size: get_size(&directory.path).ok(),
                 free_space: Some(disk.available_space()),
                 total_space: Some(disk.total_space()),
-                name: directory.name,
+                display_name: directory.display_name,
                 path: directory.path,
             })
         })

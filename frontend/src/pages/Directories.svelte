@@ -22,8 +22,8 @@
 	let selectedDirectory: Directory | undefined = $state();
 
 	let newDirectory: NewDirectory = $state({
+		displayName: null, 
 		path: "",
-		name: "",
 	});
 
 	const directories: Array<Directory> = $state([]);
@@ -85,23 +85,23 @@
 		>
 			{#snippet row(
 				path: string,
-				name: string,
-				pathSize: number,
-				freeSpace: number,
-				totalSpace: number,
+				name: string | null,
+				pathSize: bigint | null,
+				freeSpace: bigint | null, 
+				totalSpace: bigint | null,
 			)}
 				<tr class="border-inherit *:overflow-hidden">
 					<td class="p-cell truncate">{path}</td>
 					<td class="p-cell">{name}</td>
-					<td class="p-cell text-right">{formatBytes(pathSize)}</td>
-					<td class="p-cell text-right">{formatBytes(freeSpace)}</td>
-					<td class="p-cell text-right">{formatBytes(totalSpace)}</td>
+					<td class="p-cell text-right">{pathSize ? formatBytes(pathSize) : "-"}</td>
+					<td class="p-cell text-right">{freeSpace ? formatBytes(freeSpace) : "-"}</td>
+					<td class="p-cell text-right">{totalSpace ? formatBytes(totalSpace) : "-"}</td>
 				</tr>
 			{/snippet}
 			{#each directories as directory}
 				{@render row(
 					directory.path,
-					directory.name,
+					directory.displayName,
 					directory.pathSize,
 					directory.freeSpace,
 					directory.totalSpace,
@@ -123,7 +123,7 @@
 			label="Name"
 			required
 			placeholder="Name"
-			bind:value={newDirectory.name}
+			bind:value={newDirectory.displayName}
 		/>
 		<ServerDirectoryExplorer
 			label="Location"

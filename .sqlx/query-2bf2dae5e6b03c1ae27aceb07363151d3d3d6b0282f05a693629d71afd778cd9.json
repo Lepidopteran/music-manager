@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO directories (name, path, display_name) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "2bf2dae5e6b03c1ae27aceb07363151d3d3d6b0282f05a693629d71afd778cd9"
+}

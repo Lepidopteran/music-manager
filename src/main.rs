@@ -39,11 +39,13 @@ async fn main() {
 
     tracing::info!("Database URL: {}", database_url.underline().blue());
 
+    let mut new_database = false;
     if let Some(database_url) = database_url.strip_prefix("sqlite://") {
         let path = PathBuf::from(database_url);
 
         if !path.exists() {
             File::create(&path).expect("Failed to create database file");
+            new_database = true;
         }
     }
 
@@ -53,6 +55,6 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    run_migrations(&pool).await.expect("Failed to run migrations");
+    run_migrations(&pool, new_database).await.expect("Failed to run migrations");
     app::serve(settings, pool).await;
 }
