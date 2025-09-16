@@ -1,5 +1,5 @@
-export function formatBytes(bytes: number, decimals = 2) {
-	if (!+bytes) return "0 Bytes";
+export function formatBytes(bytes: number | bigint, decimals = 2) {
+	if (typeof bytes !== 'number' && typeof bytes !== 'bigint') return "0 Bytes";
 
 	const k = 1024;
 	const dm = decimals < 0 ? 0 : decimals;
@@ -15,8 +15,9 @@ export function formatBytes(bytes: number, decimals = 2) {
 		"YiB",
 	];
 
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	const formattedBytes = (bytes / k ** i).toFixed(dm);
+	const i = Math.floor(Number(bytes) === 0 ? 0 : Math.log(Number(bytes)) / Math.log(k));
+	const formattedBytes = (Number(bytes) / k ** i).toFixed(dm);
 
 	return `${Number.parseFloat(formattedBytes)} ${sizes[i]}`;
 }
+
