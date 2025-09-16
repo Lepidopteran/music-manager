@@ -3,7 +3,7 @@
 	import type { HTMLInputAttributes } from "svelte/elements";
 	interface Props extends HTMLInputAttributes {
 		label?: string;
-		value?: string;
+		value?: string | null;
 		variant?: "base" | "ghost";
 		floatingLabel?: boolean;
 		prefixChild?: Snippet;
