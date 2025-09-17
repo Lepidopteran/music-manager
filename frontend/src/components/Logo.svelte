@@ -1,12 +1,21 @@
 <script lang="ts">
+	import type { ClassValue } from "svelte/elements";
+
 	interface Props {
+		class?: ClassValue;
+		size?: number | string;
 		[key: string]: unknown;
 	}
 
-	const { ...rest }: Props = $props();
+	const { class: className, size = "2.5rem", ...rest }: Props = $props();
 </script>
 
-<div class={`inline-flex size-10 ${rest.class}`}>
+<div
+	class={["inline-flex", className]}
+	{...rest}
+	style:width={size}
+	style:height={size}
+>
 	<svg
 		width="512"
 		height="512"
