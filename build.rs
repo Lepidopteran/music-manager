@@ -11,7 +11,7 @@ fn main() {
 
 fn build_frontend() -> Result<(), String> {
 
-    let status = Command::new("bun")
+    let status = Command::new("pnpm")
         .arg("run")
         .arg("build")
         .current_dir("frontend")
@@ -20,7 +20,7 @@ fn build_frontend() -> Result<(), String> {
 
     if !status.success() {
 
-        let status = Command::new("bun")
+        let status = Command::new("pnpm")
             .arg("install")
             .current_dir("frontend")
             .status()
@@ -30,7 +30,7 @@ fn build_frontend() -> Result<(), String> {
             return Err("Failed to install dependencies".into());
         }
 
-        let status = Command::new("bun")
+        let status = Command::new("pnpm")
             .arg("run")
             .arg("build")
             .current_dir("frontend")
