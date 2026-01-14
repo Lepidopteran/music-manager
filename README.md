@@ -47,8 +47,8 @@ sudo apt install libssl-dev libsqlite3-dev
 Install the the rest of the dependencies using the following commands:
 
 ```bash
-# Bun
-curl -fsSL https://bun.sh/install | bash
+# PNPM
+curl -fsSL https://get.pnpm.io/install.sh | sh -
 # Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Sqlx CLI
