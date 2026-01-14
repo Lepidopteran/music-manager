@@ -20,7 +20,7 @@ Written with [Rust](https://www.rust-lang.org/), [TypeScript](https://www.typesc
 
 To develop Muusik, you need to have the following installed:
 
-- [Bun](https://bun.sh/)
+- [PNPM]([https://bun.sh/](https://pnpm.io/))
 - [Rust](https://www.rust-lang.org/)
 - [Sqlx CLI](https://crates.io/crates/sqlx-cli)
 - [Sqlite](https://sqlite.org/)
