@@ -29,10 +29,7 @@ use axum::{
     Router,
 };
 
-mod api;
-mod events;
-mod tasks;
-mod ui;
+use super::*;
 
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;

@@ -1,7 +1,7 @@
 mod args;
 
-pub mod task;
 pub mod app;
+pub mod task;
 pub mod config; 
 pub mod metadata;
 pub mod utils;
@@ -9,6 +9,11 @@ pub mod db;
 pub mod paths;
 pub mod logging;
 pub mod migration;
+
+mod ui;
+mod events;
+mod tasks;
+mod api;
 
 pub use args::*;
 pub use utils::*;
