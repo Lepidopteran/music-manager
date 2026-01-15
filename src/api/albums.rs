@@ -15,9 +15,9 @@ use crate::{app::AppState, db::Song, utils::*};
 #[derive(serde::Serialize, TS)]
 #[ts(rename = "Album", export)]
 pub struct Album {
-    title: String,
-    artist: Option<String>,
-    tracks: Vec<Song>,
+    pub title: String,
+    pub artist: Option<String>,
+    pub tracks: Vec<Song>,
 }
 
 impl From<Vec<Song>> for Album {
