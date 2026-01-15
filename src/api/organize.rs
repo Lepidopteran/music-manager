@@ -1,22 +1,143 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post},
     Json, Router,
 };
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{eyre, Result};
+use sqlx::query_as;
+use ts_rs::TS;
 
-use crate::{api::albums::Album, app::AppState, db::Song};
+use crate::{api::albums::Album, app::AppState, db::Song, internal_error, not_found};
 use handlebars::Handlebars;
 
-pub fn router() -> Router<AppState> {
-    Router::new()
+const VARIOUS_ARTIST_THRESHOLD: f64 = 0.5;
+
+// TODO: Move these templates to a files
+const ARTIST_TEMPLATE: &str = "{{artist}}/{{album}}/";
+const ALBUM_ARTIST_TEMPLATE: &str = "{{album_artist}}/{{album}}/";
+
+#[derive(serde::Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PathRenamePreviewResult {
+    pub previous_path: PathBuf,
+    pub new_path: PathBuf,
 }
 
-fn generate_folder_path_from_album(
+#[derive(serde::Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct PathRenameOptions {
+    pub threshold: f64,
+    pub grouped: bool,
+}
+
+impl Default for PathRenameOptions {
+    fn default() -> Self {
+        PathRenameOptions {
+            threshold: VARIOUS_ARTIST_THRESHOLD,
+            grouped: true,
+        }
+    }
+}
+
+// TODO: Add ability to use a custom templates for folder structure.
+
+pub fn router() -> Router<AppState> {
+    Router::new().route(
+        "/organize/album/{title}",
+        get(preview_organize_album_tracks),
+    )
+}
+
+async fn preview_organize_album_tracks(
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    Path(title): Path<String>,
+    Query(options): Query<PathRenameOptions>,
+) -> Result<Json<Vec<PathRenamePreviewResult>>, (StatusCode, String)> {
+    let album = get_album(&db, &title).await?;
+
+    // TODO: Move handlebars registry creation to appstate.
+    let handlebars = Handlebars::new();
+
+    if options.grouped {
+        let folder_path = generate_grouped_folder_path(
+            &handlebars,
+            ARTIST_TEMPLATE,
+            &album,
+            options.threshold,
+        )
+        .map_err(internal_error)?;
+
+        let previews = album
+            .tracks
+            .iter()
+            .map(|song| {
+                let path = PathBuf::from(song.path.clone());
+                PathRenamePreviewResult {
+                    previous_path: path.clone(),
+                    new_path: folder_path.join(path.file_name().expect("Unable to get file name")),
+                }
+            })
+            .collect();
+
+        Ok(Json(previews))
+    } else {
+        let previews = album
+            .tracks
+            .iter()
+            .map(|song| {
+                let path = PathBuf::from(song.path.clone());
+                PathRenamePreviewResult {
+                    previous_path: path.clone(),
+                    new_path: generate_folder_path(&handlebars, ARTIST_TEMPLATE, song)
+                        .map_err(internal_error)
+                        .expect("Unable to generate folder path")
+                        .join(path.file_name().expect("Unable to get file name")),
+                }
+            })
+            .collect();
+
+        Ok(Json(previews))
+    }
+}
+
+async fn get_album(
+    db: &sqlx::Pool<sqlx::Sqlite>,
+    title: &str,
+) -> Result<Album, (StatusCode, String)> {
+    let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
+        .fetch_all(db)
+        .await
+        .map_err(internal_error)?;
+
+    if tracks.is_empty() {
+        return Err(not_found("Album not found"));
+    }
+
+    Ok(Album::from(tracks))
+}
+
+fn generate_folder_path(handlebar: &Handlebars, template: &str, song: &Song) -> Result<PathBuf> {
+    let context: BTreeMap<&str, Option<&str>> = BTreeMap::from([
+        ("artist", song.artist.as_deref()),
+        ("album_artist", song.album_artist.as_deref()),
+        ("genre", song.genre.as_deref()),
+        ("year", song.year.as_deref()),
+        ("album", song.album.as_deref()),
+        ("mood", song.mood.as_deref()),
+    ]);
+
+    Ok(PathBuf::from(
+        handlebar.render_template(template, &context)?,
+    ))
+}
+
+fn generate_grouped_folder_path(
     handlebar: &Handlebars,
     template: &str,
     album: &Album,
@@ -43,13 +164,6 @@ fn generate_folder_path_from_album(
             .max_by_key(|(_, count)| *count)
             .and_then(|(artist, count)| {
                 let percentage = count as f64 / songs_with_artists.len() as f64;
-
-                log::debug!(
-                    "{}: {}, {}",
-                    artist,
-                    percentage,
-                    percentage >= various_artist_percentage_threshold
-                );
                 (percentage > various_artist_percentage_threshold).then_some(artist)
             })
             .unwrap_or("Various Artists")
@@ -69,7 +183,9 @@ fn generate_folder_path_from_album(
         ("mood", mood.as_deref()),
     ]);
 
-    Ok(PathBuf::from(handlebar.render(template, &context)?))
+    Ok(PathBuf::from(
+        handlebar.render_template(template, &context)?,
+    ))
 }
 
 #[cfg(test)]
@@ -78,19 +194,9 @@ mod tests {
 
     use super::*;
 
-    const ARTIST_TEMPLATE: &str = "{{artist}}/{{album}}/";
-    const ALBUM_ARTIST_TEMPLATE: &str = "{{album_artist}}/{{album}}/";
-
     #[test]
     fn test_generate_folder_path() {
-        let mut handlebar = Handlebars::new();
-
-        handlebar
-            .register_template_string("artist", ARTIST_TEMPLATE)
-            .unwrap();
-        handlebar
-            .register_template_string("album_artist", ALBUM_ARTIST_TEMPLATE)
-            .unwrap();
+        let handlebar = Handlebars::new();
 
         let album = Album::from(vec![
             Song {
@@ -127,18 +233,20 @@ mod tests {
             },
         ]);
 
-        let result = generate_folder_path_from_album(&handlebar, "artist", &album, 0.25).unwrap();
+        let result =
+            generate_grouped_folder_path(&handlebar, ARTIST_TEMPLATE, &album, 0.25).unwrap();
         log::debug!("Folder path: {}", result.display());
 
         assert_eq!(result, PathBuf::from("Artist/Album/"));
 
-        let result = generate_folder_path_from_album(&handlebar, "artist", &album, 0.5).unwrap();
+        let result =
+            generate_grouped_folder_path(&handlebar, ARTIST_TEMPLATE, &album, 0.5).unwrap();
         log::debug!("Folder path: {}", result.display());
 
         assert_eq!(result, PathBuf::from("Various Artists/Album/"));
 
         let result =
-            generate_folder_path_from_album(&handlebar, "album_artist", &album, 0.25).unwrap();
+            generate_grouped_folder_path(&handlebar, ALBUM_ARTIST_TEMPLATE, &album, 0.25).unwrap();
         log::debug!("Folder path: {}", result.display());
 
         assert_eq!(result, PathBuf::from("Album Artist/Album/"));

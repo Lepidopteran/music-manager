@@ -53,6 +53,7 @@ pub async fn serve(settings: config::Settings, db: sqlx::Pool<sqlx::Sqlite>) {
         .merge(api::directories::router())
         .merge(api::cover_art::router())
         .merge(api::info::router())
+        .nest("/api", api::organize::router())
         .nest("/api", events::router())
         .with_state(AppState {
             event_sender: tx,
