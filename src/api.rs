@@ -4,3 +4,4 @@ pub mod tasks;
 pub mod cover_art;
 pub mod albums;
 pub mod info;
+pub mod organize;
