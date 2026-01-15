@@ -1,28 +1,22 @@
 use axum::http::StatusCode;
 
+use std::fmt::Display;
+
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
-pub fn internal_error<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
-{
+pub fn internal_error(err: impl Display) -> (StatusCode, String) {
     tracing::error!("internal error: {}", err);
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
 
 /// Utility function for mapping any error into a `400 Bad Request` response.
-pub fn bad_request<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
-{
+pub fn bad_request(err: impl Display) -> (StatusCode, String) {
     tracing::error!("bad request: {}", err);
     (StatusCode::BAD_REQUEST, err.to_string())
 }
 
 /// Utility function for mapping any error into a `404 Not Found` response.
-pub fn not_found<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
+pub fn not_found(err: impl Display) -> (StatusCode, String)
 {
     tracing::error!("not found: {}", err);
     (StatusCode::NOT_FOUND, err.to_string())
