@@ -27,7 +27,12 @@
 </script>
 
 <label
-	class={`${floatingLabel ? "floating-label inset-shadow-sm inset-shadow-black/25 focus-within:outline-1 focus-within:outline-primary" : ""} ${`input-${variant}`} ${className || ""}`}
+	class={[
+		floatingLabel &&
+			"floating-label inset-shadow-sm inset-shadow-black/25 focus-within:outline-1 focus-within:outline-primary",
+		`input-${variant}`,
+		className,
+	]}
 >
 	{#if label}
 		<span class="text-base-950 label">
@@ -104,7 +109,6 @@
 	}
 
 	.floating-label {
-
 		&.input-base {
 			background-color: var(--color-base-300);
 		}
