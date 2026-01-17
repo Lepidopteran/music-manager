@@ -2,11 +2,7 @@ use std::fs::{create_dir, File};
 use axum::http::StatusCode;
 use std::fmt::Display;
 
-mod status;
-
 use crate::{metadata::{item::ItemKey, Metadata}, paths};
-pub use status::*;
-
 /// Utility function for creating a default database.
 ///
 /// # Arguments
