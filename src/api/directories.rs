@@ -140,6 +140,11 @@ async fn remove_directory(
         return Err((StatusCode::BAD_REQUEST, "Name cannot be empty".to_string()));
     }
 
+    sqlx::query!("DELETE FROM songs WHERE directory_id = ?", name)
+        .execute(&db)
+        .await
+        .map_err(internal_error)?;
+
     match sqlx::query!("DELETE FROM directories WHERE name = ?", name)
         .execute(&db)
         .await

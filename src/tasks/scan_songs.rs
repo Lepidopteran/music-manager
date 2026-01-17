@@ -1,4 +1,4 @@
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{eyre, Result};
 use sqlx::{query, query_as, sqlite::SqliteQueryResult};
 use time::OffsetDateTime;
 use tokio::{
@@ -85,10 +85,10 @@ impl Task for ScanSongs {
 
             let _ = tx.send(TaskEvent::info("Fetching directories..."));
 
-            let directories: Vec<String> = query!("SELECT path FROM directories")
+            let directories: Vec<(String, String)> = query!("SELECT name, path FROM directories")
                 .fetch_all(&db)
                 .await
-                .map(|result| result.into_iter().map(|row| row.path).collect())
+                .map(|result| result.into_iter().map(|row| (row.name, row.path)).collect())
                 .map_err(|err| {
                     tracing::error!("Song scan error: {}", err);
                     drop(err)
@@ -154,8 +154,14 @@ impl Task for ScanSongs {
 
             let status_clone = status.clone();
             let tx_clone = tx.clone();
+            let directories_clone = directories.clone();
             let song_paths = spawn_blocking(move || {
-                scan_song_paths(directories, existing_song_paths, status_clone, tx_clone)
+                scan_song_paths(
+                    &directories_clone,
+                    existing_song_paths,
+                    status_clone,
+                    tx_clone,
+                )
             })
             .await
             .expect("Failed to join thread");
@@ -275,7 +281,7 @@ impl Task for ScanSongs {
                     return;
                 }
 
-                match add_song(&mut transaction, song.to_path_buf()).await {
+                match add_song(&mut transaction, &directories, song.to_path_buf()).await {
                     Ok(result) => {
                         if result.rows_affected() == 0 {
                             tracing::warn!(
@@ -501,6 +507,7 @@ async fn update_song(
 
 async fn add_song(
     connection: &mut sqlx::SqliteConnection,
+    directories: &[(String, String)],
     path: PathBuf,
 ) -> color_eyre::eyre::Result<SqliteQueryResult> {
     let created_at = OffsetDateTime::from(path.metadata()?.created()?);
@@ -526,10 +533,14 @@ async fn add_song(
     let genre = get_metadata_field(metadata, ItemKey::Genre);
     let mood = get_metadata_field(metadata, ItemKey::Mood);
     let added_at = OffsetDateTime::now_utc();
+    let directory_id = directories
+        .iter()
+        .find_map(|(id, dir_path)| path.starts_with(dir_path).then_some(id.clone()))
+        .ok_or(eyre!("Failed to find directory for song"))?;
 
     Ok(
         query!(
-            "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at, directory_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             uuid,
             path,
             title,
@@ -542,7 +553,8 @@ async fn add_song(
             genre,
             mood,
             added_at,
-            created_at
+            created_at,
+            directory_id
         )
         .execute(&mut *connection)
         .await?
@@ -550,7 +562,7 @@ async fn add_song(
 }
 
 fn scan_song_paths(
-    directories: Vec<String>,
+    directories: &[(String, String)],
     existing_songs: HashSet<PathBuf>,
     status: Arc<AtomicU8>,
     tx: Sender<TaskEvent>,
@@ -560,7 +572,7 @@ fn scan_song_paths(
     tx.send(TaskEvent::info("Scanning directories for music"))
         .unwrap();
 
-    for directory in directories {
+    for (_, directory) in directories {
         if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
             tracing::info!(SONG_SCAN_CANCEL_MESSAGE);
             tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();

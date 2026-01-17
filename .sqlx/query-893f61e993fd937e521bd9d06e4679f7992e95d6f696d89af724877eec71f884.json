@@ -72,6 +72,11 @@
         "name": "file_created_at",
         "ordinal": 13,
         "type_info": "Datetime"
+      },
+      {
+        "name": "directory_id",
+        "ordinal": 14,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -91,7 +96,8 @@
       true,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
   "hash": "893f61e993fd937e521bd9d06e4679f7992e95d6f696d89af724877eec71f884"

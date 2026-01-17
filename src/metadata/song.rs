@@ -2,7 +2,6 @@ use std::{
     collections::{BTreeMap, HashSet},
     fs::File,
     path::{Path, PathBuf},
-    time::SystemTime,
 };
 
 use lofty::{

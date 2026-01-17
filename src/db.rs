@@ -34,4 +34,5 @@ pub struct Song {
     pub updated_at: Option<OffsetDateTime>,
     #[ts(type = "Date")]
     pub file_created_at: Option<OffsetDateTime>,
+    pub directory_id: String,
 }
