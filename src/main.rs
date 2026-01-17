@@ -3,9 +3,9 @@ use std::{env, fs::File, path::PathBuf};
 use clap::Parser;
 use color_eyre::owo_colors::OwoColorize;
 use dotenvy::dotenv;
-use sqlx::{migrate::Migrator, sqlite::SqlitePoolOptions};
+use sqlx::{sqlite::SqlitePoolOptions};
 
-use muusik::{app, config, create_default_database, logging, migration::run_migrations, Args};
+use muusik::{app, config, db, logging, migration::run_migrations, Args};
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +33,7 @@ async fn main() {
 
             tracing::info!("{info_msg}");
 
-            &create_default_database("data").expect("Failed to create default database")
+            &db::create_default_database("data").expect("Failed to create default database")
         }
     };
 
