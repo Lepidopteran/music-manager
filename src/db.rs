@@ -11,11 +11,14 @@ use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
 pub mod directories;
+pub mod songs;
 
 type Result<T> = std::result::Result<T, DatabaseError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseError {
+    #[error(transparent)]
+    Song(#[from] songs::DatabaseSongError),
     #[error(transparent)]
     Directory(#[from] directories::DatabaseDirectoryError),
     #[error(transparent)]
@@ -25,6 +28,7 @@ pub enum DatabaseError {
 impl IntoResponse for DatabaseError {
     fn into_response(self) -> axum::response::Response {
         match self {
+            DatabaseError::Song(err) => err.into_response(),
             DatabaseError::Directory(err) => err.into_response(),
             DatabaseError::Sqlx(err) => internal_error(err).into_response(),
         }
@@ -71,6 +75,27 @@ pub struct Song {
     #[ts(type = "Date")]
     pub file_created_at: Option<OffsetDateTime>,
     pub directory_id: String,
+}
+
+/// A collection of songs. Does not correlate to a table in the database.
+#[derive(serde::Serialize, TS)]
+#[ts(rename = "Album", export)]
+pub struct Album {
+    pub title: String,
+    pub artist: Option<String>,
+    pub tracks: Vec<Song>,
+}
+
+impl From<Vec<Song>> for Album {
+    fn from(tracks: Vec<Song>) -> Self {
+        let title = tracks[0].album.clone().expect("Album not found");
+        let artist = tracks[0].album_artist.clone();
+        Album {
+            title,
+            artist,
+            tracks,
+        }
+    }
 }
 
 /// Utility function for creating a default database.
