@@ -459,7 +459,7 @@ impl Task for ScanSongs {
 fn update_change_progress(tx: &Sender<TaskEvent>, index: &mut i32, total: u64) {
     *index += 1;
     let current = *index as u64;
-    if current % 100 == 0 {
+    if current.is_multiple_of(100) {
         let message = format!("Applying changes... {}%", current * 100 / total);
         tracing::info!(message);
         let _ = tx.send(TaskEvent::progress(
@@ -579,7 +579,7 @@ fn scan_song_paths(
             break;
         }
 
-        let files = WalkDir::new(&directory)
+        let files = WalkDir::new(directory)
             .into_iter()
             .filter_entry(|entry| {
                 !entry
