@@ -1,28 +1,27 @@
 use fs_extra::dir::get_size;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
     Json, Router,
 };
 
-use sqlx::error::ErrorKind;
 use sysinfo::Disks;
 use ts_rs::TS;
 
 use crate::{
     app::{AppState, Database},
-    db::Directory as DirectoryDB,
+    db::{directories, Directory as DirectoryDB, NewDirectory},
     utils::*,
 };
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
-struct Directory {
+#[ts(rename = "Directory", export)]
+struct DirectoryResponse {
     /// The name of the directory.
     name: String,
     /// The path of the directory.
@@ -37,16 +36,6 @@ struct Directory {
     total_space: Option<u64>,
 }
 
-#[derive(Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export)]
-struct NewDirectory {
-    /// The path of the directory.
-    path: String,
-    /// The display name of the directory, only used in the UI.
-    display_name: Option<String>,
-}
-
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/directories/", get(get_directories))
@@ -59,117 +48,52 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn add_directory(
-    State(db): State<Database>,
-    Json(directory): Json<NewDirectory>,
-) -> Result<Json<Directory>, impl IntoResponse> {
-    if directory.path.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
-    }
-
-    if !directory.path.starts_with('/') {
-        return Err((StatusCode::BAD_REQUEST, "Path must be absolute".to_string()));
-    }
-
-    let path = std::path::Path::new(&directory.path);
-
-    if !path.exists() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Path \"{}\" does not exist", directory.path),
-        ));
-    }
-
-    if !path.is_dir() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Path \"{}\" is not a directory", directory.path),
-        ));
-    }
-
-    let directories = sqlx::query_scalar!("SELECT path FROM directories")
-        .fetch_all(&db)
+    State(pool): State<Database>,
+    Json(new_directory): Json<NewDirectory>,
+) -> Result<Json<DirectoryResponse>, Response> {
+    let DirectoryDB {
+        name,
+        path,
+        display_name,
+    } = directories::add_directory(pool, new_directory)
         .await
-        .map_err(internal_error)?;
-
-    for entry in directories {
-        if path.starts_with(entry) {
-            return Err((
-                StatusCode::CONFLICT,
-                format!(
-                    "Path \"{}\" is a subdirectory of an existing directory",
-                    directory.path
-                ),
-            ));
-        }
-    }
-
-    let uuid = uuid::Uuid::new_v4().to_string();
-
-    let _ = sqlx::query!(
-        "INSERT INTO directories (name, path, display_name) VALUES (?, ?, ?)",
-        uuid,
-        directory.path,
-        directory.display_name
-    )
-    .execute(&db)
-    .await
-    .map_err(internal_error)?;
+        .map_err(IntoResponse::into_response)?;
 
     let disks = Disks::new_with_refreshed_list();
-    let disk = disks.iter().find(|disk| {
-        directory
-            .path
-            .contains(&disk.mount_point().to_string_lossy().to_string())
-    });
+    let disk = disks
+        .iter()
+        .find(|disk| path.contains(&disk.mount_point().to_string_lossy().to_string()));
 
-    Ok(Json(Directory {
-        name: uuid,
-        path_size: get_size(&directory.path).ok(),
-        path: directory.path,
-        display_name: directory.display_name,
+    Ok(Json(DirectoryResponse {
         free_space: disk.map(|disk| disk.available_space()),
         total_space: disk.map(|disk| disk.total_space()),
+        path_size: get_size(&path).ok(),
+        display_name,
+        path,
+        name,
     }))
 }
 
 async fn remove_directory(
-    State(db): State<Database>,
+    State(pool): State<Database>,
     Path(name): Path<String>,
-) -> Result<StatusCode, impl IntoResponse> {
-    if name.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Name cannot be empty".to_string()));
-    }
-
-    sqlx::query!("DELETE FROM songs WHERE directory_id = ?", name)
-        .execute(&db)
+) -> Result<StatusCode, Response> {
+    directories::remove_directory(pool, name)
         .await
-        .map_err(internal_error)?;
+        .map_err(IntoResponse::into_response)?;
 
-    match sqlx::query!("DELETE FROM directories WHERE name = ?", name)
-        .execute(&db)
-        .await
-    {
-        Ok(result) => {
-            if result.rows_affected() > 0 {
-                Ok(StatusCode::OK)
-            } else {
-                Err((StatusCode::NOT_FOUND, format!("\"{name}\" not found")))
-            }
-        }
-        Err(err) => Err(internal_error(err)),
-    }
+    Ok(StatusCode::OK)
 }
 
 async fn get_directories(
-    State(db): State<Database>,
-) -> Result<Json<Vec<Directory>>, (StatusCode, String)> {
+    State(pool): State<Database>,
+) -> Result<Json<Vec<DirectoryResponse>>, Response> {
     let disks = Disks::new_with_refreshed_list();
-    let directories = sqlx::query_as!(DirectoryDB, "SELECT * FROM directories")
-        .fetch_all(&db)
+    let directories = directories::get_directories(&pool)
         .await
-        .map_err(internal_error)?;
+        .map_err(|err| err.into_response())?;
 
-    let directories_with_space: Vec<Directory> = directories
+    let directories_with_space: Vec<DirectoryResponse> = directories
         .into_iter()
         .filter_map(|directory| {
             let disk = disks.iter().find(|disk| {
@@ -178,7 +102,7 @@ async fn get_directories(
                     .contains(&disk.mount_point().to_string_lossy().to_string())
             });
 
-            disk.map(|disk| Directory {
+            disk.map(|disk| DirectoryResponse {
                 name: directory.name,
                 path_size: get_size(&directory.path).ok(),
                 free_space: Some(disk.available_space()),

@@ -1,19 +1,51 @@
-//! Database models
+use std::fs::{create_dir, File};
 
-use std::fs::{File, create_dir};
+use crate::internal_error;
 
 use super::paths;
 
+use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
+
+pub mod directories;
+
+type Result<T> = std::result::Result<T, DatabaseError>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum DatabaseError {
+    #[error(transparent)]
+    Directory(#[from] directories::DatabaseDirectoryError),
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+}
+
+impl IntoResponse for DatabaseError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            DatabaseError::Directory(err) => err.into_response(),
+            DatabaseError::Sqlx(err) => internal_error(err).into_response(),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Directory {
     pub name: String,
     pub path: String,
+    pub display_name: Option<String>,
+}
+
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct NewDirectory {
+    /// The path of the directory.
+    pub path: String,
+    /// The display name of the directory, only used in the UI.
     pub display_name: Option<String>,
 }
 
@@ -51,7 +83,7 @@ pub struct Song {
 ///
 /// # Returns
 /// Returns the connection string of the database.
-pub fn create_default_database(name: &str) -> Result<String, std::io::Error> {
+pub fn create_default_database(name: &str) -> super::Result<String> {
     let db_name = format!("{name}.db");
     let config_dir = paths::app_config_dir();
     let conn_str = format!("sqlite://{}", config_dir.join(db_name.clone()).display());

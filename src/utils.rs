@@ -16,6 +16,7 @@ pub fn get_metadata_field(metadata: &Option<Metadata>, field: ItemKey) -> Option
     metadata.as_ref().and_then(|m| m.get(&field).cloned())
 }
 
+
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
 pub fn internal_error(err: impl Display) -> (StatusCode, String) {
@@ -33,4 +34,10 @@ pub fn bad_request(err: impl Display) -> (StatusCode, String) {
 pub fn not_found(err: impl Display) -> (StatusCode, String) {
     tracing::error!("not found: {}", err);
     (StatusCode::NOT_FOUND, err.to_string())
+}
+
+/// Utility function for mapping any error into a `409 Conflict` response.
+pub fn conflict(err: impl Display) -> (StatusCode, String) {
+    tracing::error!("conflict: {}", err);
+    (StatusCode::CONFLICT, err.to_string())
 }
