@@ -54,9 +54,9 @@ pub async fn add_directory(
         "SELECT * FROM directories WHERE path = ?",
         directory.path
     )
-    .fetch_one(&pool)
-    .await
-    .is_ok()
+    .fetch_optional(&pool)
+    .await?
+    .is_some()
     {
         return Err(DatabaseDirectoryError::PathAlreadyAdded.into());
     }
