@@ -10,7 +10,6 @@ use walkdir::WalkDir;
 
 use crate::{
     db::Song,
-    get_metadata_field,
     metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
     task::{TaskEvent, TaskState},
 };
@@ -487,16 +486,17 @@ async fn update_song(
     metadata: &Option<SongMetadata>,
     created_at: Option<OffsetDateTime>,
 ) -> color_eyre::eyre::Result<SqliteQueryResult> {
+    let metadata_ref = metadata.as_ref();
     let result = query("UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ?, file_created_at = ? WHERE id = ?")
-        .bind(get_metadata_field(metadata, ItemKey::Title))
-        .bind(get_metadata_field(metadata, ItemKey::Album))
-        .bind(get_metadata_field(metadata, ItemKey::AlbumArtist))
-        .bind(get_metadata_field(metadata, ItemKey::DiscNumber))
-        .bind(get_metadata_field(metadata, ItemKey::Artist))
-        .bind(get_metadata_field(metadata, ItemKey::Year))
-        .bind(get_metadata_field(metadata, ItemKey::TrackNumber))
-        .bind(get_metadata_field(metadata, ItemKey::Genre))
-        .bind(get_metadata_field(metadata, ItemKey::Mood))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Title)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Album)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::AlbumArtist)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::DiscNumber)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Artist)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Year)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::TrackNumber)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Genre)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Mood)))
         .bind(created_at)
         .bind(id)
         .execute(&mut *connection)
@@ -511,27 +511,29 @@ async fn add_song(
     path: PathBuf,
 ) -> color_eyre::eyre::Result<SqliteQueryResult> {
     let created_at = OffsetDateTime::from(path.metadata()?.created()?);
-    let metadata = &read_metadata_from_path(&path).ok();
+    let metadata = read_metadata_from_path(&path).ok();
+    let metadata_ref = metadata.as_ref();
 
-    if metadata.is_none() {
+    if metadata_ref.is_none() {
         tracing::warn!(
             "No song tag metadata found for song: {}",
             path.to_string_lossy().to_string()
         );
     }
 
+
     let path = path.to_string_lossy().to_string();
 
     let uuid = Uuid::new_v4().to_string();
-    let title = get_metadata_field(metadata, ItemKey::Title);
-    let album = get_metadata_field(metadata, ItemKey::Album);
-    let album_artist = get_metadata_field(metadata, ItemKey::AlbumArtist);
-    let disc_number = get_metadata_field(metadata, ItemKey::DiscNumber);
-    let artist = get_metadata_field(metadata, ItemKey::Artist);
-    let year = get_metadata_field(metadata, ItemKey::Year);
-    let track_number = get_metadata_field(metadata, ItemKey::TrackNumber);
-    let genre = get_metadata_field(metadata, ItemKey::Genre);
-    let mood = get_metadata_field(metadata, ItemKey::Mood);
+    let title = metadata_ref.and_then(|m| m.get(&ItemKey::Title));
+    let album = metadata_ref.and_then(|m| m.get(&ItemKey::Album));
+    let album_artist = metadata_ref.and_then(|m| m.get(&ItemKey::AlbumArtist));
+    let disc_number = metadata_ref.and_then(|m| m.get(&ItemKey::DiscNumber));
+    let artist = metadata_ref.and_then(|m| m.get(&ItemKey::Artist));
+    let year = metadata_ref.and_then(|m| m.get(&ItemKey::Year));
+    let track_number = metadata_ref.and_then(|m| m.get(&ItemKey::TrackNumber));
+    let genre = metadata_ref.and_then(|m| m.get(&ItemKey::Genre));
+    let mood = metadata_ref.and_then(|m| m.get(&ItemKey::Mood));
     let added_at = OffsetDateTime::now_utc();
     let directory_id = directories
         .iter()
@@ -654,14 +656,15 @@ fn song_metadata_changed(
     metadata: &Option<SongMetadata>,
     created_at: Option<OffsetDateTime>,
 ) -> bool {
-    song.title != get_metadata_field(metadata, ItemKey::Title)
-        || song.album != get_metadata_field(metadata, ItemKey::Album)
-        || song.album_artist != get_metadata_field(metadata, ItemKey::AlbumArtist)
-        || song.disc_number != get_metadata_field(metadata, ItemKey::DiscNumber)
-        || song.artist != get_metadata_field(metadata, ItemKey::Artist)
-        || song.year != get_metadata_field(metadata, ItemKey::Year)
-        || song.track_number != get_metadata_field(metadata, ItemKey::TrackNumber)
-        || song.genre != get_metadata_field(metadata, ItemKey::Genre)
-        || song.mood != get_metadata_field(metadata, ItemKey::Mood)
+    let metadata = metadata.as_ref();
+    song.title.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Title))
+        || song.album.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Album))
+        || song.album_artist.as_ref() != metadata.and_then(|m| m.get(&ItemKey::AlbumArtist))
+        || song.disc_number.as_ref() != metadata.and_then(|m| m.get(&ItemKey::DiscNumber))
+        || song.artist.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Artist))
+        || song.year.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Year))
+        || song.track_number.as_ref() != metadata.and_then(|m| m.get(&ItemKey::TrackNumber))
+        || song.genre.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Genre))
+        || song.mood.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Mood))
         || song.file_created_at != created_at
 }

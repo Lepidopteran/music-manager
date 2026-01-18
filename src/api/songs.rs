@@ -78,17 +78,17 @@ async fn refresh_song_details(
 
     let file = read_song_file(path).await?;
 
-    let metadata = file.metadata().clone();
+    let metadata = file.metadata().as_ref();
 
     sqlx::query("UPDATE songs SET title = ?, artist = ?, album = ?, album_artist = ?, genre = ?, track_number = ?, disc_number = ?, mood = ? WHERE id = ?")
-        .bind(get_metadata_field(&metadata, ItemKey::Title))
-        .bind(get_metadata_field(&metadata, ItemKey::Artist))
-        .bind(get_metadata_field(&metadata, ItemKey::Album))
-        .bind(get_metadata_field(&metadata, ItemKey::AlbumArtist))
-        .bind(get_metadata_field(&metadata, ItemKey::Genre))
-        .bind(get_metadata_field(&metadata, ItemKey::TrackNumber))
-        .bind(get_metadata_field(&metadata, ItemKey::DiscNumber))
-        .bind(get_metadata_field(&metadata, ItemKey::Mood))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::Title)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::Artist)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::Album)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::AlbumArtist)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::Genre)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::TrackNumber)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::DiscNumber)))
+        .bind(metadata.and_then(|m| m.get(&ItemKey::Mood)))
         .bind(song_id)
         .execute(&db)
         .await
