@@ -61,11 +61,7 @@ async fn get_song_file(
         .map_err(internal_error)?;
 
 
-    let file = spawn_blocking(move || {
-        SongFile::open(&path).map_err(|err| (StatusCode::FORBIDDEN, err.to_string()))
-    })
-    .await
-    .map_err(bad_request)??;
+    let file = read_song_file(path).await?;
 
     Ok(Json(file))
 }
@@ -80,11 +76,7 @@ async fn refresh_song_details(
         .map(PathBuf::from)
         .map_err(internal_error)?;
 
-    let file = spawn_blocking(move || {
-        SongFile::open(&path).map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
-    })
-    .await
-    .map_err(internal_error)??;
+    let file = read_song_file(path).await?;
 
     let metadata = file.metadata().clone();
 
@@ -190,6 +182,16 @@ async fn restore_metadata(
         .map_err(internal_error)?;
 
     Ok(StatusCode::OK)
+}
+
+async fn read_song_file(path: PathBuf) -> Result<SongFile> {
+    let file = spawn_blocking(move || {
+        SongFile::open(&path).map_err(|err| internal_error(err).into_response())
+    })
+    .await
+    .map_err(internal_error)??;
+
+    Ok(file)
 }
 
 async fn edit_song(
