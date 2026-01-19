@@ -1,4 +1,4 @@
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{eyre, Result};
 use sqlx::{query, query_as, sqlite::SqliteQueryResult};
 use time::OffsetDateTime;
 use tokio::{
@@ -10,7 +10,6 @@ use walkdir::WalkDir;
 
 use crate::{
     db::Song,
-    get_metadata_field,
     metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
     task::{TaskEvent, TaskState},
 };
@@ -85,10 +84,10 @@ impl Task for ScanSongs {
 
             let _ = tx.send(TaskEvent::info("Fetching directories..."));
 
-            let directories: Vec<String> = query!("SELECT path FROM directories")
+            let directories: Vec<(String, String)> = query!("SELECT name, path FROM directories")
                 .fetch_all(&db)
                 .await
-                .map(|result| result.into_iter().map(|row| row.path).collect())
+                .map(|result| result.into_iter().map(|row| (row.name, row.path)).collect())
                 .map_err(|err| {
                     tracing::error!("Song scan error: {}", err);
                     drop(err)
@@ -154,8 +153,14 @@ impl Task for ScanSongs {
 
             let status_clone = status.clone();
             let tx_clone = tx.clone();
+            let directories_clone = directories.clone();
             let song_paths = spawn_blocking(move || {
-                scan_song_paths(directories, existing_song_paths, status_clone, tx_clone)
+                scan_song_paths(
+                    &directories_clone,
+                    existing_song_paths,
+                    status_clone,
+                    tx_clone,
+                )
             })
             .await
             .expect("Failed to join thread");
@@ -275,7 +280,7 @@ impl Task for ScanSongs {
                     return;
                 }
 
-                match add_song(&mut transaction, song.to_path_buf()).await {
+                match add_song(&mut transaction, &directories, song.to_path_buf()).await {
                     Ok(result) => {
                         if result.rows_affected() == 0 {
                             tracing::warn!(
@@ -453,7 +458,7 @@ impl Task for ScanSongs {
 fn update_change_progress(tx: &Sender<TaskEvent>, index: &mut i32, total: u64) {
     *index += 1;
     let current = *index as u64;
-    if current % 100 == 0 {
+    if current.is_multiple_of(100) {
         let message = format!("Applying changes... {}%", current * 100 / total);
         tracing::info!(message);
         let _ = tx.send(TaskEvent::progress(
@@ -481,16 +486,17 @@ async fn update_song(
     metadata: &Option<SongMetadata>,
     created_at: Option<OffsetDateTime>,
 ) -> color_eyre::eyre::Result<SqliteQueryResult> {
+    let metadata_ref = metadata.as_ref();
     let result = query("UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ?, file_created_at = ? WHERE id = ?")
-        .bind(get_metadata_field(metadata, ItemKey::Title))
-        .bind(get_metadata_field(metadata, ItemKey::Album))
-        .bind(get_metadata_field(metadata, ItemKey::AlbumArtist))
-        .bind(get_metadata_field(metadata, ItemKey::DiscNumber))
-        .bind(get_metadata_field(metadata, ItemKey::Artist))
-        .bind(get_metadata_field(metadata, ItemKey::Year))
-        .bind(get_metadata_field(metadata, ItemKey::TrackNumber))
-        .bind(get_metadata_field(metadata, ItemKey::Genre))
-        .bind(get_metadata_field(metadata, ItemKey::Mood))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Title)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Album)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::AlbumArtist)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::DiscNumber)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Artist)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Year)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::TrackNumber)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Genre)))
+        .bind(metadata_ref.and_then(|m| m.get(&ItemKey::Mood)))
         .bind(created_at)
         .bind(id)
         .execute(&mut *connection)
@@ -501,35 +507,42 @@ async fn update_song(
 
 async fn add_song(
     connection: &mut sqlx::SqliteConnection,
+    directories: &[(String, String)],
     path: PathBuf,
 ) -> color_eyre::eyre::Result<SqliteQueryResult> {
     let created_at = OffsetDateTime::from(path.metadata()?.created()?);
-    let metadata = &read_metadata_from_path(&path).ok();
+    let metadata = read_metadata_from_path(&path).ok();
+    let metadata_ref = metadata.as_ref();
 
-    if metadata.is_none() {
+    if metadata_ref.is_none() {
         tracing::warn!(
             "No song tag metadata found for song: {}",
             path.to_string_lossy().to_string()
         );
     }
 
+
     let path = path.to_string_lossy().to_string();
 
     let uuid = Uuid::new_v4().to_string();
-    let title = get_metadata_field(metadata, ItemKey::Title);
-    let album = get_metadata_field(metadata, ItemKey::Album);
-    let album_artist = get_metadata_field(metadata, ItemKey::AlbumArtist);
-    let disc_number = get_metadata_field(metadata, ItemKey::DiscNumber);
-    let artist = get_metadata_field(metadata, ItemKey::Artist);
-    let year = get_metadata_field(metadata, ItemKey::Year);
-    let track_number = get_metadata_field(metadata, ItemKey::TrackNumber);
-    let genre = get_metadata_field(metadata, ItemKey::Genre);
-    let mood = get_metadata_field(metadata, ItemKey::Mood);
+    let title = metadata_ref.and_then(|m| m.get(&ItemKey::Title));
+    let album = metadata_ref.and_then(|m| m.get(&ItemKey::Album));
+    let album_artist = metadata_ref.and_then(|m| m.get(&ItemKey::AlbumArtist));
+    let disc_number = metadata_ref.and_then(|m| m.get(&ItemKey::DiscNumber));
+    let artist = metadata_ref.and_then(|m| m.get(&ItemKey::Artist));
+    let year = metadata_ref.and_then(|m| m.get(&ItemKey::Year));
+    let track_number = metadata_ref.and_then(|m| m.get(&ItemKey::TrackNumber));
+    let genre = metadata_ref.and_then(|m| m.get(&ItemKey::Genre));
+    let mood = metadata_ref.and_then(|m| m.get(&ItemKey::Mood));
     let added_at = OffsetDateTime::now_utc();
+    let directory_id = directories
+        .iter()
+        .find_map(|(id, dir_path)| path.starts_with(dir_path).then_some(id.clone()))
+        .ok_or(eyre!("Failed to find directory for song"))?;
 
     Ok(
         query!(
-            "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at, directory_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             uuid,
             path,
             title,
@@ -542,7 +555,8 @@ async fn add_song(
             genre,
             mood,
             added_at,
-            created_at
+            created_at,
+            directory_id
         )
         .execute(&mut *connection)
         .await?
@@ -550,7 +564,7 @@ async fn add_song(
 }
 
 fn scan_song_paths(
-    directories: Vec<String>,
+    directories: &[(String, String)],
     existing_songs: HashSet<PathBuf>,
     status: Arc<AtomicU8>,
     tx: Sender<TaskEvent>,
@@ -560,14 +574,14 @@ fn scan_song_paths(
     tx.send(TaskEvent::info("Scanning directories for music"))
         .unwrap();
 
-    for directory in directories {
+    for (_, directory) in directories {
         if TaskStatus::is_stopped(status.load(Ordering::Relaxed)) {
             tracing::info!(SONG_SCAN_CANCEL_MESSAGE);
             tx.send(TaskEvent::stop(SONG_SCAN_CANCEL_MESSAGE)).unwrap();
             break;
         }
 
-        let files = WalkDir::new(&directory)
+        let files = WalkDir::new(directory)
             .into_iter()
             .filter_entry(|entry| {
                 !entry
@@ -642,14 +656,15 @@ fn song_metadata_changed(
     metadata: &Option<SongMetadata>,
     created_at: Option<OffsetDateTime>,
 ) -> bool {
-    song.title != get_metadata_field(metadata, ItemKey::Title)
-        || song.album != get_metadata_field(metadata, ItemKey::Album)
-        || song.album_artist != get_metadata_field(metadata, ItemKey::AlbumArtist)
-        || song.disc_number != get_metadata_field(metadata, ItemKey::DiscNumber)
-        || song.artist != get_metadata_field(metadata, ItemKey::Artist)
-        || song.year != get_metadata_field(metadata, ItemKey::Year)
-        || song.track_number != get_metadata_field(metadata, ItemKey::TrackNumber)
-        || song.genre != get_metadata_field(metadata, ItemKey::Genre)
-        || song.mood != get_metadata_field(metadata, ItemKey::Mood)
+    let metadata = metadata.as_ref();
+    song.title.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Title))
+        || song.album.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Album))
+        || song.album_artist.as_ref() != metadata.and_then(|m| m.get(&ItemKey::AlbumArtist))
+        || song.disc_number.as_ref() != metadata.and_then(|m| m.get(&ItemKey::DiscNumber))
+        || song.artist.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Artist))
+        || song.year.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Year))
+        || song.track_number.as_ref() != metadata.and_then(|m| m.get(&ItemKey::TrackNumber))
+        || song.genre.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Genre))
+        || song.mood.as_ref() != metadata.and_then(|m| m.get(&ItemKey::Mood))
         || song.file_created_at != created_at
 }

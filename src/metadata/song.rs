@@ -2,19 +2,22 @@ use std::{
     collections::{BTreeMap, HashSet},
     fs::File,
     path::{Path, PathBuf},
-    time::SystemTime,
 };
+
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+use ts_rs::TS;
 
 use lofty::{
     config::WriteOptions,
     id3::v2::Id3v2Tag,
+    prelude::*,
     probe::Probe,
+    read_from,
+    tag::Tag,
     tag::{ItemKey as LoftyKey, ItemValue, TagItem},
 };
-use lofty::{prelude::*, read_from, tag::Tag};
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
-use ts_rs::TS;
+
 use super::{
     file::SongFileType,
     item::{ItemKey, TagType},
@@ -104,10 +107,12 @@ impl SongFile {
             path: path.to_path_buf(),
             size: path_metadata.len(),
             file_type: SongFileType::from(tagged_file.file_type()),
-            metadata: read_metadata_from_path(path).ok(),
             last_modified: OffsetDateTime::from(path_metadata.modified()?),
             created: OffsetDateTime::from(path_metadata.created()?),
             tag_type,
+            metadata: read_metadata_from_path(path)
+                .inspect_err(|err| log::warn!("Failed to read metadata from path: {err}"))
+                .ok(),
         })
     }
 
