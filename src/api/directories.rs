@@ -55,7 +55,7 @@ async fn add_directory(
         name,
         path,
         display_name,
-    } = directories::add_directory(pool, new_directory)
+    } = directories::add_directory(&pool, new_directory)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -78,7 +78,7 @@ async fn remove_directory(
     State(pool): State<Database>,
     Path(name): Path<String>,
 ) -> Result<StatusCode, Response> {
-    directories::remove_directory(pool, name)
+    directories::remove_directory(&pool, name)
         .await
         .map_err(IntoResponse::into_response)?;
 
