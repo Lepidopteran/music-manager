@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use crate::{bad_request, conflict, internal_error, not_found};
 
 use super::{directories, Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::{MAIN_SEPARATOR, PathBuf}};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -173,6 +173,41 @@ pub async fn update_song<'c>(
         song.track_number,
         song.genre,
         song.mood,
+        id
+    )
+    .execute(&mut *connection)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn move_song<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    id: &str,
+    directory_id: &str,
+) -> Result<()> {
+    let mut connection = connection.acquire().await?;
+    let song = get_song(&mut *connection, id).await?;
+
+    let prev_directory = directories::get_directory(&mut *connection, &song.directory_id).await?;
+    if prev_directory.name == directory_id {
+        return Ok(());
+    }
+
+    let new_directory = directories::get_directory(&mut *connection, directory_id).await?;
+    let new_path = format!(
+        "{}{}{}",
+        new_directory.path.trim_end_matches(MAIN_SEPARATOR),
+        MAIN_SEPARATOR,
+        song.path
+            .strip_prefix(&prev_directory.path)
+            .expect("Path stripped too much O//O")
+    );
+
+    let _ = query!(
+        "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
+        directory_id,
+        new_path,
         id
     )
     .execute(&mut *connection)
