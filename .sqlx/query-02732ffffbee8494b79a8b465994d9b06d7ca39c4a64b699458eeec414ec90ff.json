@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM directories WHERE name = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "02732ffffbee8494b79a8b465994d9b06d7ca39c4a64b699458eeec414ec90ff"
+}
