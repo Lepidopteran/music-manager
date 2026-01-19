@@ -1,17 +1,18 @@
-use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{delete, get, post},
+    response::{Result},
+    routing::{get, post},
     Json, Router,
 };
-use color_eyre::eyre::{eyre, Result};
-use sqlx::query_as;
 use ts_rs::TS;
 
-use crate::{api::albums::Album, app::AppState, db::Song, internal_error, not_found};
+use crate::{
+    app::AppState,
+    db::{Album, Song, songs},
+    internal_error,
+};
 use handlebars::Handlebars;
 
 const VARIOUS_ARTIST_THRESHOLD: f64 = 0.5;
@@ -58,20 +59,16 @@ async fn preview_organize_album_tracks(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(title): Path<String>,
     Query(options): Query<PathRenameOptions>,
-) -> Result<Json<Vec<PathRenamePreviewResult>>, (StatusCode, String)> {
-    let album = get_album(&db, &title).await?;
+) -> Result<Json<Vec<PathRenamePreviewResult>>> {
+    let album = songs::get_album(&db, title).await?;
 
     // TODO: Move handlebars registry creation to appstate.
     let handlebars = Handlebars::new();
 
     if options.grouped {
-        let folder_path = generate_grouped_folder_path(
-            &handlebars,
-            ARTIST_TEMPLATE,
-            &album,
-            options.threshold,
-        )
-        .map_err(internal_error)?;
+        let folder_path =
+            generate_grouped_folder_path(&handlebars, ARTIST_TEMPLATE, &album, options.threshold)
+                .map_err(internal_error)?;
 
         let previews = album
             .tracks
@@ -106,23 +103,11 @@ async fn preview_organize_album_tracks(
     }
 }
 
-async fn get_album(
-    db: &sqlx::Pool<sqlx::Sqlite>,
-    title: &str,
-) -> Result<Album, (StatusCode, String)> {
-    let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
-        .fetch_all(db)
-        .await
-        .map_err(internal_error)?;
-
-    if tracks.is_empty() {
-        return Err(not_found("Album not found"));
-    }
-
-    Ok(Album::from(tracks))
-}
-
-fn generate_folder_path(handlebar: &Handlebars, template: &str, song: &Song) -> Result<PathBuf> {
+fn generate_folder_path(
+    handlebar: &Handlebars,
+    template: &str,
+    song: &Song,
+) -> color_eyre::Result<PathBuf> {
     let context: BTreeMap<&str, Option<&str>> = BTreeMap::from([
         ("artist", song.artist.as_deref()),
         ("album_artist", song.album_artist.as_deref()),
@@ -142,7 +127,7 @@ fn generate_grouped_folder_path(
     template: &str,
     album: &Album,
     various_artist_percentage_threshold: f64,
-) -> Result<PathBuf> {
+) -> color_eyre::Result<PathBuf> {
     let artist = if album.tracks.iter().all(|song| song.artist.is_none()) {
         "Unknown Artist"
     } else {
