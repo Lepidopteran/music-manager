@@ -49,10 +49,11 @@ pub async fn find_directory_from_sub_path<'c>(
         .ok_or(DatabaseDirectoryError::NotFound.into())
 }
 
-pub async fn add_directory(
-    pool: sqlx::Pool<sqlx::Sqlite>,
+pub async fn add_directory<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
     directory: NewDirectory,
 ) -> Result<Directory> {
+    let mut connection = connection.acquire().await?;
     if directory.path.trim().is_empty() {
         return Err(DatabaseDirectoryError::PathEmpty.into());
     }
@@ -66,7 +67,7 @@ pub async fn add_directory(
         "SELECT * FROM directories WHERE path = ?",
         directory.path
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&mut *connection)
     .await?
     .is_some()
     {
@@ -88,7 +89,7 @@ pub async fn add_directory(
     }
 
     let directories = sqlx::query_scalar!("SELECT path FROM directories")
-        .fetch_all(&pool)
+        .fetch_all(&mut *connection)
         .await?;
 
     for entry in directories {
@@ -105,7 +106,7 @@ pub async fn add_directory(
         directory.path,
         directory.display_name
     )
-    .execute(&pool)
+    .execute(&mut *connection)
     .await?;
 
     Ok(Directory {
@@ -115,17 +116,21 @@ pub async fn add_directory(
     })
 }
 
-pub async fn remove_directory(pool: sqlx::Pool<sqlx::Sqlite>, name: String) -> Result<()> {
+pub async fn remove_directory<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    name: String,
+) -> Result<()> {
+    let mut connection = connection.acquire().await?;
     if name.trim().is_empty() {
         return Err(DatabaseDirectoryError::NameEmpty.into());
     }
 
     sqlx::query!("DELETE FROM songs WHERE directory_id = ?", name)
-        .execute(&pool)
+        .execute(&mut *connection)
         .await?;
 
     let rows_affected = sqlx::query!("DELETE FROM directories WHERE name = ?", name)
-        .execute(&pool)
+        .execute(&mut *connection)
         .await?
         .rows_affected();
 
@@ -136,8 +141,9 @@ pub async fn remove_directory(pool: sqlx::Pool<sqlx::Sqlite>, name: String) -> R
     }
 }
 
-pub async fn get_directories<'c>(connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>) -> Result<Vec<Directory>>
-{
+pub async fn get_directories<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+) -> Result<Vec<Directory>> {
     let mut connection = connection.acquire().await?;
     let directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
         .fetch_all(&mut *connection)

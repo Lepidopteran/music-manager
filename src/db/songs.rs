@@ -105,9 +105,13 @@ pub async fn add_song<'c>(
     })
 }
 
-pub async fn get_song(pool: &sqlx::Pool<sqlx::Sqlite>, id: &str) -> Result<Song> {
+pub async fn get_song<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    id: &str,
+) -> Result<Song> {
+    let mut connection = connection.acquire().await?;
     query_as!(Song, "SELECT * FROM songs WHERE id = ?", id)
-        .fetch_one(pool)
+        .fetch_one(&mut *connection)
         .await
         .map_err(|err| match err {
             sqlx::Error::RowNotFound => DatabaseSongError::SongNotFound.into(),
@@ -115,9 +119,13 @@ pub async fn get_song(pool: &sqlx::Pool<sqlx::Sqlite>, id: &str) -> Result<Song>
         })
 }
 
-pub async fn get_song_path(pool: &sqlx::Pool<sqlx::Sqlite>, id: &str) -> Result<PathBuf> {
+pub async fn get_song_path<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    id: &str,
+) -> Result<PathBuf> {
+    let mut connection = connection.acquire().await?;
     query_scalar!("SELECT path FROM songs WHERE id = ?", id)
-        .fetch_one(pool)
+        .fetch_one(&mut *connection)
         .await
         .map(PathBuf::from)
         .map_err(DatabaseError::from)
@@ -173,9 +181,13 @@ pub async fn update_song<'c>(
     Ok(())
 }
 
-pub async fn get_album(pool: &sqlx::Pool<sqlx::Sqlite>, title: String) -> Result<Album> {
+pub async fn get_album<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    title: String,
+) -> Result<Album> {
+    let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
-        .fetch_all(pool)
+        .fetch_all(&mut *connection)
         .await?;
 
     if tracks.is_empty() {
@@ -187,9 +199,10 @@ pub async fn get_album(pool: &sqlx::Pool<sqlx::Sqlite>, title: String) -> Result
     Ok(album)
 }
 
-pub async fn get_albums(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Album>> {
+pub async fn get_albums<'c>(connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>) -> Result<Vec<Album>> {
+    let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
-        .fetch_all(pool)
+        .fetch_all(&mut *connection)
         .await?;
 
     let mut album_map: HashMap<String, Vec<Song>> = HashMap::new();
