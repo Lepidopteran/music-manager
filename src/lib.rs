@@ -30,6 +30,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Database error: {0}")]
     Database(#[from] db::DatabaseError),
+    #[error("Metadata error: {0}")]
+    Metadata(#[from] metadata::Error),
 }
 
 impl IntoResponse for Error {
@@ -37,6 +39,7 @@ impl IntoResponse for Error {
         match self {
             Error::Database(err) => err.into_response(),
             Error::Io(err) => internal_error(err).into_response(),
+            Error::Metadata(err) => internal_error(err).into_response(),
         }
     }
 }

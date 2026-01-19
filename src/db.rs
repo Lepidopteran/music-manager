@@ -1,19 +1,18 @@
 use std::fs::{create_dir, File};
 
-use crate::internal_error;
-
-use super::paths;
-
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
+use super::{internal_error, paths};
+use crate::metadata::{item::ItemKey, SongFile};
+
 pub mod directories;
 pub mod songs;
 
-type Result<T> = std::result::Result<T, DatabaseError>;
+type Result<T, E = DatabaseError> = std::result::Result<T, E>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseError {
@@ -75,6 +74,74 @@ pub struct Song {
     #[ts(type = "Date")]
     pub file_created_at: Option<OffsetDateTime>,
     pub directory_id: String,
+}
+
+#[derive(Deserialize, Debug, Clone, TS, Default)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename = "NewDatabaseSong", export)]
+pub struct NewSong {
+    pub path: String,
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub album_artist: Option<String>,
+    pub genre: Option<String>,
+    pub track_number: Option<String>,
+    pub disc_number: Option<String>,
+    pub year: Option<String>,
+    pub mood: Option<String>,
+    #[ts(type = "Date")]
+    pub file_created_at: Option<OffsetDateTime>,
+}
+
+impl From<SongFile> for NewSong {
+    fn from(file: SongFile) -> Self {
+        let metadata = file.metadata().as_ref();
+        NewSong {
+            path: file.path().to_string_lossy().to_string(),
+            title: metadata.and_then(|m| m.get(&ItemKey::Title).cloned()),
+            artist: metadata.and_then(|m| m.get(&ItemKey::Artist).cloned()),
+            album: metadata.and_then(|m| m.get(&ItemKey::Album).cloned()),
+            album_artist: metadata.and_then(|m| m.get(&ItemKey::AlbumArtist).cloned()),
+            genre: metadata.and_then(|m| m.get(&ItemKey::Genre).cloned()),
+            track_number: metadata.and_then(|m| m.get(&ItemKey::TrackNumber).cloned()),
+            disc_number: metadata.and_then(|m| m.get(&ItemKey::DiscNumber).cloned()),
+            year: metadata.and_then(|m| m.get(&ItemKey::Year).cloned()),
+            mood: metadata.and_then(|m| m.get(&ItemKey::Mood).cloned()),
+            file_created_at: Some(file.created()),
+        }
+    }
+}
+
+#[derive(Deserialize, TS)]
+#[ts(export)]
+pub struct UpdatedSong {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub album_artist: Option<String>,
+    pub genre: Option<String>,
+    pub track_number: Option<String>,
+    pub disc_number: Option<String>,
+    pub year: Option<String>,
+    pub mood: Option<String>,
+}
+
+impl From<SongFile> for UpdatedSong {
+    fn from(file: SongFile) -> Self {
+        let metadata = file.metadata().as_ref();
+        UpdatedSong {
+            title: metadata.and_then(|m| m.get(&ItemKey::Title).cloned()),
+            artist: metadata.and_then(|m| m.get(&ItemKey::Artist).cloned()),
+            album: metadata.and_then(|m| m.get(&ItemKey::Album).cloned()),
+            album_artist: metadata.and_then(|m| m.get(&ItemKey::AlbumArtist).cloned()),
+            genre: metadata.and_then(|m| m.get(&ItemKey::Genre).cloned()),
+            track_number: metadata.and_then(|m| m.get(&ItemKey::TrackNumber).cloned()),
+            disc_number: metadata.and_then(|m| m.get(&ItemKey::DiscNumber).cloned()),
+            year: metadata.and_then(|m| m.get(&ItemKey::Year).cloned()),
+            mood: metadata.and_then(|m| m.get(&ItemKey::Mood).cloned()),
+        }
+    }
 }
 
 /// A collection of songs. Does not correlate to a table in the database.

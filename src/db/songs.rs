@@ -1,29 +1,176 @@
 use axum::response::IntoResponse;
-use hyper::StatusCode;
-use sqlx::query_as;
+use sqlx::{query, query_as, query_scalar};
+use time::OffsetDateTime;
 
-use super::{Album, DatabaseError, Song};
-use std::collections::HashMap;
+use crate::{bad_request, conflict, internal_error, not_found};
 
-type Result<T, E = DatabaseError> = std::result::Result<T, E>;
+use super::{directories, Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong};
+use std::{collections::HashMap, path::PathBuf};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseSongError {
     #[error("Album not found")]
     AlbumNotFound,
-    #[error("No albums found")]
-    NoAlbums,
+    #[error("Song not found")]
+    SongNotFound,
+    #[error("Song already exists")]
+    SongAlreadyExists,
+    #[error("Metadata error: {0}")]
+    Metadata(#[from] crate::metadata::Error),
+    #[error("Song path doesn't exist in any directories")]
+    PathNotFound,
 }
 
 impl IntoResponse for DatabaseSongError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            Self::AlbumNotFound | Self::NoAlbums => {
-                (StatusCode::NOT_FOUND, self.to_string()).into_response()
-            }
+            Self::SongAlreadyExists => conflict(self).into_response(),
+            Self::Metadata(err) => internal_error(err).into_response(),
+            Self::PathNotFound => bad_request(self).into_response(),
+            Self::AlbumNotFound | Self::SongNotFound => not_found(self).into_response(),
         }
     }
+}
+
+pub async fn add_song<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    song: NewSong,
+) -> Result<Song> {
+    let mut connection = connection.acquire().await?;
+    let uuid = uuid::Uuid::new_v4().to_string();
+
+    let NewSong {
+        path,
+        title,
+        album,
+        album_artist,
+        disc_number,
+        artist,
+        year,
+        track_number,
+        genre,
+        mood,
+        file_created_at,
+    } = song;
+
+    let Directory {
+        name: directory_id, ..
+    } = directories::find_directory_from_sub_path(&mut *connection, &path)
+        .await
+        .map_err(|err| match err {
+            DatabaseError::Directory(directories::DatabaseDirectoryError::NotFound) => {
+                DatabaseSongError::PathNotFound.into()
+            }
+            _ => err,
+        })?;
+
+    let added_at = Some(OffsetDateTime::now_utc());
+    let _ = query!(
+        "INSERT INTO songs (id, path, title, album, album_artist, disc_number, artist, year, track_number, genre, mood, added_at, file_created_at, directory_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        uuid,
+        path,
+        title,
+        album,
+        album_artist,
+        disc_number,
+        artist,
+        year,
+        track_number,
+        genre,
+        mood,
+        added_at,
+        file_created_at,
+        directory_id
+    )
+    .execute(&mut *connection)
+    .await?;
+
+    Ok(Song {
+        id: uuid,
+        path,
+        title,
+        album,
+        album_artist,
+        disc_number,
+        artist,
+        year,
+        track_number,
+        genre,
+        mood,
+        added_at,
+        file_created_at,
+        directory_id,
+        ..Default::default()
+    })
+}
+
+pub async fn get_song(pool: &sqlx::Pool<sqlx::Sqlite>, id: &str) -> Result<Song> {
+    query_as!(Song, "SELECT * FROM songs WHERE id = ?", id)
+        .fetch_one(pool)
+        .await
+        .map_err(|err| match err {
+            sqlx::Error::RowNotFound => DatabaseSongError::SongNotFound.into(),
+            _ => err.into(),
+        })
+}
+
+pub async fn get_song_path(pool: &sqlx::Pool<sqlx::Sqlite>, id: &str) -> Result<PathBuf> {
+    query_scalar!("SELECT path FROM songs WHERE id = ?", id)
+        .fetch_one(pool)
+        .await
+        .map(PathBuf::from)
+        .map_err(DatabaseError::from)
+}
+
+pub async fn get_songs(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Song>> {
+    query_as!(Song, "SELECT * FROM songs")
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn delete_song<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    id: &str,
+) -> Result<()> {
+    let mut connection = connection.acquire().await?;
+    if query!("DELETE FROM songs WHERE id = ?", id)
+        .execute(&mut *connection)
+        .await?
+        .rows_affected()
+        == 0
+    {
+        Err(DatabaseSongError::SongNotFound.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub async fn update_song<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    id: &str,
+    song: UpdatedSong,
+) -> Result<()> {
+    let mut connection = connection.acquire().await?;
+
+    let _ = query!(
+        "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
+        song.title,
+        song.album,
+        song.album_artist,
+        song.disc_number,
+        song.artist,
+        song.year,
+        song.track_number,
+        song.genre,
+        song.mood,
+        id
+    )
+    .execute(&mut *connection)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn get_album(pool: &sqlx::Pool<sqlx::Sqlite>, title: String) -> Result<Album> {
@@ -44,10 +191,6 @@ pub async fn get_albums(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Album>> {
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
         .fetch_all(pool)
         .await?;
-
-    if tracks.is_empty() {
-        return Err(DatabaseSongError::NoAlbums.into());
-    }
 
     let mut album_map: HashMap<String, Vec<Song>> = HashMap::new();
 

@@ -3,18 +3,17 @@ use std::{collections::HashMap, path::PathBuf};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Result},
     routing::{get, put},
     Json, Router,
 };
-use sqlx::{query_as, query_scalar};
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
 
 use crate::{
     app::AppState,
-    db::Song,
-    metadata::{item::ItemKey, Metadata as SongMetadata, SongFile},
+    db::{songs, Song, UpdatedSong},
+    metadata::{Metadata as SongMetadata, SongFile},
     paths::metadata_history_dir,
     utils::*,
 };
@@ -41,25 +40,31 @@ pub fn router() -> Router<AppState> {
 async fn get_song(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
-) -> Result<Json<Song>, impl IntoResponse> {
-    query_as("SELECT * FROM songs WHERE id = ?")
-        .bind(song_id)
-        .fetch_one(&db)
+) -> Result<Json<Song>> {
+    let song = songs::get_song(&db, &song_id)
         .await
         .map(Json)
-        .map_err(internal_error)
+        .map_err(IntoResponse::into_response)?;
+
+    Ok(song)
+}
+
+async fn get_songs(State(pool): State<sqlx::Pool<sqlx::Sqlite>>) -> Result<Json<Vec<Song>>> {
+    let songs = songs::get_songs(&pool)
+        .await
+        .map(Json)
+        .map_err(IntoResponse::into_response)?;
+
+    Ok(songs)
 }
 
 async fn get_song_file(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
-) -> Result<Json<SongFile>, (StatusCode, String)> {
-    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+) -> Result<Json<SongFile>> {
+    let path = songs::get_song_path(&pool, &song_id)
         .await
-        .map(PathBuf::from)
-        .map_err(internal_error)?;
-
+        .map_err(IntoResponse::into_response)?;
 
     let file = read_song_file(path).await?;
 
@@ -67,44 +72,21 @@ async fn get_song_file(
 }
 
 async fn refresh_song_details(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
-) -> Result<Json<Option<SongMetadata>>, (StatusCode, String)> {
-    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+) -> Result<Json<Option<SongMetadata>>> {
+    let path = songs::get_song_path(&pool, &song_id)
         .await
-        .map(PathBuf::from)
-        .map_err(internal_error)?;
+        .map_err(IntoResponse::into_response)?;
 
     let file = read_song_file(path).await?;
+    let metadata = file.metadata().clone();
 
-    let metadata = file.metadata().as_ref();
-
-    sqlx::query("UPDATE songs SET title = ?, artist = ?, album = ?, album_artist = ?, genre = ?, track_number = ?, disc_number = ?, mood = ? WHERE id = ?")
-        .bind(metadata.and_then(|m| m.get(&ItemKey::Title)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::Artist)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::Album)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::AlbumArtist)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::Genre)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::TrackNumber)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::DiscNumber)))
-        .bind(metadata.and_then(|m| m.get(&ItemKey::Mood)))
-        .bind(song_id)
-        .execute(&db)
+    songs::update_song(&pool, &song_id, UpdatedSong::from(file))
         .await
         .map_err(internal_error)?;
 
     Ok(Json(metadata))
-}
-
-async fn get_songs(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-) -> Result<axum::Json<Vec<Song>>, impl IntoResponse> {
-    query_as("SELECT * FROM songs")
-        .fetch_all(&db)
-        .await
-        .map(Json)
-        .map_err(internal_error)
 }
 
 async fn get_song_metadata_history(
@@ -154,28 +136,23 @@ async fn get_song_metadata_history(
 }
 
 async fn restore_metadata(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
     Path((song_id, timestamp)): Path<(SongId, UtcDateTime)>,
-) -> Result<StatusCode, (StatusCode, String)> {
+) -> Result<StatusCode> {
     let metadata_dir = metadata_history_dir().join(&song_id);
     let path = metadata_dir.join(format!("{}.json", timestamp.unix_timestamp_nanos()));
 
     if !path.exists() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            format!("No metadata found for timestamp \"{timestamp}\""),
-        ));
+        return Err(not_found(format!("No metadata found for timestamp \"{timestamp}\"")).into());
     }
 
     let new_metadata: SongMetadata =
         serde_json::from_str(&std::fs::read_to_string(&path).map_err(internal_error)?)
             .map_err(internal_error)?;
 
-    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+    let path = songs::get_song_path(&pool, &song_id)
         .await
-        .map(PathBuf::from)
-        .map_err(internal_error)?;
+        .map_err(IntoResponse::into_response)?;
 
     let _ = spawn_blocking(move || update_metadata(song_id, &path, &new_metadata))
         .await
@@ -185,11 +162,10 @@ async fn restore_metadata(
 }
 
 async fn read_song_file(path: PathBuf) -> Result<SongFile> {
-    let file = spawn_blocking(move || {
-        SongFile::open(&path).map_err(|err| internal_error(err).into_response())
-    })
-    .await
-    .map_err(internal_error)??;
+    let file = spawn_blocking(move || SongFile::open(&path))
+        .await
+        .expect("Failed to join thread")
+        .map_err(internal_error)?;
 
     Ok(file)
 }
@@ -198,11 +174,9 @@ async fn edit_song(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
     Json(metadata): Json<SongMetadata>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    let path = query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+) -> Result<StatusCode> {
+    let path = songs::get_song_path(&db, &song_id)
         .await
-        .map(PathBuf::from)
         .map_err(internal_error)?;
 
     let _ = spawn_blocking(move || update_metadata(song_id, &path, &metadata))

@@ -37,6 +37,18 @@ impl IntoResponse for DatabaseDirectoryError {
     }
 }
 
+pub async fn find_directory_from_sub_path<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    sub_path: &str,
+) -> Result<Directory> {
+    let mut connection = connection.acquire().await?;
+    get_directories(&mut *connection)
+        .await?
+        .into_iter()
+        .find(|d| d.path.starts_with(sub_path))
+        .ok_or(DatabaseDirectoryError::NotFound.into())
+}
+
 pub async fn add_directory(
     pool: sqlx::Pool<sqlx::Sqlite>,
     directory: NewDirectory,
@@ -124,9 +136,11 @@ pub async fn remove_directory(pool: sqlx::Pool<sqlx::Sqlite>, name: String) -> R
     }
 }
 
-pub async fn get_directories(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Directory>> {
+pub async fn get_directories<'c>(connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>) -> Result<Vec<Directory>>
+{
+    let mut connection = connection.acquire().await?;
     let directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
-        .fetch_all(pool)
+        .fetch_all(&mut *connection)
         .await?;
 
     Ok(directories)
