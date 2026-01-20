@@ -5,9 +5,9 @@ use axum::{
     Json, Router,
 };
 
-use crate::{
-    app::AppState,
+use crate::app::{
     db::{songs, Album},
+    AppState,
 };
 
 pub fn router() -> Router<AppState> {

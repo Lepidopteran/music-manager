@@ -12,11 +12,12 @@ use axum::{
 use sysinfo::Disks;
 use ts_rs::TS;
 
-use crate::{
-    app::{AppState, Database},
+use crate::app::{
     db::{directories, Directory as DirectoryDB, NewDirectory},
-    utils::*,
+    AppState, Database,
 };
+
+use super::*;
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]

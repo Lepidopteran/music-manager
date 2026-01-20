@@ -13,15 +13,14 @@ use futures::Stream;
 use serde::Serialize;
 use time::OffsetDateTime;
 use tokio::sync::broadcast::Sender;
-use tokio_stream::{
-    wrappers::BroadcastStream,
-    StreamExt,
-};
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use ts_rs::TS;
 
 use crate::{
-    app::AppState,
-    tasks::{TaskEvent as TaskReport, TaskEventType},
+    app::{
+        tasks::{TaskEvent as TaskReport, TaskEventType},
+        AppState,
+    },
 };
 
 #[derive(Debug, Clone, serde::Serialize, TS)]

@@ -1,13 +1,14 @@
 use std::fs::{create_dir, File};
 
-use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
-use super::{internal_error, paths};
-use crate::metadata::{item::ItemKey, SongFile};
+use crate::{
+    metadata::{item::ItemKey, SongFile},
+    paths,
+};
 
 pub mod directories;
 pub mod songs;
@@ -22,16 +23,6 @@ pub enum DatabaseError {
     Directory(#[from] directories::DatabaseDirectoryError),
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
-}
-
-impl IntoResponse for DatabaseError {
-    fn into_response(self) -> axum::response::Response {
-        match self {
-            DatabaseError::Song(err) => err.into_response(),
-            DatabaseError::Directory(err) => err.into_response(),
-            DatabaseError::Sqlx(err) => internal_error(err).into_response(),
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, FromRow)]
@@ -163,38 +154,4 @@ impl From<Vec<Song>> for Album {
             tracks,
         }
     }
-}
-
-/// Utility function for creating a default database.
-///
-/// # Arguments
-/// * `name` - The name of the database.
-///
-/// # Errors
-/// Returns an `io::Error` if the database could not be created.
-///
-/// # Returns
-/// Returns the connection string of the database.
-pub fn create_default_database(name: &str) -> super::Result<String> {
-    let db_name = format!("{name}.db");
-    let config_dir = paths::app_config_dir();
-    let conn_str = format!("sqlite://{}", config_dir.join(db_name.clone()).display());
-
-    if !config_dir.exists() {
-        create_dir(&config_dir).map_err(|err| {
-            tracing::error!("Failed to create config directory: {}", err);
-            err
-        })?;
-    }
-
-    let db_path = paths::app_data_dir().join(db_name);
-
-    if !db_path.exists() {
-        File::create(&db_path).map_err(|err| {
-            tracing::error!("Failed to create database file: {}", err);
-            err
-        })?;
-    }
-
-    Ok(conn_str)
 }

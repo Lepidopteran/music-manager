@@ -3,12 +3,12 @@ use std::sync::{Arc, Mutex};
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
-use super::events::TaskEvent;
-
-use crate::{
-    config::Settings,
+use super::{
+    events::TaskEvent,
     tasks::{self, Registry, RegistryError},
 };
+
+use crate::config::Settings;
 
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;

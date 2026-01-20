@@ -9,12 +9,9 @@ use uuid::Uuid;
 use walkdir::WalkDir;
 
 use crate::{
-    db::Song,
+    app::{db::Song, tasks::*},
     metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
-    tasks::{TaskEvent, TaskState},
 };
-
-use super::*;
 
 use std::{
     collections::HashSet,
@@ -520,7 +517,6 @@ async fn add_song(
             path.to_string_lossy().to_string()
         );
     }
-
 
     let path = path.to_string_lossy().to_string();
 

@@ -11,7 +11,10 @@ use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::signal;
 
-use muusik::{app, config, db, logging, paths, Args};
+use muusik::{
+    app::{create_default_database, migration::run_migrations, routes, AppState},
+    config, logging, paths, Args,
+};
 
 #[tokio::main]
 async fn main() {
@@ -39,7 +42,7 @@ async fn main() {
 
             tracing::info!("{info_msg}");
 
-            &db::create_default_database("data").expect("Failed to create default database")
+            &create_default_database("data").expect("Failed to create default database")
         }
     };
 
@@ -61,7 +64,7 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    app::migration::run_migrations(&pool, new_database)
+    run_migrations(&pool, new_database)
         .await
         .expect("Failed to run migrations");
 
@@ -79,7 +82,7 @@ async fn main() {
         .await
         .expect("Failed to bind to address");
 
-    let state = app::AppState::new(pool, settings);
+    let state = AppState::new(pool, settings);
 
     tracing::info!(
         "Listening on {}{}",
@@ -87,7 +90,7 @@ async fn main() {
         addr.underline().blue()
     );
 
-    axum::serve(listener, app::routes(state))
+    axum::serve(listener, routes(state))
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Failed to start server");

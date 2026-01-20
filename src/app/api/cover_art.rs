@@ -13,8 +13,9 @@ use sqlx::query_scalar;
 use crate::{
     app::AppState,
     metadata::{get_cover_art, CoverArt, CoverArtType},
-    utils::*,
 };
+
+use super::*;
 
 #[derive(serde::Serialize)]
 struct CoverArtMetadata {
