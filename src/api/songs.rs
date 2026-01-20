@@ -1,11 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Result},
-    routing::{get, put},
-    Json, Router,
+    Json, Router, extract::{Path, State}, http::StatusCode, response::{IntoResponse, Result}, routing::{get, post, put}
 };
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
@@ -24,16 +20,16 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
         .route("/api/songs/{id}", get(get_song))
-        .route("/api/songs/{id}/file-info", get(get_song_file))
-        .route("/api/songs/{id}/refresh", get(refresh_song_details))
+        .route("/api/songs/{id}/file-info", post(get_song_file))
+        .route("/api/songs/{id}/refresh", post(refresh_song_details))
         .route("/api/songs/{id}", put(edit_song))
         .route(
             "/api/songs/{id}/metadata/restore/{timestamp}",
-            get(restore_metadata),
+            post(restore_metadata),
         )
         .route(
             "/api/songs/{id}/metadata/history",
-            get(get_song_metadata_history),
+            post(get_song_metadata_history),
         )
 }
 
