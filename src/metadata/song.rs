@@ -19,7 +19,7 @@ use lofty::{
 };
 
 use super::{
-    Result,
+    Result, TAG_SEPARATOR,
     file::SongFileType,
     item::{ItemKey, TagType},
 };
@@ -155,7 +155,7 @@ impl SongFile {
             for (key, value) in metadata.iter() {
                 let key = key.clone().into();
 
-                let split: Vec<_> = value.split(';').map(|s| s.trim()).collect();
+                let split: Vec<_> = value.split(TAG_SEPARATOR).map(|s| s.trim()).collect();
 
                 if split.len() == 1 {
                     let item =
