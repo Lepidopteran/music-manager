@@ -11,7 +11,6 @@ pub mod utils;
 
 mod api;
 mod args;
-mod events;
 mod tasks;
 
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");

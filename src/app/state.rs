@@ -3,9 +3,10 @@ use std::sync::{Arc, Mutex};
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
+use super::events::TaskEvent;
+
 use crate::{
     config::Settings,
-    events::TaskEvent,
     tasks::{self, Registry, RegistryError},
 };
 

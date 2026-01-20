@@ -6,11 +6,12 @@ use axum::{
     Router,
 };
 
-use super::{api, events};
+use super::{api};
 
-pub mod migration;
+mod events;
 mod state;
 
+pub mod migration;
 pub use state::*;
 
 pub fn routes(state: AppState) -> Router {
