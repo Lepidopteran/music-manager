@@ -9,7 +9,6 @@ pub mod metadata;
 pub mod paths;
 pub mod utils;
 
-mod api;
 mod args;
 mod tasks;
 

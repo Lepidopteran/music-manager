@@ -6,8 +6,7 @@ use axum::{
     Router,
 };
 
-use super::{api};
-
+mod api;
 mod events;
 mod state;
 
