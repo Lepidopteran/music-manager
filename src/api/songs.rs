@@ -11,12 +11,10 @@ use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
 
 use crate::{
-    app::{
-        db::{songs, Song, UpdatedSong},
-        AppState,
-    },
+    db::{songs, Song, UpdatedSong},
     metadata::{Metadata as SongMetadata, SongFile},
     paths::metadata_history_dir,
+    AppState,
 };
 
 use super::*;

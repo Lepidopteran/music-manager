@@ -17,10 +17,8 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use ts_rs::TS;
 
 use crate::{
-    app::{
-        tasks::{TaskEvent as TaskReport, TaskEventType},
-        AppState,
-    },
+    tasks::{TaskEvent as TaskReport, TaskEventType},
+    AppState,
 };
 
 #[derive(Debug, Clone, serde::Serialize, TS)]

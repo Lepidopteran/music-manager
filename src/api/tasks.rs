@@ -5,9 +5,13 @@ use axum::{
     Json, Router,
 };
 
-use crate::app::{tasks::TaskReport, AppState, Error, TaskRegistry};
-use super::*;
+use crate::{
+    state::{AppState, TaskRegistry},
+    tasks::TaskReport,
+    Error,
+};
 
+use super::*;
 
 pub fn router() -> Router<AppState> {
     Router::new()

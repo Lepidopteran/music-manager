@@ -11,7 +11,7 @@ use axum::{
 use sqlx::query_scalar;
 
 use crate::{
-    app::AppState,
+    AppState,
     metadata::{get_cover_art, CoverArt, CoverArtType},
 };
 

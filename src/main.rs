@@ -12,13 +12,13 @@ use sqlx::sqlite::SqlitePoolOptions;
 use tokio::signal;
 
 use muusik::{
-    app::{create_default_database, migration::run_migrations, routes, AppState},
-    config, logging, paths, Args,
+    APP_DIRECTORIES, AppState, Args, create_default_database, initialize_logging, load_config,
+    routes, run_migrations,
 };
 
 #[tokio::main]
 async fn main() {
-    logging::init().expect("Failed to initialize logging");
+    initialize_logging();
     dotenv().ok();
 
     ensure_paths_exist().expect("Failed to ensure paths exist");
@@ -30,7 +30,7 @@ async fn main() {
     );
 
     let args = Args::parse();
-    let settings = config::load(&args).expect("Failed to load settings");
+    let settings = load_config(&args).expect("Failed to load settings");
 
     let database_url = match &settings.server.database_url {
         Some(url) if !url.trim().is_empty() => url,
@@ -121,16 +121,9 @@ async fn shutdown_signal() {
 }
 
 pub fn ensure_paths_exist() -> Result<(), std::io::Error> {
-    let dirs = vec![
-        paths::app_config_dir(),
-        paths::app_cache_dir(),
-        paths::app_data_dir(),
-        paths::metadata_history_dir(),
-    ];
-
-    for dir in dirs {
+    for dir in APP_DIRECTORIES.iter() {
         if !dir.exists() {
-            std::fs::create_dir_all(&dir)?;
+            std::fs::create_dir_all(dir)?;
         }
     }
 

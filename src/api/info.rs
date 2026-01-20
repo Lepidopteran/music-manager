@@ -6,7 +6,7 @@ use axum::{
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::app::AppState;
+use crate::AppState;
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]

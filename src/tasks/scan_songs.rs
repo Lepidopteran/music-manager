@@ -9,8 +9,9 @@ use uuid::Uuid;
 use walkdir::WalkDir;
 
 use crate::{
-    app::{db::Song, tasks::*},
+    db::Song,
     metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
+    tasks::*,
 };
 
 use std::{

@@ -5,7 +5,7 @@ use axum::{
     Json, Router,
 };
 
-use crate::app::{
+use crate::{
     db::{songs, Album},
     AppState,
 };

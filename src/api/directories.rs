@@ -12,9 +12,9 @@ use axum::{
 use sysinfo::Disks;
 use ts_rs::TS;
 
-use crate::app::{
+use crate::{
     db::{directories, Directory as DirectoryDB, NewDirectory},
-    AppState, Database,
+    state::{AppState, Database},
 };
 
 use super::*;
