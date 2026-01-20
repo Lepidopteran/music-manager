@@ -20,7 +20,7 @@ use tokio::{
 
 use super::{
     config,
-    task::{Registry, RegistryError},
+    tasks::{Registry, RegistryError},
 };
 
 use axum::{

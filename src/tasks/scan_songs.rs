@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 use crate::{
     db::Song,
     metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
-    task::{TaskEvent, TaskState},
+    tasks::{TaskEvent, TaskState},
 };
 
 use super::*;

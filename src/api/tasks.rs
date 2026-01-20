@@ -8,7 +8,7 @@ use axum::{
 use crate::{
     app::{AppState, TaskRegistry},
     bad_request, internal_error,
-    task::TaskReport,
+    tasks::TaskReport,
     Error,
 };
 

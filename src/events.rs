@@ -21,7 +21,7 @@ use ts_rs::TS;
 
 use crate::{
     app::AppState,
-    task::{TaskEvent as TaskReport, TaskEventType},
+    tasks::{TaskEvent as TaskReport, TaskEventType},
 };
 
 #[derive(Debug, Clone, serde::Serialize, TS)]

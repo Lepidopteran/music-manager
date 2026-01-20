@@ -10,7 +10,6 @@ pub mod logging;
 pub mod metadata;
 pub mod migration;
 pub mod paths;
-pub mod task;
 pub mod utils;
 
 mod api;
@@ -33,20 +32,5 @@ pub enum Error {
     #[error("Metadata error: {0}")]
     Metadata(#[from] metadata::Error),
     #[error("Task registry error: {0}")]
-    TaskRegistry(#[from] task::RegistryError),
-}
-
-impl IntoResponse for Error {
-    fn into_response(self) -> axum::response::Response {
-        match self {
-            Error::Database(err) => err.into_response(),
-            Error::Io(err) => internal_error(err).into_response(),
-            Error::Metadata(err) => internal_error(err).into_response(),
-            Error::TaskRegistry(err) => match err {
-                task::RegistryError::NotFound => not_found(err).into_response(),
-                task::RegistryError::StateError(err) => bad_request(err).into_response(),
-                _ => internal_error(err).into_response(),
-            },
-        }
-    }
+    TaskRegistry(#[from] tasks::RegistryError),
 }
