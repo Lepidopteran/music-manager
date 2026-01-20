@@ -3,12 +3,12 @@ use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    fs::{read_to_string, File},
-    net::IpAddr,
-    path::{Path, PathBuf},
+    fs::{File, read_to_string},
+    net::{IpAddr, Ipv4Addr},
+    path::Path,
 };
 
-use crate::{paths, Args};
+use crate::{Args, paths};
 
 type Result<T, E = ConfigError> = std::result::Result<T, E>;
 
@@ -75,8 +75,9 @@ pub fn load_config(args: &Args) -> Result<Settings> {
 
     let path = paths::app_config_dir().join("config.toml");
     let mut settings = Settings::load(&path).or_else(|err| {
-        if let ConfigError::Io(ref io_err) = err && io_err.kind() == std::io::ErrorKind::NotFound {
-
+        if let ConfigError::Io(ref io_err) = err
+            && io_err.kind() == std::io::ErrorKind::NotFound
+        {
             let info_msg = "No config file found. Creating default config."
                 .blue()
                 .bold()
@@ -86,34 +87,42 @@ pub fn load_config(args: &Args) -> Result<Settings> {
 
             let settings = Settings::default();
 
+            let file = File::create(&path).expect("Failed to create config file");
+            let template = include_str!("../templates/config.toml");
 
-    let file = File::create(&path).expect("Failed to create config file");
-    let template = include_str!("../templates/config.toml");
-
-    Handlebars::new()
-        .render_template_to_write(template, &settings, file)
-        .expect("Failed to write config file");
+            Handlebars::new()
+                .render_template_to_write(template, &settings, file)
+                .expect("Failed to write config file");
 
             Ok(settings)
-        }
-        else {
+        } else {
             Err(err)
         }
     })?;
 
-            override_config(&mut settings, args);
+    override_config(&mut settings, args);
 
     Ok(settings)
 }
 
 fn override_config(settings: &mut Settings, args: &Args) {
-    args.database_url
-        .as_ref()
-        .map(|url| settings.server.database_url.replace(url.to_string()));
+    if let Some(database_url) = &args.database_url {
+        settings
+            .server
+            .database_url
+            .replace(database_url.to_string());
+    }
 
-    args.host.map(|listen_on_all_interfaces| {
-        settings.server.listen_on_all_interfaces = listen_on_all_interfaces
-    });
+    if settings.server.host.is_none()
+        && let Some(host) = args.host
+    {
+        settings.server.host.replace(match host {
+            true => IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+            false => IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        });
+    }
 
-    args.port.map(|port| settings.server.port = port);
+    if let Some(port) = args.port {
+        settings.server.port = port;
+    }
 }

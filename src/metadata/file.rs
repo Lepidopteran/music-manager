@@ -20,7 +20,7 @@ pub enum SongFileType {
     Speex,
     Wav,
     WavPack,
-    Unknown
+    Unknown,
 }
 
 impl From<FileType> for SongFileType {
@@ -38,7 +38,7 @@ impl From<FileType> for SongFileType {
             FileType::Speex => SongFileType::Speex,
             FileType::Wav => SongFileType::Wav,
             FileType::WavPack => SongFileType::WavPack,
-            _ => SongFileType::Unknown  
+            _ => SongFileType::Unknown,
         }
     }
 }

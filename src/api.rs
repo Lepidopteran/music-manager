@@ -3,10 +3,10 @@ use std::fmt::Display;
 use axum::{http::StatusCode, response::IntoResponse};
 
 use super::{
-    db::{songs::DatabaseSongError, DatabaseError},
+    Error,
+    db::{DatabaseError, songs::DatabaseSongError},
     tasks as app_tasks,
     tasks::RegistryError,
-    Error,
 };
 
 pub mod albums;

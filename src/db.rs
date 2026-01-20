@@ -1,14 +1,9 @@
-use std::fs::{create_dir, File};
-
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use sqlx::types::time::OffsetDateTime;
 use ts_rs::TS;
 
-use crate::{
-    metadata::{item::ItemKey, SongFile},
-    paths,
-};
+use crate::metadata::{SongFile, item::ItemKey};
 
 pub mod directories;
 pub mod songs;

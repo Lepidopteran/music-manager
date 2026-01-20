@@ -1,8 +1,7 @@
-use axum::response::IntoResponse;
 use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
-use super::{directories, Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong};
+use super::{Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
 use std::{collections::HashMap, path::PathBuf};
 
 #[non_exhaustive]
@@ -186,7 +185,9 @@ pub async fn get_album<'c>(
     Ok(album)
 }
 
-pub async fn get_albums<'c>(connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>) -> Result<Vec<Album>> {
+pub async fn get_albums<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+) -> Result<Vec<Album>> {
     let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
         .fetch_all(&mut *connection)

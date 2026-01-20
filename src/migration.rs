@@ -4,12 +4,13 @@ use std::{
 };
 
 use color_eyre::{
-    eyre::{eyre, Result},
+    eyre::{Result, eyre},
     owo_colors::OwoColorize,
 };
 use sqlx::{
+    SqlitePool,
     migrate::{AppliedMigration, Migrate, MigrateError, Migrator},
-    query_as, SqlitePool,
+    query_as,
 };
 
 use futures::future::BoxFuture;

@@ -1,24 +1,24 @@
 use std::convert::Infallible;
 
 use axum::{
+    Router,
     extract::State,
     response::{
-        sse::{Event, KeepAlive},
         Sse,
+        sse::{Event, KeepAlive},
     },
     routing::get,
-    Router,
 };
 use futures::Stream;
 use serde::Serialize;
 use time::OffsetDateTime;
 use tokio::sync::broadcast::Sender;
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use ts_rs::TS;
 
 use crate::{
-    tasks::{TaskEvent as TaskReport, TaskEventType},
     AppState,
+    tasks::{TaskEvent as TaskReport, TaskEventType},
 };
 
 #[derive(Debug, Clone, serde::Serialize, TS)]

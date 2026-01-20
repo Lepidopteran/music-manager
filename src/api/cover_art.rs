@@ -1,18 +1,18 @@
 use std::{io::Cursor, path::PathBuf};
 
 use axum::{
+    Json, Router,
     body::Body,
     extract::{Path, State},
     http::{self, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
 };
 use sqlx::query_scalar;
 
 use crate::{
     AppState,
-    metadata::{get_cover_art, CoverArt, CoverArtType},
+    metadata::{CoverArt, CoverArtType, get_cover_art},
 };
 
 use super::*;
@@ -69,7 +69,7 @@ async fn get_song_cover_art(
             return Err((
                 StatusCode::BAD_REQUEST,
                 "Could not determine extension".to_string(),
-            ))
+            ));
         }
     };
 
@@ -79,7 +79,7 @@ async fn get_song_cover_art(
             return Err((
                 StatusCode::BAD_REQUEST,
                 "Could not determine mime type".to_string(),
-            ))
+            ));
         }
     };
 
@@ -160,7 +160,7 @@ async fn get_album_cover_art(
             return Err((
                 StatusCode::BAD_REQUEST,
                 "Could not determine extension".to_string(),
-            ))
+            ));
         }
     };
 
@@ -170,7 +170,7 @@ async fn get_album_cover_art(
             return Err((
                 StatusCode::BAD_REQUEST,
                 "Could not determine mime type".to_string(),
-            ))
+            ));
         }
     };
 
@@ -244,7 +244,7 @@ async fn get_album_cover_art_metadata(
 }
 
 fn convert_cover_art(cover_art: CoverArt, extension: &str) -> Option<Vec<u8>> {
-    use image::{load_from_memory, ImageFormat};
+    use image::{ImageFormat, load_from_memory};
 
     let format = ImageFormat::from_extension(extension)?;
     match load_from_memory(&cover_art.data) {

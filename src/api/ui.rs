@@ -1,8 +1,8 @@
 use axum::{
-    http::{header, StatusCode, Uri},
+    Router,
+    http::{StatusCode, Uri, header},
     response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
 };
 
 use rust_embed::Embed;
@@ -29,7 +29,6 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         return index().await;
     }
 
-
     match Asset::get(path.as_str()) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
@@ -41,6 +40,6 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
             }
 
             index().await
-        },
+        }
     }
 }

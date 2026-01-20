@@ -1,5 +1,5 @@
 use std::{
-    fs::{create_dir, File},
+    fs::{File, create_dir},
     path::PathBuf,
     sync::LazyLock,
 };
@@ -10,8 +10,8 @@ use tracing::info_span;
 use tracing_subscriber::{prelude::*, util::SubscriberInitExt};
 
 use axum::{
-    extract::{MatchedPath, Request},
     Router,
+    extract::{MatchedPath, Request},
 };
 
 mod metadata;

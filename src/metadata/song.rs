@@ -19,9 +19,9 @@ use lofty::{
 };
 
 use super::{
+    Result,
     file::SongFileType,
     item::{ItemKey, TagType},
-    Result,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
