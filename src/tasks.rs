@@ -1,8 +1,8 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::Serialize;
-use ts_rs::TS;
 use std::collections::HashMap;
 use time::OffsetDateTime;
+use ts_rs::TS;
 
 use tokio::sync::watch::Receiver;
 
@@ -212,12 +212,7 @@ impl TaskEvent {
         }
     }
 
-    pub fn progress(
-        message: &str,
-        current: u64,
-        total: u64,
-        step: Option<u8>,
-    ) -> Self {
+    pub fn progress(message: &str, current: u64, total: u64, step: Option<u8>) -> Self {
         Self {
             kind: TaskEventType::Progress,
             message: message.to_string(),

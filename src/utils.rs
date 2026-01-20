@@ -1,8 +1,6 @@
 use axum::http::StatusCode;
 use std::fmt::Display;
 
-use crate::metadata::{item::ItemKey, Metadata};
-
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
 pub fn internal_error(err: impl Display) -> (StatusCode, String) {
