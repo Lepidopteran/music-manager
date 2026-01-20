@@ -11,7 +11,7 @@ use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::signal;
 
-use muusik::{app, config, db, logging, migration::run_migrations, paths, Args};
+use muusik::{app, config, db, logging, paths, Args};
 
 #[tokio::main]
 async fn main() {
@@ -61,7 +61,7 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    run_migrations(&pool, new_database)
+    app::migration::run_migrations(&pool, new_database)
         .await
         .expect("Failed to run migrations");
 

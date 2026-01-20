@@ -6,7 +6,6 @@ pub mod config;
 pub mod db;
 pub mod logging;
 pub mod metadata;
-pub mod migration;
 pub mod paths;
 pub mod utils;
 

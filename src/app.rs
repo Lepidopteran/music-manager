@@ -8,6 +8,7 @@ use axum::{
 
 use super::{api, events};
 
+pub mod migration;
 mod state;
 
 pub use state::*;
