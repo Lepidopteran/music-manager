@@ -1,7 +1,7 @@
 mod album;
 mod cover_art;
-mod song;
 mod file;
+mod song;
 
 pub mod item;
 pub use {album::*, cover_art::*, song::*};

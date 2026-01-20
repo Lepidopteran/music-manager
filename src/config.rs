@@ -1,18 +1,24 @@
-use color_eyre::{
-    eyre::{Error, Result},
-    owo_colors::OwoColorize,
-};
+use color_eyre::owo_colors::OwoColorize;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 
 use std::{
-    fs::{read_to_string, File},
-    io::Write,
-    net::IpAddr,
-    path::{Path, PathBuf},
+    fs::{File, read_to_string},
+    net::{IpAddr, Ipv4Addr},
+    path::Path,
 };
 
-use crate::{paths, Args};
+use crate::{Args, paths};
+
+type Result<T, E = ConfigError> = std::result::Result<T, E>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] toml::de::Error),
+}
 
 /// Server configuration.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -50,16 +56,14 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Load settings from a TOML file located at the specified path.
-    pub fn load(path: &Path) -> Result<Self, Error> {
+    pub fn load(path: &Path) -> Result<Self, ConfigError> {
         Ok(toml::from_str::<Self>(&read_to_string(path)?)?)
     }
 }
 
 /// Loads the application configuration using `Settings::load`. Handles default
 /// configuration paths, argument overrides, and creates a default configuration if necessary.
-pub fn load(args: &Args) -> Result<Settings, Error> {
-
+pub fn load_config(args: &Args) -> Result<Settings> {
     if let Some(config) = &args.config {
         let mut settings = Settings::load(config)?;
         override_config(&mut settings, args);
@@ -70,17 +74,10 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
     }
 
     let path = paths::app_config_dir().join("config.toml");
-    let mut settings = match Settings::load(&path) {
-        Ok(settings) => settings,
-        Err(err) => {
-            if let Some(io_error) = err.downcast_ref::<std::io::Error>() {
-                if io_error.kind() != std::io::ErrorKind::NotFound {
-                    return Err(err);
-                }
-            } else {
-                return Err(err);
-            }
-
+    let mut settings = Settings::load(&path).or_else(|err| {
+        if let ConfigError::Io(ref io_err) = err
+            && io_err.kind() == std::io::ErrorKind::NotFound
+        {
             let info_msg = "No config file found. Creating default config."
                 .blue()
                 .bold()
@@ -89,42 +86,43 @@ pub fn load(args: &Args) -> Result<Settings, Error> {
             tracing::info!("{info_msg}");
 
             let settings = Settings::default();
-            create_default_config(path, &settings)?;
 
-            settings
+            let file = File::create(&path).expect("Failed to create config file");
+            let template = include_str!("../templates/config.toml");
+
+            Handlebars::new()
+                .render_template_to_write(template, &settings, file)
+                .expect("Failed to write config file");
+
+            Ok(settings)
+        } else {
+            Err(err)
         }
-    };
+    })?;
 
     override_config(&mut settings, args);
 
     Ok(settings)
 }
 
-fn override_config(config: &mut Settings, args: &Args) {
-    if let Some(url) = &args.database_url {
-        config.server.database_url = Some(url.to_string());
+fn override_config(settings: &mut Settings, args: &Args) {
+    if let Some(database_url) = &args.database_url {
+        settings
+            .server
+            .database_url
+            .replace(database_url.to_string());
     }
 
-    if let Some(port) = &args.port {
-        config.server.port = *port;
+    if settings.server.host.is_none()
+        && let Some(host) = args.host
+    {
+        settings.server.host.replace(match host {
+            true => IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+            false => IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        });
     }
 
-    if let Some(host) = &args.host {
-        config.server.listen_on_all_interfaces = *host;
+    if let Some(port) = args.port {
+        settings.server.port = port;
     }
-}
-
-fn create_default_config(path: PathBuf, settings: &Settings) -> Result<(), Error> {
-    let template = include_str!("../templates/config.toml");
-
-    let config = {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_template_string("config", template)?;
-        handlebars.render("config", settings)?
-    };
-
-    let mut file = File::create(&path)?;
-    file.write_all(config.as_bytes())?;
-
-    Ok(())
 }

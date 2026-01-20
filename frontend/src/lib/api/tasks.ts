@@ -6,9 +6,9 @@ export async function getTasks(): Promise<TaskInfo[]> {
 }
 
 export async function startTask(id: string): Promise<void> {
-	await fetchText(`/api/tasks/${id}/start`);
+	await fetchText(`/api/tasks/${id}/start`, { method: "POST" });
 }
 
 export async function stopTask(id: string): Promise<void> {
-	await fetchText(`/api/tasks/${id}/stop`);
+	await fetchText(`/api/tasks/${id}/stop`, { method: "POST" });
 }

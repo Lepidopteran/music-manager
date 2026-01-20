@@ -1,11 +1,12 @@
-use axum::response::IntoResponse;
+use std::{
+    collections::HashMap,
+    path::{MAIN_SEPARATOR, PathBuf},
+};
+
 use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
-use crate::{bad_request, conflict, internal_error, not_found};
-
-use super::{directories, Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong};
-use std::{collections::HashMap, path::{MAIN_SEPARATOR, PathBuf}};
+use super::{Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -20,17 +21,6 @@ pub enum DatabaseSongError {
     Metadata(#[from] crate::metadata::Error),
     #[error("Song path doesn't exist in any directories")]
     PathNotFound,
-}
-
-impl IntoResponse for DatabaseSongError {
-    fn into_response(self) -> axum::response::Response {
-        match self {
-            Self::SongAlreadyExists => conflict(self).into_response(),
-            Self::Metadata(err) => internal_error(err).into_response(),
-            Self::PathNotFound => bad_request(self).into_response(),
-            Self::AlbumNotFound | Self::SongNotFound => not_found(self).into_response(),
-        }
-    }
 }
 
 pub async fn add_song<'c>(
@@ -234,7 +224,9 @@ pub async fn get_album<'c>(
     Ok(album)
 }
 
-pub async fn get_albums<'c>(connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>) -> Result<Vec<Album>> {
+pub async fn get_albums<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+) -> Result<Vec<Album>> {
     let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
         .fetch_all(&mut *connection)

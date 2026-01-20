@@ -1,12 +1,12 @@
 use axum::{
+    Json, Router,
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
 };
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::app::AppState;
+use crate::AppState;
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -39,8 +39,12 @@ async fn get_app_info() -> Response {
         name: env!("CARGO_PKG_NAME").to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         system: SystemInfo {
-            os: sysinfo::System::name().expect("Failed to get system name").to_string(),
-            name: sysinfo::System::host_name().expect("Failed to get host name").to_string(),
+            os: sysinfo::System::name()
+                .expect("Failed to get system name")
+                .to_string(),
+            name: sysinfo::System::host_name()
+                .expect("Failed to get host name")
+                .to_string(),
         },
     })
     .into_response()

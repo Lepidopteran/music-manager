@@ -21,7 +21,9 @@ pub enum TagType {
 ///
 /// Additionally, this enum has the [`Serialize`](serde::Serialize) and [`Deserialize`](serde::Deserialize) traits implemented and maps to and from Lofty [`ItemKey`](lofty::tag::ItemKey).
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize, TS)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize, TS,
+)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "SongMetadataKey")]
 pub enum ItemKey {

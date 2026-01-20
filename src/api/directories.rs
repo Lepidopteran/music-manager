@@ -2,21 +2,22 @@ use fs_extra::dir::get_size;
 use serde::Serialize;
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{delete, get, post},
-    Json, Router,
 };
 
 use sysinfo::Disks;
 use ts_rs::TS;
 
 use crate::{
-    app::{AppState, Database},
-    db::{directories, Directory as DirectoryDB, NewDirectory},
-    utils::*,
+    db::{Directory as DirectoryDB, NewDirectory, directories},
+    state::{AppState, Database},
 };
+
+use super::*;
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -141,12 +142,11 @@ async fn get_directory_folders(path: Path<String>) -> Result<Json<Vec<String>>, 
     let directories = match std::fs::read_dir(path) {
         Ok(entries) => entries
             .filter_map(|entry| {
-                if let Ok(entry) = entry {
-                    if let Ok(metadata) = std::fs::metadata(entry.path()) {
-                        if metadata.is_dir() {
-                            return Some(entry.file_name().to_string_lossy().to_string());
-                        }
-                    }
+                if let Ok(entry) = entry
+                    && let Ok(metadata) = std::fs::metadata(entry.path())
+                    && metadata.is_dir()
+                {
+                    return Some(entry.file_name().to_string_lossy().to_string());
                 }
                 None
             })

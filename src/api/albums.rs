@@ -1,13 +1,13 @@
 use axum::{
+    Json, Router,
     extract::{Path, State},
     response::{IntoResponse, Result},
     routing::get,
-    Json, Router,
 };
 
 use crate::{
-    app::AppState,
-    db::{songs, Album},
+    AppState,
+    db::{Album, songs},
 };
 
 pub fn router() -> Router<AppState> {

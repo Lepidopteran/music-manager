@@ -1,18 +1,20 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use axum::{
-    extract::{Path, Query, State},
-    response::{Result},
-    routing::{get, post},
     Json, Router,
+    extract::{Path, Query, State},
+    response::Result,
+    routing::{get, post},
 };
 use ts_rs::TS;
 
 use crate::{
-    app::AppState,
     db::{Album, Song, songs},
-    internal_error,
+    state::AppState,
 };
+
+use super::internal_error;
+
 use handlebars::Handlebars;
 
 const VARIOUS_ARTIST_THRESHOLD: f64 = 0.5;

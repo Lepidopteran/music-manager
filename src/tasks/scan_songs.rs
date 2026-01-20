@@ -1,8 +1,8 @@
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{Result, eyre};
 use sqlx::{query, query_as, sqlite::SqliteQueryResult};
 use time::OffsetDateTime;
 use tokio::{
-    sync::watch::{channel, Receiver, Sender},
+    sync::watch::{Receiver, Sender, channel},
     task::spawn_blocking,
 };
 use uuid::Uuid;
@@ -10,18 +10,16 @@ use walkdir::WalkDir;
 
 use crate::{
     db::Song,
-    metadata::{item::ItemKey, read_metadata_from_path, Metadata as SongMetadata},
-    task::{TaskEvent, TaskState},
+    metadata::{Metadata as SongMetadata, item::ItemKey, read_metadata_from_path},
+    tasks::*,
 };
-
-use super::*;
 
 use std::{
     collections::HashSet,
     path::PathBuf,
     sync::{
-        atomic::{AtomicU8, Ordering},
         Arc, RwLock,
+        atomic::{AtomicU8, Ordering},
     },
 };
 
@@ -520,7 +518,6 @@ async fn add_song(
             path.to_string_lossy().to_string()
         );
     }
-
 
     let path = path.to_string_lossy().to_string();
 

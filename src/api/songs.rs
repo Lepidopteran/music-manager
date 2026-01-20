@@ -1,22 +1,23 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Result},
-    routing::{get, put},
-    Json, Router,
+    routing::{get, post, put},
 };
 use time::{OffsetDateTime, UtcDateTime};
 use tokio::task::spawn_blocking;
 
 use crate::{
-    app::AppState,
-    db::{songs, Song, UpdatedSong},
+    AppState,
+    db::{Song, UpdatedSong, songs},
     metadata::{Metadata as SongMetadata, SongFile},
     paths::metadata_history_dir,
-    utils::*,
 };
+
+use super::*;
 
 type SongId = String;
 
@@ -24,16 +25,16 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/songs/", get(get_songs))
         .route("/api/songs/{id}", get(get_song))
-        .route("/api/songs/{id}/file-info", get(get_song_file))
-        .route("/api/songs/{id}/refresh", get(refresh_song_details))
+        .route("/api/songs/{id}/file-info", post(get_song_file))
+        .route("/api/songs/{id}/refresh", post(refresh_song_details))
         .route("/api/songs/{id}", put(edit_song))
         .route(
             "/api/songs/{id}/metadata/restore/{timestamp}",
-            get(restore_metadata),
+            post(restore_metadata),
         )
         .route(
             "/api/songs/{id}/metadata/history",
-            get(get_song_metadata_history),
+            post(get_song_metadata_history),
         )
 }
 
