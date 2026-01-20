@@ -6,6 +6,8 @@ mod song;
 pub mod item;
 pub use {album::*, cover_art::*, song::*};
 
+pub const TAG_SEPARATOR: char = ';';
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Album error: {0}")]
