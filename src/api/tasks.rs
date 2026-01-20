@@ -1,15 +1,15 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
+    response::{Result},
+    routing::{get, post},
     Json, Router,
 };
 
 use crate::{
     app::{AppState, TaskRegistry},
-    bad_request,
-    task::{RegistryError, TaskReport},
+    bad_request, internal_error,
+    task::TaskReport,
+    Error,
 };
 
 pub fn router() -> Router<AppState> {
@@ -19,78 +19,27 @@ pub fn router() -> Router<AppState> {
         .route("/api/tasks", get(list_tasks))
 }
 
-async fn list_tasks(
-    State(tasks): State<TaskRegistry>,
-) -> Result<Json<Vec<TaskReport>>, impl IntoResponse> {
-    let registry = match tasks.lock() {
-        Ok(registry) => registry,
-        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "Failed to lock registry")),
-    };
-
+async fn list_tasks(State(tasks): State<TaskRegistry>) -> Result<Json<Vec<TaskReport>>> {
+    let registry = tasks.lock().map_err(internal_error)?;
     Ok(Json(registry.tasks()))
 }
 
-async fn stop_task(
-    State(tasks): State<TaskRegistry>,
-    Path(name): Path<String>,
-) -> Result<(), impl IntoResponse> {
+async fn stop_task(State(tasks): State<TaskRegistry>, Path(name): Path<String>) -> Result<()> {
     if name.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Task name cannot be empty".into()));
+        return Err(bad_request("Task name cannot be empty").into());
     }
 
-    let mut registry = match tasks.lock() {
-        Ok(registry) => registry,
-        Err(_) => {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to lock registry".into(),
-            ))
-        }
-    };
+    let mut registry = tasks.lock().map_err(internal_error)?;
 
-    match registry.stop_task(&name) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(match err {
-            RegistryError::NotFound => (StatusCode::NOT_FOUND, String::from("Task not found")),
-            RegistryError::StateError(err) => bad_request(err),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("Failed to stop task"),
-            ),
-        }),
-    }
+    Ok(registry.stop_task(&name).map_err(Error::from)?)
 }
 
-async fn start_task(
-    State(tasks): State<TaskRegistry>,
-    Path(name): Path<String>,
-) -> Result<(), impl IntoResponse> {
+async fn start_task(State(tasks): State<TaskRegistry>, Path(name): Path<String>) -> Result<()> {
     if name.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            String::from("Task name cannot be empty"),
-        ));
+        return Err(bad_request("Task name cannot be empty").into());
     }
 
-    let mut registry = match tasks.lock() {
-        Ok(registry) => registry,
-        Err(_) => {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("Failed to lock registry"),
-            ))
-        }
-    };
+    let mut registry = tasks.lock().map_err(internal_error)?;
 
-    match registry.start_task(&name) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(match err {
-            RegistryError::NotFound => (StatusCode::NOT_FOUND, String::from("Task not found")),
-            RegistryError::StateError(err) => bad_request(err),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                String::from("Failed to start task"),
-            ),
-        }),
-    }
+    Ok(registry.start_task(&name).map_err(Error::from)?)
 }
