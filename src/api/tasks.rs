@@ -14,8 +14,8 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/api/tasks/{name}/stop", get(stop_task))
-        .route("/api/tasks/{name}/start", get(start_task))
+        .route("/api/tasks/{name}/stop", post(stop_task))
+        .route("/api/tasks/{name}/start", post(start_task))
         .route("/api/tasks", get(list_tasks))
 }
 

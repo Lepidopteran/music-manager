@@ -5,9 +5,13 @@ export interface FetchError extends Error {
 	body: string;
 }
 
+export interface FetchOptions extends RequestInit {
+	method: "GET" | "POST" | "PUT" | "DELETE";
+}
+
 export async function fetchJson<T>(
 	url: string,
-	options?: RequestInit,
+	options?: FetchOptions,
 ): Promise<T> {
 	try {
 		const response = await fetch(url, {
@@ -45,10 +49,14 @@ export async function fetchJson<T>(
 	}
 }
 
-export async function fetchText(url: string): Promise<string> {
+export async function fetchText(
+	url: string,
+	options?: FetchOptions,
+): Promise<string> {
 	try {
 		const response = await fetch(url, {
 			method: "GET",
+			...options,
 		});
 
 		if (!response.ok) {
