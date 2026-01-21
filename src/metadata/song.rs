@@ -47,6 +47,14 @@ impl Metadata {
     pub fn insert(&mut self, key: ItemKey, value: String) {
         self.fields.insert(key, value);
     }
+    
+    pub fn fields(&self) -> &BTreeMap<ItemKey, String> {
+        &self.fields
+    }
+
+    pub fn unknown_fields(&self) -> &BTreeMap<String, String> {
+        &self.unknown
+    }
 
     pub fn iter(&self) -> impl Iterator<Item = (&ItemKey, &String)> {
         self.fields.iter()
