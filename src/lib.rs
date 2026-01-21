@@ -21,6 +21,7 @@ mod config;
 mod db;
 mod events;
 mod migration;
+mod organize;
 mod paths;
 mod state;
 mod tasks;
