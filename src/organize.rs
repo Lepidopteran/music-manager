@@ -14,7 +14,9 @@ use handlebars::Handlebars;
 
 // TODO: Move these templates to a files
 pub const ARTIST_TEMPLATE: &str = "{{artist}}/{{album}}/";
-pub const ALBUM_ARTIST_TEMPLATE: &str = "{{album_artist}}/{{album}}/";
+pub const ALBUM_ARTIST_TEMPLATE: &str = "{{albumArtist}}/{{album}}/";
+
+const VARIOUS_THRESHOLD: f64 = 0.5;
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -41,22 +43,23 @@ pub fn render_song_path(handlebar: &Handlebars, template: &str, song: &Song) -> 
 fn render_grouped_folder_path(
     handlebar: &Handlebars,
     template: &str,
-    album: Vec<Song>,
-    various_percentage_threshold: f64,
+    album: &Vec<Song>,
 ) -> Result<PathBuf> {
     let mut value_counts: BTreeMap<String, u32> = BTreeMap::new();
     let mut key_values: BTreeMap<ItemKey, BTreeSet<String>> = BTreeMap::new();
 
-    for song in &album {
+    for song in album {
         for (key, value) in song.metadata.fields() {
             for part in value.split(TAG_SEPARATOR) {
-                if key_values
+                let _ = key_values
                     .entry(key.clone())
                     .or_default()
-                    .insert(part.to_string())
-                {
-                    let _ = value_counts.entry(part.to_string()).or_default().add(1);
-                }
+                    .insert(part.to_string());
+
+                let _ = value_counts
+                    .entry(part.to_string())
+                    .and_modify(|count| *count += 1)
+                    .or_insert(1);
             }
         }
     }
@@ -71,11 +74,15 @@ fn render_grouped_folder_path(
 
         let biggest_value_count = value_counts.get(biggest_value).unwrap_or(&0);
 
-        if *biggest_value_count == 1 {
-            continue;
-        }
+        let percentage = *biggest_value_count as f64 / album.len() as f64;
 
-        common_metadata.insert(key, biggest_value.to_string());
+        log::debug!("Key: {key:?} Value: {biggest_value} Percentage: {percentage}",);
+
+        if percentage <= VARIOUS_THRESHOLD {
+            common_metadata.insert(key, "Various".to_string());
+        } else {
+            common_metadata.insert(key, biggest_value.to_string());
+        }
     }
 
     Ok(PathBuf::from(
@@ -83,67 +90,75 @@ fn render_grouped_folder_path(
     ))
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use test_log::test;
-//
-//     use super::*;
-//
-//     #[test]
-//     fn test_render_grouped_folder_path() {
-//         let handlebar = Handlebars::new();
-//
-//         let album = Album::from(vec![
-//             Song {
-//                 artist: Some("Artist".to_string()),
-//                 album_artist: Some("Album Artist".to_string()),
-//                 genre: Some("Genre".to_string()),
-//                 year: Some("Year".to_string()),
-//                 album: Some("Album".to_string()),
-//                 disc_number: Some("Disc Number".to_string()),
-//                 track_number: Some("Track Number".to_string()),
-//                 mood: Some("Mood".to_string()),
-//                 ..Default::default()
-//             },
-//             Song {
-//                 artist: Some("Artist Feat. Another Artist".to_string()),
-//                 album_artist: Some("Album Artist".to_string()),
-//                 genre: Some("Genre".to_string()),
-//                 year: Some("Year".to_string()),
-//                 album: Some("Album".to_string()),
-//                 disc_number: Some("Disc Number".to_string()),
-//                 track_number: Some("Track Number".to_string()),
-//                 mood: Some("Mood".to_string()),
-//                 ..Default::default()
-//             },
-//             Song {
-//                 album_artist: Some("Album Artist".to_string()),
-//                 genre: Some("Genre".to_string()),
-//                 year: Some("Year".to_string()),
-//                 album: Some("Album".to_string()),
-//                 disc_number: Some("Disc Number".to_string()),
-//                 track_number: Some("Track Number".to_string()),
-//                 mood: Some("Mood".to_string()),
-//                 ..Default::default()
-//             },
-//         ]);
-//
-//         let result =
-//             generate_grouped_folder_path(&handlebar, ARTIST_TEMPLATE, &album, 0.25).unwrap();
-//         log::debug!("Folder path: {}", result.display());
-//
-//         assert_eq!(result, PathBuf::from("Artist/Album/"));
-//
-//         let result =
-//             generate_grouped_folder_path(&handlebar, ARTIST_TEMPLATE, &album, 0.5).unwrap();
-//         log::debug!("Folder path: {}", result.display());
-//
-//         assert_eq!(result, PathBuf::from("Various Artists/Album/"));
-//
-//         let result =
-//             generate_grouped_folder_path(&handlebar, ALBUM_ARTIST_TEMPLATE, &album, 0.25).unwrap();
-//         log::debug!("Folder path: {}", result.display());
-//
-//         assert_eq!(result, PathBuf::from("Album Artist/Album/"));
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use test_log::test;
+
+    use super::*;
+
+    #[test]
+    fn test_render_grouped_folder_path() {
+        let handlebar = Handlebars::new();
+
+        let album = vec![
+            Song {
+                file_path: PathBuf::from("Artist Feat. Another Artist/Album/Track Name.mp3"),
+                metadata: metadata::Metadata::new(
+                    BTreeMap::from([
+                        (ItemKey::Album, "Album".to_string()),
+                        (ItemKey::Artist, "Artist".to_string()),
+                        (ItemKey::AlbumArtist, "Album Artist".to_string()),
+                        (ItemKey::Genre, "Genre".to_string()),
+                        (ItemKey::Year, "Year".to_string()),
+                        (ItemKey::DiscNumber, "Disc Number".to_string()),
+                        (ItemKey::TrackNumber, "Track Number".to_string()),
+                        (ItemKey::Mood, "Mood".to_string()),
+                    ]),
+                    BTreeMap::new(),
+                ),
+            },
+            Song {
+                file_path: PathBuf::from("Artist Feat. Another Artist/Album/Track Name.mp3"),
+                metadata: metadata::Metadata::new(
+                    BTreeMap::from([
+                        (ItemKey::Album, "Album".to_string()),
+                        (ItemKey::Artist, "Artist".to_string()),
+                        (ItemKey::AlbumArtist, "Album Artist".to_string()),
+                        (ItemKey::Genre, "Genre".to_string()),
+                        (ItemKey::Year, "Year".to_string()),
+                        (ItemKey::DiscNumber, "Disc Number".to_string()),
+                        (ItemKey::TrackNumber, "Track Number".to_string()),
+                        (ItemKey::Mood, "Mood".to_string()),
+                    ]),
+                    BTreeMap::new(),
+                ),
+            },
+            Song {
+                file_path: PathBuf::from("Artist Feat. Another Artist/Album/Track Name.mp3"),
+                metadata: metadata::Metadata::new(
+                    BTreeMap::from([
+                        (ItemKey::Album, "Album".to_string()),
+                        (ItemKey::Artist, "Artist Feat. Another Artist".to_string()),
+                        (ItemKey::AlbumArtist, "Album Artist".to_string()),
+                        (ItemKey::Genre, "Genre".to_string()),
+                        (ItemKey::Year, "Year".to_string()),
+                        (ItemKey::DiscNumber, "Disc Number".to_string()),
+                        (ItemKey::TrackNumber, "Track Number".to_string()),
+                        (ItemKey::Mood, "Mood".to_string()),
+                    ]),
+                    BTreeMap::new(),
+                ),
+            },
+        ];
+
+        let result = render_grouped_folder_path(&handlebar, ARTIST_TEMPLATE, &album).unwrap();
+        log::debug!("Folder path: {}", result.display());
+
+        assert_eq!(result, PathBuf::from("Artist/Album/"));
+
+        let result = render_grouped_folder_path(&handlebar, ALBUM_ARTIST_TEMPLATE, &album).unwrap();
+        log::debug!("Folder path: {}", result.display());
+
+        assert_eq!(result, PathBuf::from("Album Artist/Album/"));
+    }
+}
