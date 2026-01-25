@@ -10,7 +10,7 @@ use axum::{
 use ts_rs::TS;
 
 use crate::{
-    db::{Song, songs, directories},
+    db::{Song, directories, songs},
     metadata::{Metadata, item::ItemKey},
     organize,
     state::AppState,
@@ -22,6 +22,23 @@ use crate::{
 pub struct PathRenamePreviewResult {
     pub previous_path: PathBuf,
     pub new_path: PathBuf,
+}
+
+#[derive(serde::Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct PathRenameOptions {
+    pub rename_original_files: bool,
+    pub directory_id: Option<String>,
+}
+
+impl Default for PathRenameOptions {
+    fn default() -> Self {
+        Self {
+            rename_original_files: true,
+            directory_id: None,
+        }
+    }
 }
 
 // TODO: Add ability to use a custom templates for folder structure.
@@ -36,6 +53,7 @@ pub fn router() -> Router<AppState> {
 async fn preview_organize_album_tracks(
     State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(title): Path<String>,
+    Query(options): Query<PathRenameOptions>,
 ) -> Result<Json<Vec<PathRenamePreviewResult>>> {
     let album = songs::get_album(&pool, title)
         .await
@@ -49,9 +67,14 @@ async fn preview_organize_album_tracks(
         .tracks
         .iter()
         .map(|song| {
+            let directory_id = options
+                .directory_id
+                .as_deref()
+                .unwrap_or(&song.directory_id);
+
             let directory: PathBuf = directories
                 .iter()
-                .find(|dir| dir.name == song.directory_id)
+                .find(|dir| dir.name == directory_id)
                 .ok_or_else(|| {
                     not_found(format!("Directory {} not found", song.directory_id)).into_response()
                 })?
@@ -66,7 +89,7 @@ async fn preview_organize_album_tracks(
                         &handlebars::Handlebars::new(),
                         organize::DEFAULT_TEMPLATE,
                         &map_organize(song),
-                        true,
+                        options.rename_original_files,
                     )
                     .map_err(IntoResponse::into_response)?,
                 ),
