@@ -37,10 +37,10 @@ pub enum OrganizeError {
 
 pub type Result<T, E = OrganizeError> = std::result::Result<T, E>;
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, rename = "OrganizableSong")]
 pub struct Song {
+    #[serde(skip)]
     pub file_path: PathBuf,
     #[serde(flatten)]
     pub metadata: Metadata,
