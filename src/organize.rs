@@ -5,7 +5,6 @@ use std::{
 
 use handlebars::Handlebars;
 use serde::Serialize;
-use ts_rs::TS;
 
 use super::metadata;
 use metadata::Metadata;
@@ -29,8 +28,6 @@ pub const DEFAULT_TEMPLATE: &str = r#"
 pub enum OrganizeError {
     #[error(transparent)]
     Handlebars(#[from] handlebars::RenderError),
-    #[error(transparent)]
-    HandlebarsTemplate(#[from] handlebars::TemplateError),
     #[error("Original path has no file name: {0}")]
     NoFileName(PathBuf),
 }
