@@ -159,4 +159,6 @@ pub enum Error {
     Metadata(#[from] metadata::Error),
     #[error("Task registry error: {0}")]
     TaskRegistry(#[from] tasks::RegistryError),
+    #[error("Organization error: {0}")]
+    Organization(#[from] organize::OrganizeError),
 }
