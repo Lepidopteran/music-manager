@@ -52,22 +52,29 @@ pub fn render_song_path(
     song: &Song,
     rename_original_file: bool,
 ) -> Result<PathBuf> {
-    let path = PathBuf::from(format!(
-        "{}.{}",
-        handlebar
-            .render_template(template, &sanitize_metadata(&song.metadata))?
-            .lines()
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .collect::<Vec<_>>()
-            .join("")
-            .replace(['\\', '/'], MAIN_SEPARATOR_STR),
-        song.file_path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .expect("File extension contains invalid UTF-8"),
-    ));
+    let mut rendered_path = handlebar
+        .render_template(template, &sanitize_metadata(&song.metadata))?
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("")
+        .replace(['\\', '/'], MAIN_SEPARATOR_STR);
 
+    rendered_path.push_str(
+        &song
+            .file_path
+            .extension()
+            .map(|ext| {
+                format!(
+                    ".{}",
+                    ext.to_str().expect("File extension contains invalid UTF-8")
+                )
+            })
+            .unwrap_or_default(),
+    );
+
+    let path = PathBuf::from(rendered_path);
     if !rename_original_file {
         let original_file_name = song
             .file_path
