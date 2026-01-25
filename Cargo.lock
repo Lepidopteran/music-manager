@@ -3017,11 +3017,7 @@ dependencies = [
 [[package]]
 name = "sanitize-filename"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc984f4f9ceb736a7bb755c3e3bd17dc56370af2600c9780dcc48c66453da34d"
-dependencies = [
- "regex",
-]
+source = "git+https://github.com/kardeiz/sanitize-filename.git?rev=a2808090c9c2a962e64d8ddc503b18981e8d6c57#a2808090c9c2a962e64d8ddc503b18981e8d6c57"
 
 [[package]]
 name = "schannel"
