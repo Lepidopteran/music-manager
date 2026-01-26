@@ -295,6 +295,11 @@ pub enum RegistryError {
     StateError(#[from] TaskError),
 }
 
+pub struct TaskBusEvent {
+    pub source: String,
+    pub event: TaskEvent,
+}
+
 #[derive(Default)]
 pub struct Registry {
     tasks: HashMap<String, Box<dyn Task + 'static>>,
@@ -350,9 +355,16 @@ impl Registry {
         Ok(())
     }
 
-    /// Gets the event channel for a task
-    pub fn get_event_channel(&self, name: &str) -> Option<Receiver<TaskEvent>> {
-        self.tasks.get(name).and_then(|task| task.channel())
+    /// Gets the event channels for all tasks that have one
+    pub fn event_channels(&self) -> HashMap<String, Receiver<TaskEvent>> {
+        self.tasks
+            .iter()
+            .fold(HashMap::new(), |mut acc, (name, task)| {
+                if let Some(channel) = task.channel() {
+                    acc.insert(name.clone(), channel.clone());
+                }
+                acc
+            })
     }
 
     /// Stops a task
