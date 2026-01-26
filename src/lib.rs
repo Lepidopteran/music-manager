@@ -25,6 +25,7 @@ mod organize;
 mod paths;
 mod state;
 mod tasks;
+mod fs;
 
 pub use config::load_config;
 pub use migration::run_migrations;
