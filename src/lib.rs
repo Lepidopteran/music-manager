@@ -40,6 +40,7 @@ pub static APP_DIRECTORIES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
         paths::app_cache_dir(),
         paths::app_data_dir(),
         paths::metadata_history_dir(),
+        paths::trash_dir(),
     ]
 });
 
