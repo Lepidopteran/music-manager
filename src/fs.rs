@@ -9,6 +9,8 @@ use std::{
 };
 
 use fs_extra::dir::{CopyOptions, TransitProcessResult};
+use serde::Serialize;
+use ts_rs::TS;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FsError {
@@ -54,7 +56,8 @@ impl FileOperationPaths {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase", tag = "kind")]
 pub enum FileSystemOperationEvent {
     #[default]
     Started,

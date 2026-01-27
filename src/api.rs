@@ -18,6 +18,7 @@ pub mod organize;
 pub mod songs;
 pub mod tasks;
 pub mod ui;
+pub mod fs;
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.

@@ -21,6 +21,18 @@ use crate::{
     tasks::{TaskEvent as TaskReport, TaskEventType},
 };
 
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct FileOperationEvent {
+    pub source: String,
+    #[serde(flatten)]
+    inner: super::fs::FileSystemOperationEvent,
+    #[ts(type = "Date")]
+    #[serde(with = "time::serde::rfc3339")]
+    timestamp: OffsetDateTime,
+}
+
 #[derive(Debug, Clone, serde::Serialize, TS)]
 #[ts(export)]
 pub struct TaskEvent {
