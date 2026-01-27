@@ -5,7 +5,7 @@ use std::{
     fs::{self, read_dir},
     io,
     path::PathBuf,
-    sync::atomic::AtomicBool,
+    sync::{atomic::AtomicBool, mpsc},
 };
 
 use fs_extra::dir::{CopyOptions, TransitProcessResult};
@@ -54,6 +54,20 @@ impl FileOperationPaths {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum FileSystemOperationEvent {
+    #[default]
+    Started,
+    Completed,
+    Cancelled,
+    Progress {
+        bytes: u64,
+        total_bytes: u64,
+        current_dir: usize,
+        dir_count: usize,
+    },
+}
+
 pub enum FileSystemOperation {
     Move {
         paths: FileOperationPaths,
@@ -90,15 +104,26 @@ impl FileSystemOperation {
         Self::Delete { paths }
     }
 
-    pub fn execute(self, stop_flag: &AtomicBool) -> Result<()> {
+    pub fn execute(
+        self,
+        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        stop_flag: &AtomicBool,
+    ) -> Result<()> {
         match self {
             Self::Move {
                 paths,
                 delete_empty_directories_after,
                 options,
             } => {
-                for (to, from_items) in paths.to_from.iter() {
+                let count = paths.to_from.len();
+                for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+                    if check_stopped(stop_flag, tx) {
+                        return Ok(());
+                    }
                     for from in from_items {
+                        if check_stopped(stop_flag, tx) {
+                            return Ok(());
+                        }
                         log::info!("Moving {from:?} to {to:?}");
                         fs::rename(
                             from,
@@ -113,9 +138,8 @@ impl FileSystemOperation {
                             if err.kind() != io::ErrorKind::CrossesDevices {
                                 return Err(FsError::from(err));
                             }
-
                             fs_extra::move_items_with_progress(&[from], to, &options, |transit| {
-                                handle_transit(transit, stop_flag)
+                                handle_transit(transit, stop_flag, tx, count, index)
                             })
                             .map_err(FsError::from)?;
 
@@ -145,24 +169,35 @@ impl FileSystemOperation {
                     }
                 }
 
+                send_event(tx, FileSystemOperationEvent::Completed);
                 Ok(())
             }
 
             Self::Copy { paths, options } => {
-                for (to, from_items) in paths.to_from.iter() {
+                let count = paths.to_from.len();
+                for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+                    if check_stopped(stop_flag, tx) {
+                        return Ok(());
+                    }
+
                     fs_extra::copy_items_with_progress(
                         &from_items.iter().collect::<Vec<_>>(),
                         to,
                         &options,
-                        |transit| handle_transit(transit, stop_flag),
+                        |transit| handle_transit(transit, stop_flag, tx, count, index),
                     )?;
                 }
 
+                send_event(tx, FileSystemOperationEvent::Completed);
                 Ok(())
             }
 
             Self::Delete { paths } => {
                 for path in paths {
+                    if check_stopped(stop_flag, tx) {
+                        return Ok(());
+                    }
+
                     if path.is_dir() {
                         fs::remove_dir(path)?;
                     } else {
@@ -170,19 +205,49 @@ impl FileSystemOperation {
                     }
                 }
 
+                send_event(tx, FileSystemOperationEvent::Completed);
                 Ok(())
             }
         }
     }
 }
 
+fn check_stopped(stop_flag: &AtomicBool, tx: &mpsc::Sender<FileSystemOperationEvent>) -> bool {
+    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+        send_event(tx, FileSystemOperationEvent::Cancelled);
+        return true;
+    }
+
+    false
+}
+
+fn send_event(tx: &mpsc::Sender<FileSystemOperationEvent>, event: FileSystemOperationEvent) {
+    if let Err(err) = tx.send(event) {
+        log::error!("Failed to send event: {err:?}");
+    };
+}
+
 fn handle_transit(
     transit: fs_extra::TransitProcess,
     stop_flag: &AtomicBool,
+    tx: &mpsc::Sender<FileSystemOperationEvent>,
+    total_count: usize,
+    current: usize,
 ) -> TransitProcessResult {
     if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+        send_event(tx, FileSystemOperationEvent::Cancelled);
         return TransitProcessResult::Abort;
     }
+
+    send_event(
+        tx,
+        FileSystemOperationEvent::Progress {
+            bytes: transit.copied_bytes,
+            total_bytes: transit.total_bytes,
+            current_dir: current,
+            dir_count: total_count,
+        },
+    );
 
     TransitProcessResult::ContinueOrAbort
 }
@@ -192,14 +257,14 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
-    use std::path::PathBuf;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::AtomicBool;
     use tempfile::tempdir;
     use test_log::test;
 
     #[test]
     fn move_files_and_delete_empty_dirs() {
         let stop_flag = AtomicBool::new(false);
+        let (junk_tx, _) = mpsc::channel();
 
         let temp = tempdir().expect("Failed to create temp dir");
         let src_dir = temp.path().join("src");
@@ -220,7 +285,8 @@ mod tests {
             options: fs_extra::dir::CopyOptions::new(),
         };
 
-        op.execute(&stop_flag).expect("Failed to move files");
+        op.execute(&junk_tx, &stop_flag)
+            .expect("Failed to move files");
 
         let dst_file = dst_dir.join("file.txt");
         assert!(dst_file.exists(), "destination file should exist");
@@ -235,8 +301,9 @@ mod tests {
     #[test]
     fn move_files_with_stop_flag() -> Result<()> {
         use std::sync::atomic::{AtomicBool, Ordering};
-        use std::thread;
         use tempfile::tempdir;
+
+        let (junk_tx, _) = mpsc::channel();
 
         let stop_flag = AtomicBool::new(false);
         let temp = tempdir()?;
@@ -262,7 +329,7 @@ mod tests {
 
         stop_flag.store(true, Ordering::SeqCst);
 
-        let result = op.execute(&stop_flag);
+        let result = op.execute(&junk_tx, &stop_flag);
 
         assert!(result.is_ok() || result.is_err());
 
