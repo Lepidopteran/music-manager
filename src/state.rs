@@ -10,6 +10,8 @@ use super::{
 
 use crate::config::Settings;
 
+mod fs;
+
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;
 

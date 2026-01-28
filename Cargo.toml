@@ -55,5 +55,5 @@ features = [
 ]
 
 [dev-dependencies]
-test-log = "0.2.18"
+test-log = { version = "0.2", features = ["trace"] }
 tempfile = "3.20.0"

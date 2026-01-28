@@ -2,6 +2,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Debug,
     fs::{self, read_dir},
     io,
     path::PathBuf,
@@ -14,6 +15,8 @@ use ts_rs::TS;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FsError {
+    #[error("File doesn't exist: {0}")]
+    FileNotFound(String),
     #[error("Failed to perform fs_extra operation: {0}")]
     FsExtra(#[from] fs_extra::error::Error),
     #[error("Failed to perform IO operation: {0}")]
@@ -54,6 +57,10 @@ impl FileOperationPaths {
     pub fn insert(&mut self, from: PathBuf, to: PathBuf) {
         self.to_from.entry(to).or_default().insert(from);
     }
+
+    pub fn to_from(&self) -> &HashMap<PathBuf, HashSet<PathBuf>> {
+        &self.to_from
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, TS)]
@@ -71,6 +78,7 @@ pub enum FileSystemOperationEvent {
     },
 }
 
+#[derive(Clone)]
 pub enum FileSystemOperation {
     Move {
         paths: FileOperationPaths,
@@ -113,105 +121,132 @@ impl FileSystemOperation {
         stop_flag: &AtomicBool,
     ) -> Result<()> {
         match self {
+            Self::Copy { paths, options } => Self::execute_copy(paths, options, tx, stop_flag)?,
+            Self::Delete { paths } => Self::execute_delete(paths, tx, stop_flag)?,
             Self::Move {
                 paths,
                 delete_empty_directories_after,
                 options,
-            } => {
-                let count = paths.to_from.len();
-                for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
-                    if check_stopped(stop_flag, tx) {
-                        return Ok(());
-                    }
-                    for from in from_items {
-                        if check_stopped(stop_flag, tx) {
-                            return Ok(());
-                        }
-                        log::info!("Moving {from:?} to {to:?}");
-                        fs::rename(
-                            from,
-                            to.is_dir()
-                                .then_some(
-                                    to.join(from.file_name().expect("Failed to get file name")),
-                                )
-                                .as_ref()
-                                .unwrap_or(to),
-                        )
-                        .or_else(|err| {
-                            if err.kind() != io::ErrorKind::CrossesDevices {
-                                return Err(FsError::from(err));
-                            }
-                            fs_extra::move_items_with_progress(&[from], to, &options, |transit| {
-                                handle_transit(transit, stop_flag, tx, count, index)
-                            })
-                            .map_err(FsError::from)?;
+            } => Self::execute_move(
+                paths,
+                options,
+                tx,
+                delete_empty_directories_after,
+                stop_flag,
+            )?,
+        }
 
-                            Ok(())
-                        })?;
-                    }
+        send_event(tx, FileSystemOperationEvent::Completed);
+        Ok(())
+    }
 
-                    if delete_empty_directories_after {
-                        let (dirs, files): (HashSet<_>, HashSet<_>) =
-                            from_items.iter().partition(|p| p.is_dir());
-
-                        for from in dirs {
-                            if read_dir(from)?.count() == 0 {
-                                log::info!("Removing empty dir: {from:?}");
-                                std::fs::remove_dir(from)?;
-                            }
-                        }
-
-                        for from in files {
-                            if let Some(parent) = from.parent()
-                                && read_dir(parent)?.count() == 0
-                            {
-                                log::info!("Removing empty dir: {parent:?}");
-                                std::fs::remove_dir(parent)?;
-                            }
-                        }
-                    }
-                }
-
-                send_event(tx, FileSystemOperationEvent::Completed);
-                Ok(())
+    fn execute_move(
+        paths: FileOperationPaths,
+        options: CopyOptions,
+        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        delete_empty_directories_after: bool,
+        stop_flag: &AtomicBool,
+    ) -> Result<()> {
+        let count = paths.to_from.len();
+        for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+            if check_stopped(stop_flag, tx) {
+                return Ok(());
             }
 
-            Self::Copy { paths, options } => {
-                let count = paths.to_from.len();
-                for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
-                    if check_stopped(stop_flag, tx) {
-                        return Ok(());
-                    }
-
-                    fs_extra::copy_items_with_progress(
-                        &from_items.iter().collect::<Vec<_>>(),
-                        to,
-                        &options,
-                        |transit| handle_transit(transit, stop_flag, tx, count, index),
-                    )?;
+            for from in from_items {
+                if check_stopped(stop_flag, tx) {
+                    return Ok(());
+                }
+                
+                if !from.exists() {
+                    return Err(FsError::FileNotFound(from.to_string_lossy().to_string()));
                 }
 
-                send_event(tx, FileSystemOperationEvent::Completed);
-                Ok(())
+                log::info!("Moving {from:?} to {to:?}");
+                fs::rename(
+                    from,
+                    to.is_dir()
+                        .then_some(to.join(from.file_name().expect("Failed to get file name")))
+                        .as_ref()
+                        .unwrap_or(to),
+                )
+                .or_else(|err| {
+                    if err.kind() != io::ErrorKind::CrossesDevices {
+                        return Err(FsError::from(err));
+                    }
+
+                    fs_extra::move_items_with_progress(&[from], to, &options, |transit| {
+                        handle_transit(transit, stop_flag, tx, count, index)
+                    })?;
+
+                    Ok(())
+                })?;
             }
 
-            Self::Delete { paths } => {
-                for path in paths {
-                    if check_stopped(stop_flag, tx) {
-                        return Ok(());
-                    }
+            if delete_empty_directories_after {
+                let (dirs, files): (HashSet<_>, HashSet<_>) =
+                    from_items.iter().partition(|p| p.is_dir());
 
-                    if path.is_dir() {
-                        fs::remove_dir(path)?;
-                    } else {
-                        fs::remove_file(path)?;
+                for from in dirs {
+                    if read_dir(from)?.count() == 0 {
+                        log::info!("Removing empty dir: {from:?}");
+                        std::fs::remove_dir(from)?;
                     }
                 }
 
-                send_event(tx, FileSystemOperationEvent::Completed);
-                Ok(())
+                for from in files {
+                    if let Some(parent) = from.parent()
+                        && read_dir(parent)?.count() == 0
+                    {
+                        log::info!("Removing empty dir: {parent:?}");
+                        std::fs::remove_dir(parent)?;
+                    }
+                }
             }
         }
+
+        Ok(())
+    }
+
+    fn execute_copy(
+        paths: FileOperationPaths,
+        options: CopyOptions,
+        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        stop_flag: &AtomicBool,
+    ) -> Result<()> {
+        let count = paths.to_from.len();
+        for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+            if check_stopped(stop_flag, tx) {
+                return Ok(());
+            }
+            fs_extra::copy_items_with_progress(
+                &from_items.iter().collect::<Vec<_>>(),
+                to,
+                &options,
+                |transit| handle_transit(transit, stop_flag, tx, count, index),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn execute_delete(
+        paths: HashSet<PathBuf>,
+        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        stop_flag: &AtomicBool,
+    ) -> Result<()> {
+        for path in paths {
+            if check_stopped(stop_flag, tx) {
+                return Ok(());
+            }
+            if path.is_dir() {
+                fs::remove_dir(path)?;
+            } else {
+                fs::remove_file(path)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
