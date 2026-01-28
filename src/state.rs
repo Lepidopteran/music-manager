@@ -12,6 +12,8 @@ use crate::config::Settings;
 
 mod fs;
 
+pub use fs::*;
+
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;
 
@@ -20,6 +22,7 @@ pub struct AppState {
     pub settings: Settings,
     pub tasks: TaskRegistry,
     pub event_sender: Sender<Event>,
+    pub file_operation_manager: FileOperationManager,
     pub db: Database,
 }
 
@@ -27,11 +30,23 @@ impl AppState {
     pub fn new(db: Database, settings: Settings) -> Self {
         let (tx, _) = tokio::sync::broadcast::channel(1024);
         let tasks = setup_tasks(db.clone(), tx.clone());
+        let file_operation_manager = FileOperationManager::new();
+
+        let mut rx = file_operation_manager.events();
+
+        let tx_clone = tx.clone();
+        tokio::spawn(async move {
+            while let Ok(item) = rx.recv().await {
+                let _ = tx_clone.send(Event::from(super::events::FileSystemEvent::from(item)));
+            }
+        });
+
         Self {
             db,
             tasks,
             settings,
             event_sender: tx,
+            file_operation_manager: FileOperationManager::new(),
         }
     }
 }
