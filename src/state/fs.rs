@@ -39,6 +39,18 @@ pub enum FileOperationEvent {
     },
 }
 
+impl FileOperationEvent {
+    pub fn source(&self) -> i128 {
+        match self {
+            FileOperationEvent::Failed { source, .. } => *source,
+            FileOperationEvent::Started { source } => *source,
+            FileOperationEvent::Completed { source } => *source,
+            FileOperationEvent::Cancelled { source } => *source,
+            FileOperationEvent::Progress { source, .. } => *source,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum FileOperationManagerError {
     #[error("Failed to add operation: {0}")]
