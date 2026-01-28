@@ -5,6 +5,7 @@ use axum::{http::StatusCode, response::IntoResponse};
 use super::{
     Error,
     db::{DatabaseError, songs::DatabaseSongError},
+    organize::OrganizeError,
     tasks as app_tasks,
     tasks::RegistryError,
 };
@@ -12,7 +13,9 @@ use super::{
 pub mod albums;
 pub mod cover_art;
 pub mod directories;
+pub mod fs;
 pub mod info;
+pub mod organize;
 pub mod songs;
 pub mod tasks;
 pub mod ui;
@@ -45,14 +48,25 @@ pub fn conflict(err: impl Display) -> (StatusCode, String) {
 impl IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
         match self {
-            Error::Database(err) => err.into_response(),
-            Error::Io(err) => internal_error(err).into_response(),
-            Error::Metadata(err) => internal_error(err).into_response(),
-            Error::TaskRegistry(err) => match err {
-                app_tasks::RegistryError::NotFound => not_found(err).into_response(),
-                app_tasks::RegistryError::StateError(err) => bad_request(err).into_response(),
+            Self::Database(err) => err.into_response(),
+            Self::Io(err) => internal_error(err).into_response(),
+            Self::Metadata(err) => internal_error(err).into_response(),
+            Self::Organization(err) => err.into_response(),
+            Self::TaskRegistry(err) => err.into_response(),
+        }
+    }
+}
+
+impl IntoResponse for OrganizeError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Self::Handlebars(err) => match err.reason() {
+                handlebars::RenderErrorReason::TemplateError(err) => {
+                    bad_request(err).into_response()
+                }
                 _ => internal_error(err).into_response(),
             },
+            Self::NoFileName(err) => bad_request(err.display()).into_response(),
         }
     }
 }
@@ -72,7 +86,9 @@ impl IntoResponse for DatabaseSongError {
         match self {
             DatabaseSongError::SongAlreadyExists => conflict(self).into_response(),
             DatabaseSongError::Metadata(err) => internal_error(err).into_response(),
-            DatabaseSongError::PathNotFound => bad_request(self).into_response(),
+            DatabaseSongError::PathNotFound | Self::PathDoesntContainDirectory => {
+                bad_request(self).into_response()
+            }
             DatabaseSongError::AlbumNotFound | Self::SongNotFound => {
                 not_found(self).into_response()
             }

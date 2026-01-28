@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "9f91377b15dcada93c0373c4d75a80b2ba63ccd405cae97f171fd699b4531dc3"
+}

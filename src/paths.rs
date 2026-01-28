@@ -30,6 +30,11 @@ pub fn app_data_dir() -> PathBuf {
     env::current_dir().expect("Failed to get current directory")
 }
 
+/// Get the path to the trash directory.
+pub fn trash_dir() -> PathBuf {
+    app_data_dir().join("trash")
+}
+
 /// Get the path to the metadata history directory.
 pub fn metadata_history_dir() -> PathBuf {
     app_data_dir().join("metadata").join("history")

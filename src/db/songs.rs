@@ -1,8 +1,12 @@
+use std::{
+    collections::HashMap,
+    path::{MAIN_SEPARATOR, Path, PathBuf},
+};
+
 use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
 use super::{Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
-use std::{collections::HashMap, path::PathBuf};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -17,6 +21,8 @@ pub enum DatabaseSongError {
     Metadata(#[from] crate::metadata::Error),
     #[error("Song path doesn't exist in any directories")]
     PathNotFound,
+    #[error("Song path doesn't contain directory")]
+    PathDoesntContainDirectory,
 }
 
 pub async fn add_song<'c>(
@@ -163,6 +169,45 @@ pub async fn update_song<'c>(
     )
     .execute(&mut *connection)
     .await?;
+
+    Ok(())
+}
+
+pub async fn update_song_path<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    song_id: &str,
+    new_directory_id: Option<&str>,
+    new_path: &str,
+) -> Result<()> {
+    let mut connection = connection.acquire().await?;
+    let song = get_song(&mut *connection, song_id).await?;
+
+    if let Some(directory_id) = new_directory_id {
+        let new_directory = directories::get_directory(&mut *connection, directory_id).await?;
+        if !new_path.starts_with(new_directory.path.as_str()) {
+            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
+        }
+
+        let _ = query!(
+            "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
+            directory_id,
+            new_path,
+            song_id
+        )
+        .execute(&mut *connection)
+        .await?;
+    } else {
+        let prev_directory =
+            directories::get_directory(&mut *connection, &song.directory_id).await?;
+
+        if !new_path.starts_with(prev_directory.path.as_str()) {
+            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
+        }
+
+        let _ = query!("UPDATE songs SET path = ? WHERE id = ?", new_path, song_id)
+            .execute(&mut *connection)
+            .await?;
+    }
 
     Ok(())
 }
