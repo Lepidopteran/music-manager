@@ -10,14 +10,12 @@ use std::{
 use serde::Serialize;
 use time::OffsetDateTime;
 use tokio::sync::{Mutex, broadcast, mpsc};
-use tracing::debug;
 use ts_rs::TS;
 
 use crate::fs::{FileSystemOperation, FileSystemOperationEvent};
 
 #[derive(Debug, Clone, Serialize, TS)]
-#[serde(tag = "type", rename_all = "camelCase")]
-#[ts(export, export_to = "bindings.ts")]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum FileOperationEvent {
     Failed {
         source: i128,
@@ -50,9 +48,6 @@ pub enum FileOperationManagerError {
 
     #[error("Couldn't find operation")]
     NotFound,
-
-    #[error("Cannot remove in progress operation from queue")]
-    InProgress,
 }
 
 type Result<T, E = FileOperationManagerError> = std::result::Result<T, E>;
@@ -157,6 +152,7 @@ pub enum FileSystemOperationStatus {
 
 type QueueItem = (i128, FileSystemOperation, Arc<AtomicBool>);
 
+#[derive(Clone, Debug)]
 pub struct FileOperationManager {
     queue: tokio::sync::mpsc::Sender<QueueItem>,
     events: broadcast::Sender<FileOperationEvent>,
@@ -259,7 +255,6 @@ impl FileOperationManager {
         let flag = operation_state.stop_flag().clone();
 
         self.state.lock().await.insert(id, operation_state);
-
         self.queue.send((id, operation, flag)).await?;
 
         Ok(id)
