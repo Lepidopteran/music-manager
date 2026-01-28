@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::{MAIN_SEPARATOR, PathBuf},
+    path::{MAIN_SEPARATOR, Path, PathBuf},
 };
 
 use sqlx::{query, query_as, query_scalar};
@@ -21,6 +21,8 @@ pub enum DatabaseSongError {
     Metadata(#[from] crate::metadata::Error),
     #[error("Song path doesn't exist in any directories")]
     PathNotFound,
+    #[error("Song path doesn't contain directory")]
+    PathDoesntContainDirectory,
 }
 
 pub async fn add_song<'c>(
@@ -171,37 +173,41 @@ pub async fn update_song<'c>(
     Ok(())
 }
 
-pub async fn move_song<'c>(
+pub async fn update_song_path<'c>(
     connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
-    id: &str,
-    directory_id: &str,
+    song_id: &str,
+    new_directory_id: Option<&str>,
+    new_path: &str,
 ) -> Result<()> {
     let mut connection = connection.acquire().await?;
-    let song = get_song(&mut *connection, id).await?;
+    let song = get_song(&mut *connection, song_id).await?;
 
-    let prev_directory = directories::get_directory(&mut *connection, &song.directory_id).await?;
-    if prev_directory.name == directory_id {
-        return Ok(());
+    if let Some(directory_id) = new_directory_id {
+        let new_directory = directories::get_directory(&mut *connection, directory_id).await?;
+        if !new_path.starts_with(new_directory.path.as_str()) {
+            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
+        }
+
+        let _ = query!(
+            "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
+            directory_id,
+            new_path,
+            song_id
+        )
+        .execute(&mut *connection)
+        .await?;
+    } else {
+        let prev_directory =
+            directories::get_directory(&mut *connection, &song.directory_id).await?;
+
+        if !new_path.starts_with(prev_directory.path.as_str()) {
+            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
+        }
+
+        let _ = query!("UPDATE songs SET path = ? WHERE id = ?", new_path, song_id)
+            .execute(&mut *connection)
+            .await?;
     }
-
-    let new_directory = directories::get_directory(&mut *connection, directory_id).await?;
-    let new_path = format!(
-        "{}{}{}",
-        new_directory.path.trim_end_matches(MAIN_SEPARATOR),
-        MAIN_SEPARATOR,
-        song.path
-            .strip_prefix(&prev_directory.path)
-            .expect("Path stripped too much O//O")
-    );
-
-    let _ = query!(
-        "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
-        directory_id,
-        new_path,
-        id
-    )
-    .execute(&mut *connection)
-    .await?;
 
     Ok(())
 }

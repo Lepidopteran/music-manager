@@ -5,20 +5,20 @@ use axum::{http::StatusCode, response::IntoResponse};
 use super::{
     Error,
     db::{DatabaseError, songs::DatabaseSongError},
+    organize::OrganizeError,
     tasks as app_tasks,
     tasks::RegistryError,
-    organize::OrganizeError,
 };
 
 pub mod albums;
 pub mod cover_art;
 pub mod directories;
+pub mod fs;
 pub mod info;
 pub mod organize;
 pub mod songs;
 pub mod tasks;
 pub mod ui;
-pub mod fs;
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
@@ -61,10 +61,12 @@ impl IntoResponse for OrganizeError {
     fn into_response(self) -> axum::response::Response {
         match self {
             Self::Handlebars(err) => match err.reason() {
-                handlebars::RenderErrorReason::TemplateError(err) => bad_request(err).into_response(),
+                handlebars::RenderErrorReason::TemplateError(err) => {
+                    bad_request(err).into_response()
+                }
                 _ => internal_error(err).into_response(),
             },
-            Self::NoFileName(err) => bad_request(err.display()).into_response()
+            Self::NoFileName(err) => bad_request(err.display()).into_response(),
         }
     }
 }
@@ -84,7 +86,9 @@ impl IntoResponse for DatabaseSongError {
         match self {
             DatabaseSongError::SongAlreadyExists => conflict(self).into_response(),
             DatabaseSongError::Metadata(err) => internal_error(err).into_response(),
-            DatabaseSongError::PathNotFound => bad_request(self).into_response(),
+            DatabaseSongError::PathNotFound | Self::PathDoesntContainDirectory => {
+                bad_request(self).into_response()
+            }
             DatabaseSongError::AlbumNotFound | Self::SongNotFound => {
                 not_found(self).into_response()
             }
