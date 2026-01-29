@@ -56,30 +56,27 @@ fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>, tx: Sender<Event>) -> Arc<Mutex<R
     let mut registry = Registry::default();
 
     let scan_songs_pool = pool.clone();
-    let err = registry.register(move || Box::new(tasks::ScanSongs::new(scan_songs_pool.clone())));
-    if let Err(RegistryError::AlreadyExists) = err {
+
+    if let Err(RegistryError::AlreadyExists) =
+        registry.register(move || Box::new(tasks::ScanSongs::new(scan_songs_pool.clone())))
+    {
         tracing::warn!("Task already registered");
     }
 
-    for task in registry.list() {
-        if let Some(channel) = registry.get_event_channel(&task) {
-            let channel = channel.clone();
-            let sender = tx.clone();
-            let name = task.clone();
-            tokio::spawn(async move {
-                let mut channel = channel;
+    for (name, channel) in registry.event_channels() {
+        let sender = tx.clone();
+        tokio::spawn(async move {
+            let mut channel = channel;
 
-                // TODO: Maybe use mpsc for task events.
-                loop {
-                    let event = channel.borrow_and_update().clone();
-                    let _ = sender.send(Event::from(TaskEvent::new(&name, event)));
+            loop {
+                let event = channel.borrow_and_update().clone();
+                let _ = sender.send(TaskEvent::new(&name, event).into());
 
-                    if channel.changed().await.is_err() {
-                        break;
-                    }
+                if channel.changed().await.is_err() {
+                    break;
                 }
-            });
-        }
+            }
+        });
     }
 
     Arc::new(Mutex::new(registry))

@@ -42,7 +42,8 @@ async fn get_song(
     State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
 ) -> Result<Json<Song>> {
-    let song = songs::get_song(&db, &song_id)
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+    let song = songs::get_song(&mut connection, &song_id)
         .await
         .map(Json)
         .map_err(IntoResponse::into_response)?;
@@ -60,10 +61,11 @@ async fn get_songs(State(pool): State<sqlx::Pool<sqlx::Sqlite>>) -> Result<Json<
 }
 
 async fn get_song_file(
-    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
 ) -> Result<Json<SongFile>> {
-    let path = songs::get_song_path(&pool, &song_id)
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+    let path = songs::get_song_path(&mut connection, &song_id)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -73,17 +75,19 @@ async fn get_song_file(
 }
 
 async fn refresh_song_details(
-    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path(song_id): Path<SongId>,
 ) -> Result<Json<Option<SongMetadata>>> {
-    let path = songs::get_song_path(&pool, &song_id)
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+
+    let path = songs::get_song_path(&mut connection, &song_id)
         .await
         .map_err(IntoResponse::into_response)?;
 
     let file = read_song_file(path).await?;
     let metadata = file.metadata().clone();
 
-    songs::update_song(&pool, &song_id, UpdatedSong::from(file))
+    songs::update_song(&mut connection, &song_id, UpdatedSong::from(file))
         .await
         .map_err(internal_error)?;
 
@@ -137,9 +141,11 @@ async fn get_song_metadata_history(
 }
 
 async fn restore_metadata(
-    State(pool): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
     Path((song_id, timestamp)): Path<(SongId, UtcDateTime)>,
 ) -> Result<StatusCode> {
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+
     let metadata_dir = metadata_history_dir().join(&song_id);
     let path = metadata_dir.join(format!("{}.json", timestamp.unix_timestamp_nanos()));
 
@@ -151,7 +157,7 @@ async fn restore_metadata(
         serde_json::from_str(&std::fs::read_to_string(&path).map_err(internal_error)?)
             .map_err(internal_error)?;
 
-    let path = songs::get_song_path(&pool, &song_id)
+    let path = songs::get_song_path(&mut connection, &song_id)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -176,7 +182,8 @@ async fn edit_song(
     Path(song_id): Path<SongId>,
     Json(metadata): Json<SongMetadata>,
 ) -> Result<StatusCode> {
-    let path = songs::get_song_path(&db, &song_id)
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+    let path = songs::get_song_path(&mut connection, &song_id)
         .await
         .map_err(internal_error)?;
 

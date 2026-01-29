@@ -10,10 +10,7 @@ use axum::{
 use ts_rs::TS;
 
 use crate::{
-    db::{Song, directories, songs},
-    metadata::{Metadata, item::ItemKey},
-    organize,
-    state::AppState,
+    api::internal_error, db::{Song, directories, songs}, metadata::{Metadata, item::ItemKey}, organize, state::AppState
 };
 
 #[derive(serde::Serialize, TS)]
@@ -55,11 +52,13 @@ async fn preview_organize_album_tracks(
     Path(title): Path<String>,
     Query(options): Query<PathRenameOptions>,
 ) -> Result<Json<Vec<PathRenamePreviewResult>>> {
-    let album = songs::get_album(&pool, title)
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
+
+    let album = songs::get_album(&mut connection, title)
         .await
         .map_err(IntoResponse::into_response)?;
 
-    let directories = directories::get_directories(&pool)
+    let directories = directories::get_directories(&mut connection)
         .await
         .map_err(IntoResponse::into_response)?;
 

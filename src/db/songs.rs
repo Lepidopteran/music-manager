@@ -6,7 +6,7 @@ use std::{
 use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
-use super::{Album, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
+use super::{Album, Connection, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -25,11 +25,10 @@ pub enum DatabaseSongError {
     PathDoesntContainDirectory,
 }
 
-pub async fn add_song<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn add_song(
+    connection: &mut Connection,
     song: NewSong,
 ) -> Result<Song> {
-    let mut connection = connection.acquire().await?;
     let uuid = uuid::Uuid::new_v4().to_string();
 
     let NewSong {
@@ -97,11 +96,10 @@ pub async fn add_song<'c>(
     })
 }
 
-pub async fn get_song<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn get_song(
+    connection: &mut Connection,
     id: &str,
 ) -> Result<Song> {
-    let mut connection = connection.acquire().await?;
     query_as!(Song, "SELECT * FROM songs WHERE id = ?", id)
         .fetch_one(&mut *connection)
         .await
@@ -111,11 +109,10 @@ pub async fn get_song<'c>(
         })
 }
 
-pub async fn get_song_path<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn get_song_path(
+    connection: &mut Connection,
     id: &str,
 ) -> Result<PathBuf> {
-    let mut connection = connection.acquire().await?;
     query_scalar!("SELECT path FROM songs WHERE id = ?", id)
         .fetch_one(&mut *connection)
         .await
@@ -130,11 +127,10 @@ pub async fn get_songs(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Song>> {
         .map_err(DatabaseError::from)
 }
 
-pub async fn delete_song<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn delete_song(
+    connection: &mut Connection,
     id: &str,
 ) -> Result<()> {
-    let mut connection = connection.acquire().await?;
     if query!("DELETE FROM songs WHERE id = ?", id)
         .execute(&mut *connection)
         .await?
@@ -147,12 +143,11 @@ pub async fn delete_song<'c>(
     }
 }
 
-pub async fn update_song<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn update_song(
+    connection: &mut Connection,
     id: &str,
     song: UpdatedSong,
 ) -> Result<()> {
-    let mut connection = connection.acquire().await?;
 
     let _ = query!(
         "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
@@ -173,50 +168,10 @@ pub async fn update_song<'c>(
     Ok(())
 }
 
-pub async fn update_song_path<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
-    song_id: &str,
-    new_directory_id: Option<&str>,
-    new_path: &str,
-) -> Result<()> {
-    let mut connection = connection.acquire().await?;
-    let song = get_song(&mut *connection, song_id).await?;
-
-    if let Some(directory_id) = new_directory_id {
-        let new_directory = directories::get_directory(&mut *connection, directory_id).await?;
-        if !new_path.starts_with(new_directory.path.as_str()) {
-            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
-        }
-
-        let _ = query!(
-            "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
-            directory_id,
-            new_path,
-            song_id
-        )
-        .execute(&mut *connection)
-        .await?;
-    } else {
-        let prev_directory =
-            directories::get_directory(&mut *connection, &song.directory_id).await?;
-
-        if !new_path.starts_with(prev_directory.path.as_str()) {
-            return Err(DatabaseSongError::PathDoesntContainDirectory.into());
-        }
-
-        let _ = query!("UPDATE songs SET path = ? WHERE id = ?", new_path, song_id)
-            .execute(&mut *connection)
-            .await?;
-    }
-
-    Ok(())
-}
-
-pub async fn get_album<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn get_album(
+    connection: &mut Connection,
     title: String,
 ) -> Result<Album> {
-    let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
         .fetch_all(&mut *connection)
         .await?;
@@ -230,10 +185,9 @@ pub async fn get_album<'c>(
     Ok(album)
 }
 
-pub async fn get_albums<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn get_albums(
+    connection: &mut Connection,
 ) -> Result<Vec<Album>> {
-    let mut connection = connection.acquire().await?;
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
         .fetch_all(&mut *connection)
         .await?;

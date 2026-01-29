@@ -9,6 +9,7 @@ pub mod directories;
 pub mod songs;
 
 type Result<T, E = DatabaseError> = std::result::Result<T, E>;
+type Connection = sqlx::SqliteConnection;
 
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseError {

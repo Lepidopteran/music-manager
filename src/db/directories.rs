@@ -1,7 +1,7 @@
 use axum::response::IntoResponse;
 use hyper::StatusCode;
 
-use super::{Directory, NewDirectory, Result};
+use super::{Directory, NewDirectory, Result, Connection};
 
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseDirectoryError {
@@ -37,11 +37,10 @@ impl IntoResponse for DatabaseDirectoryError {
     }
 }
 
-pub async fn find_directory_from_sub_path<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn find_directory_from_sub_path(
+    connection: &mut Connection,
     sub_path: &str,
 ) -> Result<Directory> {
-    let mut connection = connection.acquire().await?;
     get_directories(&mut *connection)
         .await?
         .into_iter()
@@ -49,11 +48,11 @@ pub async fn find_directory_from_sub_path<'c>(
         .ok_or(DatabaseDirectoryError::NotFound.into())
 }
 
-pub async fn add_directory<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn add_directory(
+    connection: &mut Connection,
+    sub_path: &str,
     directory: NewDirectory,
 ) -> Result<Directory> {
-    let mut connection = connection.acquire().await?;
     if directory.path.trim().is_empty() {
         return Err(DatabaseDirectoryError::PathEmpty.into());
     }
@@ -116,11 +115,10 @@ pub async fn add_directory<'c>(
     })
 }
 
-pub async fn remove_directory<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn remove_directory(
+    connection: &mut Connection,
     name: String,
 ) -> Result<()> {
-    let mut connection = connection.acquire().await?;
     if name.trim().is_empty() {
         return Err(DatabaseDirectoryError::NameEmpty.into());
     }
@@ -141,10 +139,9 @@ pub async fn remove_directory<'c>(
     }
 }
 
-pub async fn get_directories<'c>(
-    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+pub async fn get_directories(
+    connection: &mut Connection,
 ) -> Result<Vec<Directory>> {
-    let mut connection = connection.acquire().await?;
     let directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
         .fetch_all(&mut *connection)
         .await?;

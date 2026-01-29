@@ -5,7 +5,7 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Result},
     routing::{delete, get, post},
 };
 
@@ -49,14 +49,16 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn add_directory(
-    State(pool): State<Database>,
+    State(db): State<Database>,
     Json(new_directory): Json<NewDirectory>,
-) -> Result<Json<DirectoryResponse>, Response> {
+) -> Result<Json<DirectoryResponse>> {
+    let mut connection = db.acquire().await.map_err(internal_error)?; 
+
     let DirectoryDB {
         name,
         path,
         display_name,
-    } = directories::add_directory(&pool, new_directory)
+    } = directories::add_directory(&mut connection, "", new_directory)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -76,10 +78,11 @@ async fn add_directory(
 }
 
 async fn remove_directory(
-    State(pool): State<Database>,
+    State(db): State<Database>,
     Path(name): Path<String>,
-) -> Result<StatusCode, Response> {
-    directories::remove_directory(&pool, name)
+) -> Result<StatusCode> {
+    let mut connection  = db.acquire().await.map_err(internal_error)?;
+    directories::remove_directory(&mut connection, name)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -87,10 +90,12 @@ async fn remove_directory(
 }
 
 async fn get_directories(
-    State(pool): State<Database>,
-) -> Result<Json<Vec<DirectoryResponse>>, Response> {
+    State(db): State<Database>,
+) -> Result<Json<Vec<DirectoryResponse>>> {
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+
     let disks = Disks::new_with_refreshed_list();
-    let directories = directories::get_directories(&pool)
+    let directories = directories::get_directories(&mut connection)
         .await
         .map_err(|err| err.into_response())?;
 
