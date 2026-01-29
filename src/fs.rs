@@ -4,203 +4,175 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
     fs::{self, read_dir},
-    io,
-    path::PathBuf,
-    sync::{atomic::AtomicBool, mpsc},
+    io::{self, Read, Write},
+    path::{Path, PathBuf},
+    sync::{Arc, atomic::AtomicBool, mpsc},
 };
 
-use fs_extra::dir::{CopyOptions, TransitProcessResult};
 use serde::Serialize;
 use ts_rs::TS;
 
+const BUFFER_SIZE: usize = 64 * 1024;
+
 #[derive(Debug, thiserror::Error)]
-pub enum FsError {
-    #[error("File doesn't exist: {0}")]
-    FileNotFound(String),
-    #[error("Failed to perform fs_extra operation: {0}")]
-    FsExtra(#[from] fs_extra::error::Error),
+pub enum OperationError {
     #[error("Failed to perform IO operation: {0}")]
     Io(#[from] std::io::Error),
+    #[error("File doesn't exist: {0}")]
+    FileNotFound(String),
+    #[error("File already exists: {0}")]
+    FileAlreadyExists(String),
 }
 
-type Result<T, E = FsError> = std::result::Result<T, E>;
-
-#[derive(Debug, Clone)]
-pub struct FileOperationPaths {
-    pub to_from: HashMap<PathBuf, HashSet<PathBuf>>,
-}
-
-impl From<HashMap<PathBuf, HashSet<PathBuf>>> for FileOperationPaths {
-    fn from(to_from: HashMap<PathBuf, HashSet<PathBuf>>) -> Self {
-        Self { to_from }
-    }
-}
-
-impl From<HashMap<PathBuf, Vec<PathBuf>>> for FileOperationPaths {
-    fn from(to_from: HashMap<PathBuf, Vec<PathBuf>>) -> Self {
-        Self {
-            to_from: to_from
-                .into_iter()
-                .map(|(to, from)| (to, from.into_iter().collect()))
-                .collect(),
-        }
-    }
-}
-
-impl FileOperationPaths {
-    pub fn new() -> Self {
-        Self {
-            to_from: HashMap::new(),
-        }
-    }
-
-    pub fn insert(&mut self, from: PathBuf, to: PathBuf) {
-        self.to_from.entry(to).or_default().insert(from);
-    }
-
-    pub fn to_from(&self) -> &HashMap<PathBuf, HashSet<PathBuf>> {
-        &self.to_from
-    }
-}
+type Result<T, E = OperationError> = std::result::Result<T, E>;
+type OperationPaths = HashMap<PathBuf, PathBuf>;
 
 #[derive(Debug, Clone, Default, Serialize, TS)]
 #[serde(rename_all = "camelCase", tag = "kind")]
-pub enum FileSystemOperationEvent {
+pub enum OperationEvent {
     #[default]
     Started,
     Completed,
     Cancelled,
     Progress {
-        bytes: u64,
+        file_index: usize,
+        file_count: usize,
+        copied_bytes: u64,
         total_bytes: u64,
-        current_dir: usize,
-        dir_count: usize,
+    },
+    Renamed {
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Moved {
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Copied {
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Deleted {
+        path: PathBuf,
     },
 }
 
-#[derive(Clone)]
-pub enum FileSystemOperation {
+#[derive(Clone, Debug)]
+pub enum Operation {
     Move {
-        paths: FileOperationPaths,
+        paths: OperationPaths,
+        overwrite: bool,
         delete_empty_directories_after: bool,
-        options: CopyOptions,
     },
     Copy {
-        paths: FileOperationPaths,
-        options: CopyOptions,
+        paths: OperationPaths,
+        overwrite: bool,
     },
     Delete {
         paths: HashSet<PathBuf>,
     },
 }
 
-impl FileSystemOperation {
-    pub fn move_files(
-        paths: FileOperationPaths,
-        delete_empty_directories_after: bool,
-        options: CopyOptions,
-    ) -> Self {
-        Self::Move {
-            paths,
-            options,
-            delete_empty_directories_after,
-        }
-    }
-
-    pub fn copy_files(paths: FileOperationPaths, options: CopyOptions) -> Self {
-        Self::Copy { paths, options }
-    }
-
-    pub fn delete_files(paths: HashSet<PathBuf>) -> Self {
-        Self::Delete { paths }
-    }
-
-    pub fn execute(
-        self,
-        tx: &mpsc::Sender<FileSystemOperationEvent>,
-        stop_flag: &AtomicBool,
-    ) -> Result<()> {
+impl Operation {
+    pub fn execute(self, tx: &mpsc::Sender<OperationEvent>, stop_flag: &AtomicBool) -> Result<()> {
         match self {
-            Self::Copy { paths, options } => Self::execute_copy(paths, options, tx, stop_flag)?,
-            Self::Delete { paths } => Self::execute_delete(paths, tx, stop_flag)?,
             Self::Move {
                 paths,
+                overwrite,
                 delete_empty_directories_after,
-                options,
             } => Self::execute_move(
                 paths,
-                options,
-                tx,
+                overwrite,
                 delete_empty_directories_after,
+                tx,
                 stop_flag,
             )?,
+            Self::Copy { paths, overwrite } => Self::execute_copy(paths, overwrite, tx, stop_flag)?,
+            Self::Delete { paths } => Self::execute_delete(paths, tx, stop_flag)?,
         }
 
-        send_event(tx, FileSystemOperationEvent::Completed);
+        send_event(tx, OperationEvent::Completed);
         Ok(())
     }
 
     fn execute_move(
-        paths: FileOperationPaths,
-        options: CopyOptions,
-        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        paths: OperationPaths,
+        overwrite: bool,
         delete_empty_directories_after: bool,
+        tx: &mpsc::Sender<OperationEvent>,
         stop_flag: &AtomicBool,
     ) -> Result<()> {
-        let count = paths.to_from.len();
-        for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+        let count = paths.len();
+        for (index, (from, to)) in paths.iter().enumerate() {
             if check_stopped(stop_flag, tx) {
                 return Ok(());
             }
 
-            for from in from_items {
-                if check_stopped(stop_flag, tx) {
-                    return Ok(());
-                }
-                
-                if !from.exists() {
-                    return Err(FsError::FileNotFound(from.to_string_lossy().to_string()));
+            if !from.exists() {
+                return Err(OperationError::FileNotFound(
+                    from.to_string_lossy().to_string(),
+                ));
+            }
+
+            let to = if to.is_dir() {
+                to.join(from.file_name().expect("File name should exist"))
+            } else {
+                to.to_path_buf()
+            };
+
+            if to.exists() && !overwrite {
+                return Err(OperationError::FileAlreadyExists(
+                    to.to_string_lossy().to_string(),
+                ));
+            }
+
+            log::info!("Moving {from:?} to {to:?}");
+
+            match fs::rename(&from, &to) {
+                Ok(_) => {
+                    send_event(
+                        tx,
+                        OperationEvent::Renamed {
+                            from: from.to_path_buf(),
+                            to: to.to_path_buf(),
+                        },
+                    );
                 }
 
-                log::info!("Moving {from:?} to {to:?}");
-                fs::rename(
-                    from,
-                    to.is_dir()
-                        .then_some(to.join(from.file_name().expect("Failed to get file name")))
-                        .as_ref()
-                        .unwrap_or(to),
-                )
-                .or_else(|err| {
+                Err(err) => {
                     if err.kind() != io::ErrorKind::CrossesDevices {
-                        return Err(FsError::from(err));
+                        return Err(OperationError::from(err));
                     }
 
-                    fs_extra::move_items_with_progress(&[from], to, &options, |transit| {
-                        handle_transit(transit, stop_flag, tx, count, index)
-                    })?;
+                    copy_file(
+                        &from,
+                        &to,
+                        overwrite,
+                        stop_flag,
+                        |copied_bytes, total_bytes| {
+                            handle_progress(copied_bytes, total_bytes, index, count, stop_flag, tx)
+                        },
+                    )?;
 
-                    Ok(())
-                })?;
+                    send_event(
+                        tx,
+                        OperationEvent::Moved {
+                            from: from.to_path_buf(),
+                            to: to.to_path_buf(),
+                        },
+                    );
+                }
             }
 
             if delete_empty_directories_after {
-                let (dirs, files): (HashSet<_>, HashSet<_>) =
-                    from_items.iter().partition(|p| p.is_dir());
-
-                for from in dirs {
-                    if read_dir(from)?.count() == 0 {
-                        log::info!("Removing empty dir: {from:?}");
-                        std::fs::remove_dir(from)?;
-                    }
-                }
-
-                for from in files {
-                    if let Some(parent) = from.parent()
-                        && read_dir(parent)?.count() == 0
-                    {
-                        log::info!("Removing empty dir: {parent:?}");
-                        std::fs::remove_dir(parent)?;
-                    }
+                if from.is_dir() && read_dir(from)?.count() == 0 {
+                    log::info!("Removing empty dir: {from:?}");
+                    std::fs::remove_dir(from)?;
+                } else if let Some(parent) = from.parent()
+                    && read_dir(parent)?.count() == 0
+                {
+                    log::info!("Removing empty dir: {parent:?}");
+                    std::fs::remove_dir(parent)?;
                 }
             }
         }
@@ -209,21 +181,31 @@ impl FileSystemOperation {
     }
 
     fn execute_copy(
-        paths: FileOperationPaths,
-        options: CopyOptions,
-        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        paths: OperationPaths,
+        overwrite: bool,
+        tx: &mpsc::Sender<OperationEvent>,
         stop_flag: &AtomicBool,
     ) -> Result<()> {
-        let count = paths.to_from.len();
-        for (index, (to, from_items)) in paths.to_from.iter().enumerate() {
+        let count = paths.len();
+        for (index, (from, to)) in paths.iter().enumerate() {
             if check_stopped(stop_flag, tx) {
                 return Ok(());
             }
-            fs_extra::copy_items_with_progress(
-                &from_items.iter().collect::<Vec<_>>(),
+
+            let to = if to.is_dir() {
+                to.join(from.file_name().expect("File name should exist"))
+            } else {
+                to.to_path_buf()
+            };
+
+            copy_file(
+                from,
                 to,
-                &options,
-                |transit| handle_transit(transit, stop_flag, tx, count, index),
+                overwrite,
+                stop_flag,
+                |copied_bytes, total_bytes| {
+                    handle_progress(copied_bytes, total_bytes, index, count, stop_flag, tx);
+                },
             )?;
         }
 
@@ -232,62 +214,141 @@ impl FileSystemOperation {
 
     fn execute_delete(
         paths: HashSet<PathBuf>,
-        tx: &mpsc::Sender<FileSystemOperationEvent>,
+        tx: &mpsc::Sender<OperationEvent>,
         stop_flag: &AtomicBool,
     ) -> Result<()> {
         for path in paths {
             if check_stopped(stop_flag, tx) {
                 return Ok(());
             }
+
             if path.is_dir() {
-                fs::remove_dir(path)?;
+                fs::remove_dir(&path)?;
             } else {
-                fs::remove_file(path)?;
+                fs::remove_file(&path)?;
             }
+
+            send_event(
+                tx,
+                OperationEvent::Deleted {
+                    path: path.to_path_buf(),
+                },
+            );
         }
 
         Ok(())
     }
 }
 
-fn check_stopped(stop_flag: &AtomicBool, tx: &mpsc::Sender<FileSystemOperationEvent>) -> bool {
+/// Returns the size of the path in bytes
+pub fn calculate_path_size<P: AsRef<Path>>(path: P) -> Result<u64> {
+    let metadata = fs::symlink_metadata(path.as_ref())?;
+
+    let mut bytes = 0;
+
+    if metadata.is_dir() {
+        for entry in read_dir(&path)? {
+            let entry = entry?;
+            let entry_metadata = entry.metadata()?;
+
+            if entry_metadata.is_dir() {
+                bytes += calculate_path_size(entry.path())?;
+            } else {
+                bytes += entry_metadata.len();
+            }
+        }
+    } else {
+        bytes = metadata.len();
+    }
+
+    Ok(bytes)
+}
+
+fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
+    from: P,
+    to: T,
+    overwrite: bool,
+    stop_flag: &AtomicBool,
+    mut handle_progress: F,
+) -> Result<()> {
     if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-        send_event(tx, FileSystemOperationEvent::Cancelled);
+        return Ok(());
+    }
+
+    if from.as_ref().exists() {
+        return Err(OperationError::FileNotFound(
+            from.as_ref().to_string_lossy().to_string(),
+        ));
+    } else if to.as_ref().exists() && !overwrite {
+        return Err(OperationError::FileAlreadyExists(
+            to.as_ref().to_string_lossy().to_string(),
+        ));
+    }
+
+    let mut file_from = fs::File::open(from)?;
+    let file_size = file_from.metadata()?.len();
+    let mut buffer = vec![0; BUFFER_SIZE];
+    let mut copied_bytes: u64 = 0;
+
+    let mut file_to = fs::File::create(&to)?;
+
+    while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) && !buffer.is_empty() {
+        match file_from.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(n) => {
+                file_to.write_all(&buffer[..n])?;
+                copied_bytes += n as u64;
+                handle_progress(copied_bytes, file_size);
+            }
+            Err(err) if err.kind() == io::ErrorKind::Interrupted => {}
+            Err(err) => return Err(OperationError::from(err)),
+        }
+    }
+
+    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) && file_to.metadata()?.len() != file_size
+    {
+        let _ = std::fs::remove_file(&to);
+    }
+
+    Ok(())
+}
+
+fn check_stopped(stop_flag: &AtomicBool, tx: &mpsc::Sender<OperationEvent>) -> bool {
+    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+        send_event(tx, OperationEvent::Cancelled);
         return true;
     }
 
     false
 }
 
-fn send_event(tx: &mpsc::Sender<FileSystemOperationEvent>, event: FileSystemOperationEvent) {
+fn send_event(tx: &mpsc::Sender<OperationEvent>, event: OperationEvent) {
     if let Err(err) = tx.send(event) {
         log::error!("Failed to send event: {err:?}");
     };
 }
 
-fn handle_transit(
-    transit: fs_extra::TransitProcess,
+fn handle_progress(
+    copied_bytes: u64,
+    total_bytes: u64,
+    file_index: usize,
+    file_count: usize,
     stop_flag: &AtomicBool,
-    tx: &mpsc::Sender<FileSystemOperationEvent>,
-    total_count: usize,
-    current: usize,
-) -> TransitProcessResult {
+    tx: &mpsc::Sender<OperationEvent>,
+) {
     if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-        send_event(tx, FileSystemOperationEvent::Cancelled);
-        return TransitProcessResult::Abort;
+        send_event(tx, OperationEvent::Cancelled);
     }
 
     send_event(
         tx,
-        FileSystemOperationEvent::Progress {
-            bytes: transit.copied_bytes,
-            total_bytes: transit.total_bytes,
-            current_dir: current,
-            dir_count: total_count,
+        OperationEvent::Progress {
+            file_index,
+            file_count,
+            copied_bytes,
+            total_bytes,
         },
     );
-
-    TransitProcessResult::ContinueOrAbort
 }
 
 #[cfg(test)]
@@ -314,13 +375,13 @@ mod tests {
         let src_file = src_dir.join("file.txt");
         fs::write(&src_file, "hello").expect("Failed to write file");
 
-        let mut to_from = HashMap::new();
-        to_from.insert(dst_dir.clone(), vec![src_file.clone()]);
+        let mut paths = HashMap::new();
+        paths.insert(src_file.clone(), dst_dir.clone());
 
-        let op = FileSystemOperation::Move {
-            paths: FileOperationPaths::from(to_from),
+        let op = Operation::Move {
+            paths,
             delete_empty_directories_after: true,
-            options: fs_extra::dir::CopyOptions::new(),
+            overwrite: true,
         };
 
         op.execute(&junk_tx, &stop_flag)
@@ -354,15 +415,12 @@ mod tests {
         let src_file = src_dir.join("file.txt");
         std::fs::write(&src_file, "hello")?;
 
-        let mut to_from = HashMap::new();
-        to_from.insert(dst_dir.clone(), vec![src_file.clone()]);
-        let mut options = fs_extra::dir::CopyOptions::new();
-        options.overwrite = true;
-
-        let op = FileSystemOperation::Move {
-            paths: FileOperationPaths::from(to_from),
+        let mut paths = HashMap::new();
+        paths.insert(src_file.clone(), dst_dir.clone());
+        let op = Operation::Move {
+            paths,
             delete_empty_directories_after: false,
-            options,
+            overwrite: true,
         };
 
         stop_flag.store(true, Ordering::SeqCst);

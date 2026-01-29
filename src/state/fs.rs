@@ -12,7 +12,7 @@ use time::OffsetDateTime;
 use tokio::sync::{Mutex, broadcast, mpsc};
 use ts_rs::TS;
 
-use crate::fs::{FileSystemOperation, FileSystemOperationEvent};
+use crate::fs::{Operation, OperationEvent};
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -30,12 +30,31 @@ pub enum FileOperationEvent {
     Cancelled {
         source: i128,
     },
+    Moved {
+        source: i128,
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Renamed {
+        source: i128,
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Copied {
+        source: i128,
+        from: PathBuf,
+        to: PathBuf,
+    },
+    Deleted {
+        source: i128,
+        path: PathBuf,
+    },
     Progress {
         source: i128,
-        bytes: u64,
+        copied_bytes: u64,
         total_bytes: u64,
-        current_dir: usize,
-        dir_count: usize,
+        file_index: usize,
+        file_count: usize,
     },
 }
 
@@ -47,6 +66,10 @@ impl FileOperationEvent {
             FileOperationEvent::Completed { source } => *source,
             FileOperationEvent::Cancelled { source } => *source,
             FileOperationEvent::Progress { source, .. } => *source,
+            FileOperationEvent::Moved { source, .. } => *source,
+            FileOperationEvent::Renamed { source, .. } => *source,
+            FileOperationEvent::Copied { source, .. } => *source,
+            FileOperationEvent::Deleted { source, .. } => *source,
         }
     }
 }
@@ -55,7 +78,7 @@ impl FileOperationEvent {
 pub enum FileOperationManagerError {
     #[error("Failed to add operation: {0}")]
     FailedToAddOperation(
-        #[from] mpsc::error::SendError<(i128, FileSystemOperation, Arc<AtomicBool>)>,
+        #[from] mpsc::error::SendError<(i128, Operation, Arc<AtomicBool>)>,
     ),
 
     #[error("Couldn't find operation")]
@@ -69,13 +92,13 @@ type Result<T, E = FileOperationManagerError> = std::result::Result<T, E>;
 #[ts(export, export_to = "bindings.ts")]
 pub enum FileOperationState {
     Move {
-        to_from: HashMap<PathBuf, HashSet<PathBuf>>,
+        paths: HashMap<PathBuf, PathBuf>,
         status: FileSystemOperationStatus,
         #[serde(skip)]
         stop_flag: Arc<AtomicBool>,
     },
     Copy {
-        to_from: HashMap<PathBuf, HashSet<PathBuf>>,
+        paths: HashMap<PathBuf, PathBuf>,
         status: FileSystemOperationStatus,
         #[serde(skip)]
         stop_flag: Arc<AtomicBool>,
@@ -131,20 +154,20 @@ impl FileOperationState {
     }
 }
 
-impl From<&FileSystemOperation> for FileOperationState {
-    fn from(op: &FileSystemOperation) -> Self {
+impl From<&Operation> for FileOperationState {
+    fn from(op: &Operation) -> Self {
         match op {
-            FileSystemOperation::Move { paths, .. } => FileOperationState::Move {
-                to_from: paths.to_from().clone(),
+            Operation::Move { paths, .. } => FileOperationState::Move {
+                paths: paths.clone(),
                 status: FileSystemOperationStatus::Pending,
                 stop_flag: Default::default(),
             },
-            FileSystemOperation::Copy { paths, .. } => FileOperationState::Copy {
-                to_from: paths.to_from().clone(),
+            Operation::Copy { paths, .. } => FileOperationState::Copy {
+                paths: paths.clone(),
                 status: FileSystemOperationStatus::Pending,
                 stop_flag: Default::default(),
             },
-            FileSystemOperation::Delete { paths, .. } => FileOperationState::Delete {
+            Operation::Delete { paths, .. } => FileOperationState::Delete {
                 paths: paths.clone(),
                 status: FileSystemOperationStatus::Pending,
                 stop_flag: Default::default(),
@@ -162,7 +185,7 @@ pub enum FileSystemOperationStatus {
     InProgress,
 }
 
-type QueueItem = (i128, FileSystemOperation, Arc<AtomicBool>);
+type QueueItem = (i128, Operation, Arc<AtomicBool>);
 
 #[derive(Clone, Debug)]
 pub struct FileOperationManager {
@@ -198,7 +221,7 @@ impl FileOperationManager {
                 tokio::spawn(async move {
                     while let Some(item) = bridged_rx.recv().await {
                         match item {
-                            FileSystemOperationEvent::Started => {
+                            OperationEvent::Started => {
                                 send_event(&events, FileOperationEvent::Started { source: id });
 
                                 let mut state = state.lock().await;
@@ -206,33 +229,69 @@ impl FileOperationManager {
                                     op.set_status(FileSystemOperationStatus::InProgress);
                                 }
                             }
-                            FileSystemOperationEvent::Completed => {
+                            OperationEvent::Completed => {
                                 send_event(&events, FileOperationEvent::Completed { source: id });
 
                                 let mut state = state.lock().await;
                                 state.remove(&id);
                             }
-                            FileSystemOperationEvent::Cancelled => {
+                            OperationEvent::Cancelled => {
                                 send_event(&events, FileOperationEvent::Cancelled { source: id });
 
                                 let mut state = state.lock().await;
                                 state.remove(&id);
                             }
-                            FileSystemOperationEvent::Progress {
-                                bytes,
+                            OperationEvent::Progress {
+                                copied_bytes,
                                 total_bytes,
-                                current_dir,
-                                dir_count,
+                                file_count,
+                                file_index,
                             } => {
                                 send_event(
                                     &events,
                                     FileOperationEvent::Progress {
                                         source: id,
-                                        bytes,
+                                        copied_bytes,
                                         total_bytes,
-                                        current_dir,
-                                        dir_count,
+                                        file_count,
+                                        file_index,
                                     },
+                                );
+                            }
+                            OperationEvent::Renamed { from, to } => {
+                                send_event(
+                                    &events,
+                                    FileOperationEvent::Renamed {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Moved { from, to } => {
+                                send_event(
+                                    &events,
+                                    FileOperationEvent::Moved {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Copied { from, to } => {
+                                send_event(
+                                    &events,
+                                    FileOperationEvent::Copied {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Deleted { path } => {
+                                send_event(
+                                    &events,
+                                    FileOperationEvent::Deleted { source: id, path },
                                 );
                             }
                         }
@@ -261,7 +320,7 @@ impl FileOperationManager {
         }
     }
 
-    pub async fn queue_operation(&self, operation: FileSystemOperation) -> Result<i128> {
+    pub async fn queue_operation(&self, operation: Operation) -> Result<i128> {
         let id = OffsetDateTime::now_utc().unix_timestamp_nanos();
         let operation_state = FileOperationState::from(&operation);
         let flag = operation_state.stop_flag().clone();
@@ -302,7 +361,6 @@ mod tests {
     use test_log::test;
 
     use super::*;
-    use crate::fs::FileOperationPaths;
 
     #[test(tokio::test)]
     async fn test() {
@@ -316,8 +374,8 @@ mod tests {
         let src_file = src_dir.join("file.txt");
         fs::write(&src_file, "hello").expect("Failed to write file");
 
-        let mut to_from = HashMap::new();
-        to_from.insert(dst_dir.clone(), vec![src_file.clone()]);
+        let mut paths = HashMap::new();
+        paths.insert(src_file.clone(), dst_dir.clone());
 
         let manager = FileOperationManager::new();
         let mut events = manager.events();
@@ -333,11 +391,11 @@ mod tests {
         });
 
         let _ = manager
-            .queue_operation(FileSystemOperation::move_files(
-                FileOperationPaths::from(to_from),
-                true,
-                fs_extra::dir::CopyOptions::new(),
-            ))
+            .queue_operation(Operation::Move {
+                paths,
+                overwrite: true,
+                delete_empty_directories_after: true,
+            })
             .await
             .expect("Failed to add operation");
 
@@ -363,8 +421,8 @@ mod tests {
         fs::create_dir_all(&src_dir).expect("Failed to create src dir");
         fs::create_dir_all(&dst_dir).expect("Failed to create dst dir");
 
-        let mut to_from = HashMap::new();
-        to_from.insert(dst_dir.clone(), vec![src_dir.join("file2.txt")]);
+        let mut paths = HashMap::new();
+        paths.insert(src_dir.join("file2.txt"), dst_dir.clone());
 
         let manager = FileOperationManager::new();
         let mut events = manager.events();
@@ -380,11 +438,11 @@ mod tests {
         });
 
         let _ = manager
-            .queue_operation(FileSystemOperation::move_files(
-                FileOperationPaths::from(to_from),
-                true,
-                fs_extra::dir::CopyOptions::new(),
-            ))
+            .queue_operation(Operation::Move {
+                paths,
+                overwrite: true,
+                delete_empty_directories_after: true,
+            })
             .await
             .expect("Failed to add operation");
 

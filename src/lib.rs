@@ -163,4 +163,6 @@ pub enum Error {
     TaskRegistry(#[from] tasks::RegistryError),
     #[error("Organization error: {0}")]
     Organization(#[from] organize::OrganizeError),
+    #[error("File operation manager error: {0}")]
+    FileOperationManager(#[from] state::FileOperationManagerError),
 }
