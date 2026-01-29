@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT directory_id FROM songs WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "directory_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d134b0f4fa5123c2e5f3b8ea681c656a6d42261113d7e8fce9b737099fe9f183"
+}

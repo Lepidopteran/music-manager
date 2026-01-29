@@ -6,7 +6,9 @@ use std::{
 use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
-use super::{Album, Connection, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories};
+use super::{
+    Album, Connection, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories,
+};
 
 #[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
@@ -25,10 +27,7 @@ pub enum DatabaseSongError {
     PathDoesntContainDirectory,
 }
 
-pub async fn add_song(
-    connection: &mut Connection,
-    song: NewSong,
-) -> Result<Song> {
+pub async fn add_song(connection: &mut Connection, song: NewSong) -> Result<Song> {
     let uuid = uuid::Uuid::new_v4().to_string();
 
     let NewSong {
@@ -96,10 +95,7 @@ pub async fn add_song(
     })
 }
 
-pub async fn get_song(
-    connection: &mut Connection,
-    id: &str,
-) -> Result<Song> {
+pub async fn get_song(connection: &mut Connection, id: &str) -> Result<Song> {
     query_as!(Song, "SELECT * FROM songs WHERE id = ?", id)
         .fetch_one(&mut *connection)
         .await
@@ -109,10 +105,7 @@ pub async fn get_song(
         })
 }
 
-pub async fn get_song_path(
-    connection: &mut Connection,
-    id: &str,
-) -> Result<PathBuf> {
+pub async fn get_song_path(connection: &mut Connection, id: &str) -> Result<PathBuf> {
     query_scalar!("SELECT path FROM songs WHERE id = ?", id)
         .fetch_one(&mut *connection)
         .await
@@ -127,10 +120,7 @@ pub async fn get_songs(pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<Vec<Song>> {
         .map_err(DatabaseError::from)
 }
 
-pub async fn delete_song(
-    connection: &mut Connection,
-    id: &str,
-) -> Result<()> {
+pub async fn delete_song(connection: &mut Connection, id: &str) -> Result<()> {
     if query!("DELETE FROM songs WHERE id = ?", id)
         .execute(&mut *connection)
         .await?
@@ -143,12 +133,7 @@ pub async fn delete_song(
     }
 }
 
-pub async fn update_song(
-    connection: &mut Connection,
-    id: &str,
-    song: UpdatedSong,
-) -> Result<()> {
-
+pub async fn update_song(connection: &mut Connection, id: &str, song: UpdatedSong) -> Result<()> {
     let _ = query!(
         "UPDATE songs SET title = ?, album = ?, album_artist = ?, disc_number = ?, artist = ?, year = ?, track_number = ?, genre = ?, mood = ? WHERE id = ?",
         song.title,
@@ -168,10 +153,55 @@ pub async fn update_song(
     Ok(())
 }
 
-pub async fn get_album(
+pub async fn update_song_path(
     connection: &mut Connection,
-    title: String,
-) -> Result<Album> {
+    song_id: &str,
+    new_path: &str,
+) -> Result<()> {
+    tracing::debug!("Getting previous directory_id for {song_id}");
+    let previous_directory_id =
+        query_scalar!("SELECT directory_id FROM songs WHERE id = ?", song_id)
+            .fetch_one(&mut *connection)
+            .await
+            .map_err(|err| match err {
+                sqlx::Error::RowNotFound => DatabaseError::from(DatabaseSongError::SongNotFound),
+                _ => err.into(),
+            })?;
+
+
+    tracing::debug!("Getting directories");
+    let directories = sqlx::query_as::<_, (String, String)>("SELECT path, name FROM directories")
+        .fetch_all(&mut *connection)
+        .await?;
+
+    tracing::debug!("Getting new directory_id for {song_id}");
+    let new_directory_id = directories
+        .iter()
+        .find_map(|(path, id)| new_path.starts_with(path.as_str()).then_some(id))
+        .ok_or(DatabaseSongError::PathDoesntContainDirectory)?;
+
+    if new_directory_id != &previous_directory_id {
+        tracing::debug!("Updating directory_id and path for {song_id}");
+        let _ = query!(
+            "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
+            new_directory_id,
+            new_path,
+            song_id
+        )
+        .execute(&mut *connection)
+        .await?;
+    } else {
+        tracing::debug!("Updating path for {song_id}");
+        let _ = query!("UPDATE songs SET path = ? WHERE id = ?", new_path, song_id)
+            .execute(&mut *connection)
+            .await?;
+    }
+
+    tracing::debug!("Updated {song_id}");
+    Ok(())
+}
+
+pub async fn get_album(connection: &mut Connection, title: String) -> Result<Album> {
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
         .fetch_all(&mut *connection)
         .await?;
@@ -185,9 +215,7 @@ pub async fn get_album(
     Ok(album)
 }
 
-pub async fn get_albums(
-    connection: &mut Connection,
-) -> Result<Vec<Album>> {
+pub async fn get_albums(connection: &mut Connection) -> Result<Vec<Album>> {
     let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
         .fetch_all(&mut *connection)
         .await?;

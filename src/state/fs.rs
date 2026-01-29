@@ -77,9 +77,7 @@ impl FileOperationEvent {
 #[derive(Debug, thiserror::Error)]
 pub enum FileOperationManagerError {
     #[error("Failed to add operation: {0}")]
-    FailedToAddOperation(
-        #[from] mpsc::error::SendError<(i128, Operation, Arc<AtomicBool>)>,
-    ),
+    FailedToAddOperation(#[from] mpsc::error::SendError<(i128, Operation, Arc<AtomicBool>)>),
 
     #[error("Couldn't find operation")]
     NotFound,
@@ -210,6 +208,7 @@ impl FileOperationManager {
 
                 tokio::task::spawn_blocking(move || {
                     while let Ok(item) = rx.recv() {
+                        log::debug!("Sending event: {item:?}");
                         if bridged_tx.blocking_send(item).is_err() {
                             break;
                         }
@@ -320,13 +319,19 @@ impl FileOperationManager {
         }
     }
 
-    pub async fn queue_operation(&self, operation: Operation) -> Result<i128> {
-        let id = OffsetDateTime::now_utc().unix_timestamp_nanos();
+    pub async fn queue_operation_with_id(&self, operation: Operation, id: i128) -> Result<()> {
         let operation_state = FileOperationState::from(&operation);
         let flag = operation_state.stop_flag().clone();
 
         self.state.lock().await.insert(id, operation_state);
         self.queue.send((id, operation, flag)).await?;
+
+        Ok(())
+    }
+
+    pub async fn queue_operation(&self, operation: Operation) -> Result<i128> {
+        let id = OffsetDateTime::now_utc().unix_timestamp_nanos();
+        self.queue_operation_with_id(operation, id).await?;
 
         Ok(id)
     }
@@ -344,6 +349,12 @@ impl FileOperationManager {
 
     pub fn events(&self) -> broadcast::Receiver<FileOperationEvent> {
         self.events.subscribe()
+    }
+}
+
+impl Default for FileOperationManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

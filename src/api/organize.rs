@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    path::PathBuf,
+};
 
 use super::not_found;
 use axum::{
@@ -7,10 +10,17 @@ use axum::{
     response::{IntoResponse, Response, Result},
     routing::{get, post},
 };
+
+use sqlx::Connection;
 use ts_rs::TS;
 
 use crate::{
-    api::internal_error, db::{Song, directories, songs}, metadata::{Metadata, item::ItemKey}, organize, state::AppState
+    api::internal_error,
+    db::{Song, directories, songs},
+    fs::Operation,
+    metadata::{Metadata, item::ItemKey},
+    organize,
+    state::{AppState, FileOperationEvent},
 };
 
 #[derive(serde::Serialize, TS)]
@@ -43,8 +53,141 @@ impl Default for PathRenameOptions {
 pub fn router() -> Router<AppState> {
     Router::new().route(
         "/albums/{title}/organize",
-        get(preview_organize_album_tracks),
+        get(preview_organize_album_tracks).post(organize_album_tracks),
     )
+}
+
+#[axum::debug_handler]
+async fn organize_album_tracks(
+    Path(title): Path<String>,
+    State(AppState {
+        file_operation_manager: manager,
+        db,
+        ..
+    }): State<AppState>,
+    Query(options): Query<PathRenameOptions>,
+) -> Result<()> {
+    let mut connection = db.acquire().await.map_err(internal_error)?;
+
+    let album = songs::get_album(&mut connection, title)
+        .await
+        .map_err(IntoResponse::into_response)?;
+
+    let directories = directories::get_directories(&mut connection)
+        .await
+        .map_err(IntoResponse::into_response)?;
+
+    let tracks = album
+        .tracks
+        .iter()
+        .try_fold(HashMap::new(), |mut paths, song| {
+            let directory_id = options
+                .directory_id
+                .as_deref()
+                .unwrap_or(&song.directory_id);
+
+            let directory: PathBuf = directories
+                .iter()
+                .find(|dir| dir.name == directory_id)
+                .ok_or_else(|| {
+                    not_found(format!("Directory {} not found", song.directory_id)).into_response()
+                })?
+                .path
+                .clone()
+                .into();
+
+            let path = directory.join(
+                organize::render_song_path(
+                    &handlebars::Handlebars::new(),
+                    organize::DEFAULT_TEMPLATE,
+                    &map_organize(song),
+                    options.rename_original_files,
+                )
+                .map_err(IntoResponse::into_response)?,
+            );
+
+            paths.insert(song.path.clone().into(), (path.clone(), song.id.clone()));
+
+            Ok::<HashMap<PathBuf, (PathBuf, String)>, Response>(paths)
+        })?;
+
+    let operation_id = manager
+        .queue_operation(Operation::Move {
+            paths: tracks
+                .iter()
+                .map(|(from, (to, _))| (from.clone(), to.clone()))
+                .collect(),
+            overwrite: true,
+            delete_empty_directories_after: true,
+        })
+        .await?;
+
+    let mut finished_items = HashSet::new();
+
+    let mut connection = db.begin().await.map_err(internal_error)?;
+    while let Ok(item) = manager.events().recv().await {
+        if !item.source() == operation_id {
+            continue;
+        }
+
+        match item {
+            FileOperationEvent::Completed { .. } => {
+                tracing::debug!("Completed");
+                break;
+            }
+            FileOperationEvent::Renamed { from, to, .. } => {
+                let (_, song_id) = tracks.get(&from).expect("Path not found");
+
+                songs::update_song_path(
+                    &mut connection,
+                    song_id,
+                    to.to_str().expect("Path is not valid UTF-8"),
+                )
+                .await
+                .map_err(IntoResponse::into_response)?;
+
+                tracing::debug!(
+                    "Renamed {} to {}",
+                    from.to_str().expect("Path is not valid UTF-8"),
+                    to.to_str().expect("Path is not valid UTF-8")
+                );
+
+                finished_items.insert(song_id);
+                if finished_items.len() == tracks.len() {
+                    break;
+                }
+            }
+            FileOperationEvent::Moved { from, to, .. } => {
+                let (_, song_id) = tracks.get(&from).expect("Path not found");
+
+                songs::update_song_path(
+                    &mut connection,
+                    song_id,
+                    to.to_str().expect("Path is not valid UTF-8"),
+                )
+                .await
+                .map_err(IntoResponse::into_response)?;
+
+                tracing::debug!(
+                    "Renamed {} to {}",
+                    from.to_str().expect("Path is not valid UTF-8"),
+                    to.to_str().expect("Path is not valid UTF-8")
+                );
+                finished_items.insert(song_id);
+                if finished_items.len() == tracks.len() {
+                    break;
+                }
+            }
+            FileOperationEvent::Failed { error, .. } => {
+                return Err(internal_error(error).into());
+            }
+            _ => continue,
+        }
+    }
+
+    connection.commit().await.map_err(internal_error)?;
+
+    Ok(())
 }
 
 async fn preview_organize_album_tracks(

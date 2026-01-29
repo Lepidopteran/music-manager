@@ -16,13 +16,14 @@ pub use fs::*;
 
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;
+pub type OperationManager = Arc<FileOperationManager>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
     pub tasks: TaskRegistry,
     pub event_sender: Sender<Event>,
-    pub file_operation_manager: FileOperationManager,
+    pub file_operation_manager: OperationManager,
     pub db: Database,
 }
 
@@ -46,7 +47,7 @@ impl AppState {
             tasks,
             settings,
             event_sender: tx,
-            file_operation_manager: FileOperationManager::new(),
+            file_operation_manager: Arc::new(file_operation_manager),
         }
     }
 }
@@ -91,6 +92,12 @@ impl FromRef<AppState> for Sender<Event> {
 impl FromRef<AppState> for TaskRegistry {
     fn from_ref(state: &AppState) -> Self {
         state.tasks.clone()
+    }
+}
+
+impl FromRef<AppState> for OperationManager {
+    fn from_ref(state: &AppState) -> Self {
+        state.file_operation_manager.clone()
     }
 }
 
