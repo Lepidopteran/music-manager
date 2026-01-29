@@ -6,7 +6,7 @@ use super::{
     Error,
     db::{DatabaseError, songs::DatabaseSongError},
     organize::OrganizeError,
-    tasks as app_tasks,
+    state::FileOperationManagerError,
     tasks::RegistryError,
 };
 
@@ -53,6 +53,7 @@ impl IntoResponse for Error {
             Self::Metadata(err) => internal_error(err).into_response(),
             Self::Organization(err) => err.into_response(),
             Self::TaskRegistry(err) => err.into_response(),
+            Self::FileOperationManager(err) => err.into_response(),
         }
     }
 }
@@ -102,6 +103,15 @@ impl IntoResponse for DatabaseError {
             DatabaseError::Song(err) => err.into_response(),
             DatabaseError::Directory(err) => err.into_response(),
             DatabaseError::Sqlx(err) => internal_error(err).into_response(),
+        }
+    }
+}
+
+impl IntoResponse for FileOperationManagerError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Self::NotFound => not_found(self).into_response(),
+            Self::FailedToAddOperation(err) => internal_error(err).into_response(),
         }
     }
 }
