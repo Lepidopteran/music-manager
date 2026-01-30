@@ -149,8 +149,8 @@ impl Operation {
                         return Err(OperationError::from(err));
                     }
 
-                    copy_file(
-                        &from,
+                    move_file(
+                        from,
                         &to,
                         overwrite,
                         stop_flag,
@@ -321,6 +321,22 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
 
     if stop_flag.load(ORDERING) && file_to.metadata()?.len() != file_size {
         let _ = std::fs::remove_file(&to);
+    }
+
+    Ok(())
+}
+
+fn move_file<P: AsRef<Path>, T: AsRef<Path>>(
+    from: P,
+    to: T,
+    overwrite: bool,
+    stop_flag: &AtomicBool,
+    handle_progress: impl FnMut(u64, u64),
+) -> Result<()> {
+    copy_file(&from, to, overwrite, stop_flag, handle_progress)?;
+
+    if !stop_flag.load(ORDERING) {
+        fs::remove_file(&from)?;
     }
 
     Ok(())
