@@ -6,13 +6,18 @@ use std::{
     fs::{self, read_dir},
     io::{self, Read, Write},
     path::{Path, PathBuf},
-    sync::{Arc, atomic::AtomicBool, mpsc},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
 };
 
 use serde::Serialize;
 use ts_rs::TS;
 
 const BUFFER_SIZE: usize = 64 * 1024;
+const ORDERING: Ordering = Ordering::SeqCst;
 
 #[derive(Debug, thiserror::Error)]
 pub enum OperationError {
@@ -271,7 +276,7 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
     stop_flag: &AtomicBool,
     mut handle_progress: F,
 ) -> Result<()> {
-    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+    if stop_flag.load(ORDERING) {
         return Ok(());
     }
 
@@ -292,7 +297,7 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
 
     let mut file_to = fs::File::create(&to)?;
 
-    while !stop_flag.load(std::sync::atomic::Ordering::SeqCst) && !buffer.is_empty() {
+    while !stop_flag.load(ORDERING) && !buffer.is_empty() {
         match file_from.read(&mut buffer) {
             Ok(0) => break,
             Ok(n) => {
@@ -305,8 +310,7 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
         }
     }
 
-    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) && file_to.metadata()?.len() != file_size
-    {
+    if stop_flag.load(ORDERING) && file_to.metadata()?.len() != file_size {
         let _ = std::fs::remove_file(&to);
     }
 
@@ -336,7 +340,7 @@ fn handle_progress(
     stop_flag: &AtomicBool,
     tx: &mpsc::Sender<OperationEvent>,
 ) {
-    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
+    if stop_flag.load(ORDERING) {
         send_event(tx, OperationEvent::Cancelled);
     }
 
@@ -356,12 +360,11 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
-    use std::sync::atomic::AtomicBool;
     use tempfile::tempdir;
     use test_log::test;
 
     #[test]
-    fn move_files_and_delete_empty_dirs() {
+    fn test_move_operation() {
         let stop_flag = AtomicBool::new(false);
         let (junk_tx, _) = mpsc::channel();
 
@@ -398,10 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn move_files_with_stop_flag() -> Result<()> {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        use tempfile::tempdir;
-
+    fn test_cancelled_move_operation() -> Result<()> {
         let (junk_tx, _) = mpsc::channel();
 
         let stop_flag = AtomicBool::new(false);
@@ -423,7 +423,7 @@ mod tests {
             overwrite: true,
         };
 
-        stop_flag.store(true, Ordering::SeqCst);
+        stop_flag.store(true, ORDERING);
 
         let result = op.execute(&junk_tx, &stop_flag);
 
