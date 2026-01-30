@@ -16,14 +16,14 @@ pub use fs::*;
 
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type TaskRegistry = Arc<Mutex<Registry>>;
-pub type OperationManager = Arc<FileOperationManager>;
+pub type FileOperationManager = Arc<OperationManager>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
     pub tasks: TaskRegistry,
     pub event_sender: Sender<Event>,
-    pub file_operation_manager: OperationManager,
+    pub file_operation_manager: FileOperationManager,
     pub db: Database,
 }
 
@@ -31,14 +31,14 @@ impl AppState {
     pub fn new(db: Database, settings: Settings) -> Self {
         let (tx, _) = tokio::sync::broadcast::channel(1024);
         let tasks = setup_tasks(db.clone(), tx.clone());
-        let file_operation_manager = FileOperationManager::new();
+        let file_operation_manager = OperationManager::new();
 
         let mut rx = file_operation_manager.events();
 
         let tx_clone = tx.clone();
         tokio::spawn(async move {
             while let Ok(item) = rx.recv().await {
-                let _ = tx_clone.send(Event::from(super::events::FileSystemEvent::from(item)));
+                let _ = tx_clone.send(Event::from(super::events::FileOperationManagerEvent::from(item)));
             }
         });
 
@@ -95,7 +95,7 @@ impl FromRef<AppState> for TaskRegistry {
     }
 }
 
-impl FromRef<AppState> for OperationManager {
+impl FromRef<AppState> for FileOperationManager {
     fn from_ref(state: &AppState) -> Self {
         state.file_operation_manager.clone()
     }

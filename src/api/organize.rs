@@ -17,10 +17,10 @@ use ts_rs::TS;
 use crate::{
     api::internal_error,
     db::{Song, directories, songs},
-    fs::Operation,
+    fs::{Operation, OperationEvent},
     metadata::{Metadata, item::ItemKey},
     organize,
-    state::{AppState, FileOperationEvent},
+    state::{AppState, OperationManagerEvent},
 };
 
 #[derive(serde::Serialize, TS)]
@@ -111,7 +111,7 @@ async fn organize_album_tracks(
             Ok::<HashMap<PathBuf, (PathBuf, String)>, Response>(paths)
         })?;
 
-    let operation_id = manager
+    let mut operation_handle = manager
         .queue_operation(Operation::Move {
             paths: tracks
                 .iter()
@@ -122,20 +122,13 @@ async fn organize_album_tracks(
         })
         .await?;
 
-    let mut finished_items = HashSet::new();
-
-    let mut connection = db.begin().await.map_err(internal_error)?;
-    while let Ok(item) = manager.events().recv().await {
-        if !item.source() == operation_id {
-            continue;
-        }
-
+    while let Some(item) = operation_handle.events().recv().await {
         match item {
-            FileOperationEvent::Completed { .. } => {
+            OperationEvent::Completed => {
                 tracing::debug!("Completed");
                 break;
             }
-            FileOperationEvent::Renamed { from, to, .. } => {
+            OperationEvent::Renamed { from, to } => {
                 let (_, song_id) = tracks.get(&from).expect("Path not found");
 
                 songs::update_song_path(
@@ -145,19 +138,8 @@ async fn organize_album_tracks(
                 )
                 .await
                 .map_err(IntoResponse::into_response)?;
-
-                tracing::debug!(
-                    "Renamed {} to {}",
-                    from.to_str().expect("Path is not valid UTF-8"),
-                    to.to_str().expect("Path is not valid UTF-8")
-                );
-
-                finished_items.insert(song_id);
-                if finished_items.len() == tracks.len() {
-                    break;
-                }
             }
-            FileOperationEvent::Moved { from, to, .. } => {
+            OperationEvent::Moved { from, to } => {
                 let (_, song_id) = tracks.get(&from).expect("Path not found");
 
                 songs::update_song_path(
@@ -167,25 +149,10 @@ async fn organize_album_tracks(
                 )
                 .await
                 .map_err(IntoResponse::into_response)?;
-
-                tracing::debug!(
-                    "Renamed {} to {}",
-                    from.to_str().expect("Path is not valid UTF-8"),
-                    to.to_str().expect("Path is not valid UTF-8")
-                );
-                finished_items.insert(song_id);
-                if finished_items.len() == tracks.len() {
-                    break;
-                }
-            }
-            FileOperationEvent::Failed { error, .. } => {
-                return Err(internal_error(error).into());
             }
             _ => continue,
         }
     }
-
-    connection.commit().await.map_err(internal_error)?;
 
     Ok(())
 }

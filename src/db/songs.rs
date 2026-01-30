@@ -158,7 +158,6 @@ pub async fn update_song_path(
     song_id: &str,
     new_path: &str,
 ) -> Result<()> {
-    tracing::debug!("Getting previous directory_id for {song_id}");
     let previous_directory_id =
         query_scalar!("SELECT directory_id FROM songs WHERE id = ?", song_id)
             .fetch_one(&mut *connection)
@@ -168,20 +167,16 @@ pub async fn update_song_path(
                 _ => err.into(),
             })?;
 
-
-    tracing::debug!("Getting directories");
     let directories = sqlx::query_as::<_, (String, String)>("SELECT path, name FROM directories")
         .fetch_all(&mut *connection)
         .await?;
 
-    tracing::debug!("Getting new directory_id for {song_id}");
     let new_directory_id = directories
         .iter()
         .find_map(|(path, id)| new_path.starts_with(path.as_str()).then_some(id))
         .ok_or(DatabaseSongError::PathDoesntContainDirectory)?;
 
     if new_directory_id != &previous_directory_id {
-        tracing::debug!("Updating directory_id and path for {song_id}");
         let _ = query!(
             "UPDATE songs SET directory_id = ?, path = ? WHERE id = ?",
             new_directory_id,
@@ -191,13 +186,11 @@ pub async fn update_song_path(
         .execute(&mut *connection)
         .await?;
     } else {
-        tracing::debug!("Updating path for {song_id}");
         let _ = query!("UPDATE songs SET path = ? WHERE id = ?", new_path, song_id)
             .execute(&mut *connection)
             .await?;
     }
 
-    tracing::debug!("Updated {song_id}");
     Ok(())
 }
 

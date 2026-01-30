@@ -9,14 +9,332 @@ use std::{
 
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::{Mutex, broadcast, mpsc};
+use tokio::sync::{Mutex, broadcast, mpsc, oneshot};
 use ts_rs::TS;
 
-use crate::fs::{Operation, OperationEvent};
+use crate::fs::{Operation, OperationError, OperationEvent};
+
+type Result<T, E = OperationManagerError> = std::result::Result<T, E>;
+type OperationResult = std::result::Result<(), OperationError>;
+
+type QueueItem = (
+    i128,
+    Operation,
+    Arc<AtomicBool>,
+    mpsc::Sender<OperationEvent>,
+    oneshot::Sender<OperationResult>,
+);
+
+#[derive(Debug, thiserror::Error)]
+pub enum OperationManagerError {
+    #[error("Failed to queue operation: {0}")]
+    FailedToQueueOperation(#[from] mpsc::error::SendError<QueueItem>),
+
+    #[error("Couldn't find operation")]
+    NotFound,
+}
+
+#[derive(Debug)]
+pub struct OperationHandle {
+    id: i128,
+    events: mpsc::Receiver<OperationEvent>,
+    result: oneshot::Receiver<OperationResult>,
+}
+
+impl OperationHandle {
+    pub fn id(&self) -> i128 {
+        self.id
+    }
+
+    pub fn events(&mut self) -> &mut mpsc::Receiver<OperationEvent> {
+        &mut self.events
+    }
+
+    pub fn result(&mut self) -> &mut oneshot::Receiver<OperationResult> {
+        &mut self.result
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, TS)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+#[ts(export, export_to = "bindings.ts", rename = "FileOperationState")]
+pub enum OperationState {
+    Move {
+        paths: HashMap<PathBuf, PathBuf>,
+        status: OperationStatus,
+        #[serde(skip)]
+        stop_flag: Arc<AtomicBool>,
+    },
+    Copy {
+        paths: HashMap<PathBuf, PathBuf>,
+        status: OperationStatus,
+        #[serde(skip)]
+        stop_flag: Arc<AtomicBool>,
+    },
+    Delete {
+        paths: HashSet<PathBuf>,
+        status: OperationStatus,
+        #[serde(skip)]
+        stop_flag: Arc<AtomicBool>,
+    },
+}
+
+impl OperationState {
+    pub fn status(&self) -> &OperationStatus {
+        match self {
+            OperationState::Move { status, .. } => status,
+            OperationState::Copy { status, .. } => status,
+            OperationState::Delete { status, .. } => status,
+        }
+    }
+
+    pub fn stop_flag(&self) -> &Arc<AtomicBool> {
+        match self {
+            OperationState::Move { stop_flag, .. } => stop_flag,
+            OperationState::Copy { stop_flag, .. } => stop_flag,
+            OperationState::Delete { stop_flag, .. } => stop_flag,
+        }
+    }
+
+    pub fn set_status(&mut self, status: OperationStatus) {
+        match self {
+            OperationState::Move {
+                status: previous_status,
+                ..
+            } => *previous_status = status,
+
+            OperationState::Copy {
+                status: previous_status,
+                ..
+            } => *previous_status = status,
+
+            OperationState::Delete {
+                status: previous_status,
+                ..
+            } => *previous_status = status,
+        }
+    }
+
+    pub fn set_stop_flag(&self, stop: bool) {
+        let flag = self.stop_flag();
+
+        flag.store(stop, Ordering::SeqCst);
+    }
+}
+
+impl From<&Operation> for OperationState {
+    fn from(op: &Operation) -> Self {
+        match op {
+            Operation::Move { paths, .. } => OperationState::Move {
+                paths: paths.clone(),
+                status: OperationStatus::Pending,
+                stop_flag: Default::default(),
+            },
+            Operation::Copy { paths, .. } => OperationState::Copy {
+                paths: paths.clone(),
+                status: OperationStatus::Pending,
+                stop_flag: Default::default(),
+            },
+            Operation::Delete { paths, .. } => OperationState::Delete {
+                paths: paths.clone(),
+                status: OperationStatus::Pending,
+                stop_flag: Default::default(),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts", rename ="FileOperationStatus")]
+pub enum OperationStatus {
+    #[default]
+    Pending,
+    InProgress,
+}
+
+#[derive(Clone, Debug)]
+pub struct OperationManager {
+    queue: tokio::sync::mpsc::Sender<QueueItem>,
+    events: broadcast::Sender<OperationManagerEvent>,
+    state: Arc<Mutex<BTreeMap<i128, OperationState>>>,
+}
+
+impl OperationManager {
+    pub fn new() -> Self {
+        let (tx, mut rx) = mpsc::channel::<QueueItem>(256);
+        let (events, _) = broadcast::channel::<OperationManagerEvent>(256);
+        let state: Arc<Mutex<BTreeMap<i128, OperationState>>> =
+            Arc::new(Mutex::new(BTreeMap::new()));
+
+        let state_clone = state.clone();
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            while let Some((id, operation, flag, operation_tx, result)) = rx.recv().await {
+                let (tx, rx) = std::sync::mpsc::channel::<OperationEvent>();
+                let (bridged_tx, mut bridged_rx) = mpsc::channel(256);
+
+                tokio::task::spawn_blocking(move || {
+                    while let Ok(item) = rx.recv() {
+                        log::debug!("Sending event: {item:?}");
+                        if operation_tx.blocking_send(item.clone()).is_err()
+                            && bridged_tx.blocking_send(item).is_err()
+                        {
+                            break;
+                        }
+                    }
+                });
+
+                let state = state_clone.clone();
+                let events = events_clone.clone();
+
+                tokio::spawn(async move {
+                    while let Some(item) = bridged_rx.recv().await {
+                        match item {
+                            OperationEvent::Started => {
+                                send_event(&events, OperationManagerEvent::Started { source: id });
+
+                                let mut state = state.lock().await;
+                                if let Some(op) = state.get_mut(&id) {
+                                    op.set_status(OperationStatus::InProgress);
+                                }
+                            }
+                            OperationEvent::Completed => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Completed { source: id },
+                                );
+
+                                let mut state = state.lock().await;
+                                state.remove(&id);
+                            }
+                            OperationEvent::Cancelled => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Cancelled { source: id },
+                                );
+
+                                let mut state = state.lock().await;
+                                state.remove(&id);
+                            }
+                            OperationEvent::Progress {
+                                copied_bytes,
+                                total_bytes,
+                                file_count,
+                                file_index,
+                            } => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Progress {
+                                        source: id,
+                                        copied_bytes,
+                                        total_bytes,
+                                        file_count,
+                                        file_index,
+                                    },
+                                );
+                            }
+                            OperationEvent::Renamed { from, to } => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Renamed {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Moved { from, to } => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Moved {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Copied { from, to } => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Copied {
+                                        source: id,
+                                        from,
+                                        to,
+                                    },
+                                );
+                            }
+                            OperationEvent::Deleted { path } => {
+                                send_event(
+                                    &events,
+                                    OperationManagerEvent::Deleted { source: id, path },
+                                );
+                            }
+                        }
+                    }
+                });
+
+                let operation = tokio::task::spawn_blocking(move || operation.execute(&tx, &flag))
+                    .await
+                    .expect("Failed to execute operation");
+
+                if let Err(e) = operation {
+                    tracing::error!("Failed to execute operation: {e}");
+                    events_clone
+                        .send(OperationManagerEvent::Failed {
+                            source: id,
+                            error: e.to_string(),
+                        })
+                        .expect("Failed to send event");
+                }
+            }
+        });
+
+        Self {
+            queue: tx,
+            events,
+            state,
+        }
+    }
+
+    pub async fn queue_operation(&self, operation: Operation) -> Result<OperationHandle> {
+        let id = OffsetDateTime::now_utc().unix_timestamp_nanos();
+        let operation_state = OperationState::from(&operation);
+        let flag = operation_state.stop_flag().clone();
+        let (events_tx, events) = mpsc::channel(256);
+        let (result_tx, result) = oneshot::channel();
+
+        self.state.lock().await.insert(id, operation_state);
+        self.queue
+            .send((id, operation, flag, events_tx, result_tx))
+            .await?;
+
+        Ok(OperationHandle { id, events, result })
+    }
+
+    pub async fn stop_operation(&self, id: i128) -> Result<()> {
+        let mut state = self.state.lock().await;
+        let state = state.get_mut(&id).ok_or(OperationManagerError::NotFound)?;
+
+        state.set_stop_flag(true);
+
+        Ok(())
+    }
+
+    pub fn events(&self) -> broadcast::Receiver<OperationManagerEvent> {
+        self.events.subscribe()
+    }
+}
+
+impl Default for OperationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum FileOperationEvent {
+pub enum OperationManagerEvent {
     Failed {
         source: i128,
         error: String,
@@ -58,307 +376,23 @@ pub enum FileOperationEvent {
     },
 }
 
-impl FileOperationEvent {
+impl OperationManagerEvent {
     pub fn source(&self) -> i128 {
         match self {
-            FileOperationEvent::Failed { source, .. } => *source,
-            FileOperationEvent::Started { source } => *source,
-            FileOperationEvent::Completed { source } => *source,
-            FileOperationEvent::Cancelled { source } => *source,
-            FileOperationEvent::Progress { source, .. } => *source,
-            FileOperationEvent::Moved { source, .. } => *source,
-            FileOperationEvent::Renamed { source, .. } => *source,
-            FileOperationEvent::Copied { source, .. } => *source,
-            FileOperationEvent::Deleted { source, .. } => *source,
+            OperationManagerEvent::Failed { source, .. } => *source,
+            OperationManagerEvent::Started { source } => *source,
+            OperationManagerEvent::Completed { source } => *source,
+            OperationManagerEvent::Cancelled { source } => *source,
+            OperationManagerEvent::Progress { source, .. } => *source,
+            OperationManagerEvent::Moved { source, .. } => *source,
+            OperationManagerEvent::Renamed { source, .. } => *source,
+            OperationManagerEvent::Copied { source, .. } => *source,
+            OperationManagerEvent::Deleted { source, .. } => *source,
         }
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum FileOperationManagerError {
-    #[error("Failed to add operation: {0}")]
-    FailedToAddOperation(#[from] mpsc::error::SendError<(i128, Operation, Arc<AtomicBool>)>),
-
-    #[error("Couldn't find operation")]
-    NotFound,
-}
-
-type Result<T, E = FileOperationManagerError> = std::result::Result<T, E>;
-
-#[derive(Clone, Debug, serde::Serialize, TS)]
-#[serde(rename_all = "camelCase", tag = "kind")]
-#[ts(export, export_to = "bindings.ts")]
-pub enum FileOperationState {
-    Move {
-        paths: HashMap<PathBuf, PathBuf>,
-        status: FileSystemOperationStatus,
-        #[serde(skip)]
-        stop_flag: Arc<AtomicBool>,
-    },
-    Copy {
-        paths: HashMap<PathBuf, PathBuf>,
-        status: FileSystemOperationStatus,
-        #[serde(skip)]
-        stop_flag: Arc<AtomicBool>,
-    },
-    Delete {
-        paths: HashSet<PathBuf>,
-        status: FileSystemOperationStatus,
-        #[serde(skip)]
-        stop_flag: Arc<AtomicBool>,
-    },
-}
-
-impl FileOperationState {
-    pub fn status(&self) -> &FileSystemOperationStatus {
-        match self {
-            FileOperationState::Move { status, .. } => status,
-            FileOperationState::Copy { status, .. } => status,
-            FileOperationState::Delete { status, .. } => status,
-        }
-    }
-
-    pub fn stop_flag(&self) -> &Arc<AtomicBool> {
-        match self {
-            FileOperationState::Move { stop_flag, .. } => stop_flag,
-            FileOperationState::Copy { stop_flag, .. } => stop_flag,
-            FileOperationState::Delete { stop_flag, .. } => stop_flag,
-        }
-    }
-
-    pub fn set_status(&mut self, status: FileSystemOperationStatus) {
-        match self {
-            FileOperationState::Move {
-                status: previous_status,
-                ..
-            } => *previous_status = status,
-
-            FileOperationState::Copy {
-                status: previous_status,
-                ..
-            } => *previous_status = status,
-
-            FileOperationState::Delete {
-                status: previous_status,
-                ..
-            } => *previous_status = status,
-        }
-    }
-
-    pub fn set_stop_flag(&self, stop: bool) {
-        let flag = self.stop_flag();
-
-        flag.store(stop, Ordering::SeqCst);
-    }
-}
-
-impl From<&Operation> for FileOperationState {
-    fn from(op: &Operation) -> Self {
-        match op {
-            Operation::Move { paths, .. } => FileOperationState::Move {
-                paths: paths.clone(),
-                status: FileSystemOperationStatus::Pending,
-                stop_flag: Default::default(),
-            },
-            Operation::Copy { paths, .. } => FileOperationState::Copy {
-                paths: paths.clone(),
-                status: FileSystemOperationStatus::Pending,
-                stop_flag: Default::default(),
-            },
-            Operation::Delete { paths, .. } => FileOperationState::Delete {
-                paths: paths.clone(),
-                status: FileSystemOperationStatus::Pending,
-                stop_flag: Default::default(),
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, serde::Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "bindings.ts")]
-pub enum FileSystemOperationStatus {
-    #[default]
-    Pending,
-    InProgress,
-}
-
-type QueueItem = (i128, Operation, Arc<AtomicBool>);
-
-#[derive(Clone, Debug)]
-pub struct FileOperationManager {
-    queue: tokio::sync::mpsc::Sender<QueueItem>,
-    events: broadcast::Sender<FileOperationEvent>,
-    state: Arc<Mutex<BTreeMap<i128, FileOperationState>>>,
-}
-
-impl FileOperationManager {
-    pub fn new() -> Self {
-        let (tx, mut rx) = mpsc::channel::<QueueItem>(256);
-        let (events, _) = broadcast::channel::<FileOperationEvent>(256);
-        let state: Arc<Mutex<BTreeMap<i128, FileOperationState>>> =
-            Arc::new(Mutex::new(BTreeMap::new()));
-
-        let state_clone = state.clone();
-        let events_clone = events.clone();
-        tokio::spawn(async move {
-            while let Some((id, operation, flag)) = rx.recv().await {
-                let (tx, rx) = std::sync::mpsc::channel();
-                let (bridged_tx, mut bridged_rx) = mpsc::channel(256);
-
-                tokio::task::spawn_blocking(move || {
-                    while let Ok(item) = rx.recv() {
-                        log::debug!("Sending event: {item:?}");
-                        if bridged_tx.blocking_send(item).is_err() {
-                            break;
-                        }
-                    }
-                });
-
-                let state = state_clone.clone();
-                let events = events_clone.clone();
-                tokio::spawn(async move {
-                    while let Some(item) = bridged_rx.recv().await {
-                        match item {
-                            OperationEvent::Started => {
-                                send_event(&events, FileOperationEvent::Started { source: id });
-
-                                let mut state = state.lock().await;
-                                if let Some(op) = state.get_mut(&id) {
-                                    op.set_status(FileSystemOperationStatus::InProgress);
-                                }
-                            }
-                            OperationEvent::Completed => {
-                                send_event(&events, FileOperationEvent::Completed { source: id });
-
-                                let mut state = state.lock().await;
-                                state.remove(&id);
-                            }
-                            OperationEvent::Cancelled => {
-                                send_event(&events, FileOperationEvent::Cancelled { source: id });
-
-                                let mut state = state.lock().await;
-                                state.remove(&id);
-                            }
-                            OperationEvent::Progress {
-                                copied_bytes,
-                                total_bytes,
-                                file_count,
-                                file_index,
-                            } => {
-                                send_event(
-                                    &events,
-                                    FileOperationEvent::Progress {
-                                        source: id,
-                                        copied_bytes,
-                                        total_bytes,
-                                        file_count,
-                                        file_index,
-                                    },
-                                );
-                            }
-                            OperationEvent::Renamed { from, to } => {
-                                send_event(
-                                    &events,
-                                    FileOperationEvent::Renamed {
-                                        source: id,
-                                        from,
-                                        to,
-                                    },
-                                );
-                            }
-                            OperationEvent::Moved { from, to } => {
-                                send_event(
-                                    &events,
-                                    FileOperationEvent::Moved {
-                                        source: id,
-                                        from,
-                                        to,
-                                    },
-                                );
-                            }
-                            OperationEvent::Copied { from, to } => {
-                                send_event(
-                                    &events,
-                                    FileOperationEvent::Copied {
-                                        source: id,
-                                        from,
-                                        to,
-                                    },
-                                );
-                            }
-                            OperationEvent::Deleted { path } => {
-                                send_event(
-                                    &events,
-                                    FileOperationEvent::Deleted { source: id, path },
-                                );
-                            }
-                        }
-                    }
-                });
-
-                if let Err(e) = tokio::task::spawn_blocking(move || operation.execute(&tx, &flag))
-                    .await
-                    .expect("Failed to execute operation")
-                {
-                    tracing::error!("Failed to execute operation: {e}");
-                    events_clone
-                        .send(FileOperationEvent::Failed {
-                            source: id,
-                            error: e.to_string(),
-                        })
-                        .expect("Failed to send event");
-                }
-            }
-        });
-
-        Self {
-            queue: tx,
-            events,
-            state,
-        }
-    }
-
-    pub async fn queue_operation_with_id(&self, operation: Operation, id: i128) -> Result<()> {
-        let operation_state = FileOperationState::from(&operation);
-        let flag = operation_state.stop_flag().clone();
-
-        self.state.lock().await.insert(id, operation_state);
-        self.queue.send((id, operation, flag)).await?;
-
-        Ok(())
-    }
-
-    pub async fn queue_operation(&self, operation: Operation) -> Result<i128> {
-        let id = OffsetDateTime::now_utc().unix_timestamp_nanos();
-        self.queue_operation_with_id(operation, id).await?;
-
-        Ok(id)
-    }
-
-    pub async fn stop_operation(&self, id: i128) -> Result<()> {
-        let mut state = self.state.lock().await;
-        let state = state
-            .get_mut(&id)
-            .ok_or(FileOperationManagerError::NotFound)?;
-
-        state.set_stop_flag(true);
-
-        Ok(())
-    }
-
-    pub fn events(&self) -> broadcast::Receiver<FileOperationEvent> {
-        self.events.subscribe()
-    }
-}
-
-impl Default for FileOperationManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn send_event(tx: &broadcast::Sender<FileOperationEvent>, event: FileOperationEvent) {
+fn send_event(tx: &broadcast::Sender<OperationManagerEvent>, event: OperationManagerEvent) {
     if tx.send(event).is_err() {
         tracing::error!("Failed to send event");
     }
@@ -388,14 +422,14 @@ mod tests {
         let mut paths = HashMap::new();
         paths.insert(src_file.clone(), dst_dir.clone());
 
-        let manager = FileOperationManager::new();
+        let manager = OperationManager::new();
         let mut events = manager.events();
 
         let event_task = tokio::spawn(async move {
             while let Ok(item) = events.recv().await {
                 tracing::info!("Event: {item:?}");
 
-                if let FileOperationEvent::Completed { .. } = item {
+                if let OperationManagerEvent::Completed { .. } = item {
                     break;
                 }
             }
@@ -435,14 +469,14 @@ mod tests {
         let mut paths = HashMap::new();
         paths.insert(src_dir.join("file2.txt"), dst_dir.clone());
 
-        let manager = FileOperationManager::new();
+        let manager = OperationManager::new();
         let mut events = manager.events();
 
         let event_task = tokio::spawn(async move {
             while let Ok(item) = events.recv().await {
                 tracing::info!("Event: {item:?}");
 
-                if let FileOperationEvent::Failed { .. } = item {
+                if let OperationManagerEvent::Failed { .. } = item {
                     break;
                 }
             }

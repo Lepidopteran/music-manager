@@ -23,17 +23,17 @@ use crate::{
 
 #[derive(Debug, Clone, serde::Serialize, TS)]
 #[ts(export, export_to = "bindings.ts")]
-pub struct FileSystemEvent {
+pub struct FileOperationManagerEvent {
     #[serde(flatten)]
-    pub inner: super::state::FileOperationEvent,
+    pub inner: super::state::OperationManagerEvent,
     #[serde(with = "time::serde::rfc3339")]
     #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 
 }
 
-impl From<super::state::FileOperationEvent> for FileSystemEvent {
-    fn from(event: super::state::FileOperationEvent) -> Self {
+impl From<super::state::OperationManagerEvent> for FileOperationManagerEvent {
+    fn from(event: super::state::OperationManagerEvent) -> Self {
         Self {
             inner: event,
             timestamp: OffsetDateTime::now_utc(),
@@ -41,8 +41,8 @@ impl From<super::state::FileOperationEvent> for FileSystemEvent {
     }
 }
 
-impl From<FileSystemEvent> for SseEvent {
-    fn from(event: FileSystemEvent) -> Self {
+impl From<FileOperationManagerEvent> for SseEvent {
+    fn from(event: FileOperationManagerEvent) -> Self {
         SseEvent::default()
             .event("fs-event")
             .json_data(event)
