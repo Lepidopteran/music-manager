@@ -255,7 +255,7 @@ impl Operation {
 }
 
 /// Returns the size of the path in bytes
-pub fn calculate_path_size<P: AsRef<Path>>(path: P) -> Result<u64> {
+pub fn path_size<P: AsRef<Path>>(path: P) -> Result<u64> {
     let metadata = fs::symlink_metadata(path.as_ref())?;
 
     let mut bytes = 0;
@@ -266,7 +266,7 @@ pub fn calculate_path_size<P: AsRef<Path>>(path: P) -> Result<u64> {
             let entry_metadata = entry.metadata()?;
 
             if entry_metadata.is_dir() {
-                bytes += calculate_path_size(entry.path())?;
+                bytes += path_size(entry.path())?;
             } else {
                 bytes += entry_metadata.len();
             }
