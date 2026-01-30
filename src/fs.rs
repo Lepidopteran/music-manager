@@ -131,7 +131,7 @@ impl Operation {
                 ));
             }
 
-            log::info!("Moving {from:?} to {to:?}");
+            log::trace!("Moving {from:?} to {to:?}");
 
             match fs::rename(from, &to) {
                 Ok(_) => {
@@ -171,12 +171,12 @@ impl Operation {
 
             if delete_empty_directories_after {
                 if from.is_dir() && read_dir(from)?.count() == 0 {
-                    log::info!("Removing empty dir: {from:?}");
+                    log::trace!("Removing empty dir: {from:?}");
                     std::fs::remove_dir(from)?;
                 } else if let Some(parent) = from.parent()
                     && read_dir(parent)?.count() == 0
                 {
-                    log::info!("Removing empty dir: {parent:?}");
+                    log::trace!("Removing empty dir: {parent:?}");
                     std::fs::remove_dir(parent)?;
                 }
             }
