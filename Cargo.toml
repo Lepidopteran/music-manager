@@ -45,6 +45,7 @@ scraper = "0.23.1"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tower = "0.5.2"
 ts-rs = "11.0.1"
+sanitize-filename = { git = "https://github.com/kardeiz/sanitize-filename.git", rev = "a2808090c9c2a962e64d8ddc503b18981e8d6c57" }
 
 [dependencies.uuid]
 version = "1.17.0"
@@ -54,5 +55,5 @@ features = [
 ]
 
 [dev-dependencies]
-test-log = "0.2.18"
+test-log = { version = "0.2", features = ["trace"] }
 tempfile = "3.20.0"

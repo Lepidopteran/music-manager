@@ -20,7 +20,9 @@ mod api;
 mod config;
 mod db;
 mod events;
+mod fs;
 mod migration;
+mod organize;
 mod paths;
 mod state;
 mod tasks;
@@ -38,6 +40,7 @@ pub static APP_DIRECTORIES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
         paths::app_cache_dir(),
         paths::app_data_dir(),
         paths::metadata_history_dir(),
+        paths::trash_dir(),
     ]
 });
 
@@ -87,7 +90,12 @@ pub fn routes(state: AppState) -> Router {
         .merge(api::directories::router())
         .merge(api::cover_art::router())
         .merge(api::info::router())
-        .nest("/api", events::router())
+        .nest(
+            "/api",
+            Router::new()
+                .merge(events::router())
+                .merge(api::organize::router()),
+        )
         .with_state(state)
         .merge(api::ui::router())
         .layer(
@@ -153,4 +161,8 @@ pub enum Error {
     Metadata(#[from] metadata::Error),
     #[error("Task registry error: {0}")]
     TaskRegistry(#[from] tasks::RegistryError),
+    #[error("Organization error: {0}")]
+    Organization(#[from] organize::OrganizeError),
+    #[error("File operation manager error: {0}")]
+    FileOperationManager(#[from] state::OperationManagerError),
 }

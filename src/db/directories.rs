@@ -148,3 +148,14 @@ pub async fn get_directories(
 
     Ok(directories)
 }
+
+pub async fn get_directory<'c>(
+    connection: impl sqlx::Acquire<'c, Database = sqlx::Sqlite>,
+    name: &str,
+) -> Result<Directory> {
+    let mut connection = connection.acquire().await?;
+    sqlx::query_as!(Directory, "SELECT * FROM directories WHERE name = ?", name)
+        .fetch_one(&mut *connection)
+        .await
+        .map_err(Into::into)
+}

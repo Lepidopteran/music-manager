@@ -2004,6 +2004,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rust-embed",
+ "sanitize-filename",
  "scraper",
  "serde",
  "serde_json",
@@ -3012,6 +3013,11 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "sanitize-filename"
+version = "0.6.0"
+source = "git+https://github.com/kardeiz/sanitize-filename.git?rev=a2808090c9c2a962e64d8ddc503b18981e8d6c57#a2808090c9c2a962e64d8ddc503b18981e8d6c57"
 
 [[package]]
 name = "schannel"

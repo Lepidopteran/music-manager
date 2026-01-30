@@ -5,7 +5,7 @@ use axum::{
     extract::State,
     response::{
         Sse,
-        sse::{Event, KeepAlive},
+        sse::{Event as SseEvent, KeepAlive},
     },
     routing::get,
 };
@@ -20,6 +20,35 @@ use crate::{
     AppState,
     tasks::{TaskEvent as TaskReport, TaskEventType},
 };
+
+#[derive(Debug, Clone, serde::Serialize, TS)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct FileOperationManagerEvent {
+    #[serde(flatten)]
+    pub inner: super::state::OperationManagerEvent,
+    #[serde(with = "time::serde::rfc3339")]
+    #[ts(type = "Date")]
+    pub timestamp: OffsetDateTime,
+
+}
+
+impl From<super::state::OperationManagerEvent> for FileOperationManagerEvent {
+    fn from(event: super::state::OperationManagerEvent) -> Self {
+        Self {
+            inner: event,
+            timestamp: OffsetDateTime::now_utc(),
+        }
+    }
+}
+
+impl From<FileOperationManagerEvent> for SseEvent {
+    fn from(event: FileOperationManagerEvent) -> Self {
+        SseEvent::default()
+            .event("fs-event")
+            .json_data(event)
+            .expect("Failed to serialize event")
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize, TS)]
 #[ts(export)]
@@ -49,9 +78,9 @@ impl TaskEvent {
     }
 }
 
-impl From<TaskEvent> for Event {
+impl From<TaskEvent> for SseEvent {
     fn from(event: TaskEvent) -> Self {
-        Event::default()
+        SseEvent::default()
             .event("task-event")
             .json_data(event)
             .expect("Failed to serialize event")
@@ -87,9 +116,9 @@ impl Default for AppEvent {
     }
 }
 
-impl From<AppEvent> for Event {
+impl From<AppEvent> for SseEvent {
     fn from(event: AppEvent) -> Self {
-        Event::default()
+        SseEvent::default()
             .event("app-event")
             .json_data(event)
             .expect("Failed to serialize event")
@@ -101,8 +130,8 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn handler(
-    State(tx): State<Sender<Event>>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    State(tx): State<Sender<SseEvent>>,
+) -> Sse<impl Stream<Item = Result<SseEvent, Infallible>>> {
     let rx = tx.subscribe();
     let stream = BroadcastStream::new(rx).filter_map(|event| event.ok().map(Ok));
 
