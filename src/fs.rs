@@ -109,7 +109,7 @@ impl Operation {
     ) -> Result<()> {
         let count = paths.len();
         for (index, (from, to)) in paths.iter().enumerate() {
-            if check_stopped(stop_flag, tx) {
+            if Self::is_stopped(stop_flag, tx) {
                 return Ok(());
             }
 
@@ -133,7 +133,7 @@ impl Operation {
 
             log::info!("Moving {from:?} to {to:?}");
 
-            match fs::rename(&from, &to) {
+            match fs::rename(from, &to) {
                 Ok(_) => {
                     send_event(
                         tx,
@@ -193,7 +193,7 @@ impl Operation {
     ) -> Result<()> {
         let count = paths.len();
         for (index, (from, to)) in paths.iter().enumerate() {
-            if check_stopped(stop_flag, tx) {
+            if Self::is_stopped(stop_flag, tx) {
                 return Ok(());
             }
 
@@ -223,7 +223,7 @@ impl Operation {
         stop_flag: &AtomicBool,
     ) -> Result<()> {
         for path in paths {
-            if check_stopped(stop_flag, tx) {
+            if Self::is_stopped(stop_flag, tx) {
                 return Ok(());
             }
 
@@ -242,6 +242,15 @@ impl Operation {
         }
 
         Ok(())
+    }
+
+    fn is_stopped(stop_flag: &AtomicBool, tx: &mpsc::Sender<OperationEvent>) -> bool {
+        if stop_flag.load(ORDERING) {
+            send_event(tx, OperationEvent::Cancelled);
+            return true;
+        }
+
+        false
     }
 }
 
@@ -315,15 +324,6 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
     }
 
     Ok(())
-}
-
-fn check_stopped(stop_flag: &AtomicBool, tx: &mpsc::Sender<OperationEvent>) -> bool {
-    if stop_flag.load(std::sync::atomic::Ordering::SeqCst) {
-        send_event(tx, OperationEvent::Cancelled);
-        return true;
-    }
-
-    false
 }
 
 fn send_event(tx: &mpsc::Sender<OperationEvent>, event: OperationEvent) {
