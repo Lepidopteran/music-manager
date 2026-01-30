@@ -289,7 +289,7 @@ fn copy_file<P: AsRef<Path>, T: AsRef<Path>, F: FnMut(u64, u64)>(
         return Ok(());
     }
 
-    if from.as_ref().exists() {
+    if !from.as_ref().exists() {
         return Err(OperationError::FileNotFound(
             from.as_ref().to_string_lossy().to_string(),
         ));
@@ -444,6 +444,40 @@ mod tests {
         let result = op.execute(&junk_tx, &stop_flag);
 
         assert!(result.is_ok() || result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_move_file() -> Result<()> {
+        let stop_flag = AtomicBool::new(false);
+
+        let temp = tempdir().expect("Failed to create temp dir");
+        let src_dir = temp.path().join("src");
+        let dst_dir = temp.path().join("dst");
+
+        fs::create_dir_all(&src_dir)?;
+        fs::create_dir_all(&dst_dir)?;
+
+        let src_file = src_dir.join("file.txt");
+        fs::write(&src_file, "hello")?;
+
+        let dst_file = dst_dir.join("file.txt");
+
+        move_file(
+            &src_file,
+            &dst_file,
+            true,
+            &stop_flag,
+            &mut |copied_bytes, total_bytes| {
+                tracing::info!("Copied {copied_bytes} bytes out of {total_bytes}");
+            },
+        )?;
+
+        log::debug!("Moved file");
+
+        assert!(dst_file.exists(), "destination file should exist");
+        assert!(!src_file.exists(), "source file should be moved");
 
         Ok(())
     }
