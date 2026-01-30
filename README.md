@@ -10,7 +10,7 @@ Written with [Rust](https://www.rust-lang.org/), [TypeScript](https://www.typesc
 - [x] Scrape metadata from audio files 
 - [x] Music tagging
 - [x] Music art tagging
-- [ ] Web interface (In progress)
+- [ ] Web interface
 - [ ] Organize music files
 - [ ] Create playlists
 - [ ] Scrape metadata from multiple sources
