@@ -278,7 +278,7 @@ impl OperationManager {
                     .await
                     .expect("Failed to execute operation");
 
-                if let Err(e) = operation {
+                if let Err(e) = &operation {
                     tracing::error!("Failed to execute operation: {e}");
                     events_clone
                         .send(OperationManagerEvent::Failed {
@@ -287,6 +287,8 @@ impl OperationManager {
                         })
                         .expect("Failed to send event");
                 }
+
+                let _ = result.send(operation);
             }
         });
 
