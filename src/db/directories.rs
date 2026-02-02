@@ -37,17 +37,6 @@ impl IntoResponse for DatabaseDirectoryError {
     }
 }
 
-pub async fn find_directory_from_sub_path(
-    connection: &mut Connection,
-    sub_path: &str,
-) -> Result<Directory> {
-    get_directories(&mut *connection)
-        .await?
-        .into_iter()
-        .find(|d| d.path.starts_with(sub_path))
-        .ok_or(DatabaseDirectoryError::NotFound.into())
-}
-
 pub async fn add_directory(
     connection: &mut Connection,
     sub_path: &str,
