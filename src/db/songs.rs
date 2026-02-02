@@ -44,16 +44,13 @@ pub async fn add_song(connection: &mut Connection, song: NewSong) -> Result<Song
         file_created_at,
     } = song;
 
-    let Directory {
-        name: directory_id, ..
-    } = directories::find_directory_from_sub_path(&mut *connection, &path)
-        .await
-        .map_err(|err| match err {
-            DatabaseError::Directory(directories::DatabaseDirectoryError::NotFound) => {
-                DatabaseSongError::PathNotFound.into()
-            }
-            _ => err,
-        })?;
+    let (directory_id, _) =
+        sqlx::query_as::<_, (String, String)>("SELECT name, path FROM directories")
+            .fetch_all(&mut *connection)
+            .await?
+            .into_iter()
+            .find(|(_, directory)| path.starts_with(directory))
+            .ok_or(DatabaseSongError::PathNotFound)?;
 
     let added_at = Some(OffsetDateTime::now_utc());
     let _ = query!(
