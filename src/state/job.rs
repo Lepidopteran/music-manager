@@ -215,6 +215,7 @@ pub struct JobExecutionReport {
 #[ts(export, export_to = "bindings.ts")]
 #[serde(rename_all = "camelCase")]
 pub struct JobState {
+    job_id: JobId,
     status: JobStatus,
     current_step: u8,
     #[serde(skip)]
@@ -222,6 +223,10 @@ pub struct JobState {
 }
 
 impl JobState {
+    pub fn job_id(&self) -> &JobId {
+        &self.job_id
+    }
+
     pub fn status(&self) -> &JobStatus {
         &self.status
     }
@@ -452,6 +457,7 @@ impl JobManager {
             status: JobStatus::Pending,
             current_step: 0,
             token: CancellationToken::new(),
+            job_id: job_id.clone(),
         };
 
         self.queue
@@ -493,7 +499,7 @@ impl JobManager {
                 let mut reports = self.reports.lock().await;
                 state.token.cancel();
 
-                let report = Self::report(&mut reports, &state_id.to_string());
+                let report = Self::report(&mut reports, &state.job_id);
                 report.cancelled_at.replace(OffsetDateTime::now_utc());
                 report.completed_successfully = false;
 
