@@ -158,6 +158,7 @@ impl JobRegistry {
     }
 }
 
+#[derive(Debug)]
 pub struct JobHandler {
     state_id: JobStateId,
     job_id: JobId,
@@ -428,10 +429,12 @@ impl JobManager {
 
     pub async fn queue(
         &self,
-        job_id: JobId,
+        job_id: impl Into<JobId>,
         unique: bool,
         high_priority: bool,
     ) -> ManagerResult<JobHandler> {
+        let job_id = job_id.into();
+
         if unique
             && self
                 .queue
@@ -556,7 +559,107 @@ impl JobManager {
 }
 
 async fn send_event(tx: &broadcast::Sender<JobManagerEvent>, event: &JobManagerEvent) {
-    if let Err(err) = tx.send(event.clone()) {
-        tracing::error!("Failed to send manager event: {err}, This shouldn't happen...");
-    };
+    let _ = tx.send(event.clone());
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+    use async_trait::async_trait;
+    use color_eyre::eyre::Result;
+    use test_log::test;
+    use tokio::time::sleep;
+
+    #[derive(Debug)]
+    struct TestJob {}
+
+    #[async_trait]
+    impl JobHandle for TestJob {
+        async fn execute(
+            &self,
+            token: CancellationToken,
+            tx: &mpsc::Sender<JobEvent>,
+        ) -> Result<()> {
+            let mut index = 0;
+            tx.send(JobEvent::Started).await.unwrap();
+            while !token.is_cancelled() {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+
+                index += 1;
+                tx.send(JobEvent::Progress {
+                    current: index,
+                    total: 0,
+                    step: 1,
+                })
+                .await
+                .unwrap();
+            }
+
+            Ok(())
+        }
+    }
+    fn registry() -> JobRegistry {
+        let mut registry = JobRegistry::new();
+        registry
+            .register_job(
+                "test",
+                Job::new(
+                    "Test Job",
+                    "Literally a test, what did you expect?",
+                    1,
+                    TestJob {},
+                ),
+            )
+            .expect("Failed to register job");
+
+        registry
+    }
+
+    #[test(tokio::test)]
+    async fn test_adding_fast_jobs() -> Result<()> {
+        let manager = JobManager::new(registry());
+
+        for _ in 0..100 {
+            let _ = manager.queue("test".to_string(), false, false).await?;
+        }
+
+        Ok(())
+    }
+
+    #[test(tokio::test)]
+    async fn test_failing_adding_duplicate_jobs() -> Result<()> {
+        let manager = JobManager::new(registry());
+
+        let _ = manager.queue("test", true, true).await;
+        assert!(manager.queue("test", true, true).await.is_err());
+
+        Ok(())
+    }
+
+    #[test(tokio::test)]
+    async fn test_cancelling_adding_duplicate_jobs() -> Result<()> {
+        let manager = JobManager::new(registry());
+        let mut job = manager.queue("test", true, true).await?;
+        let id = job.state_id;
+        log::debug!("{job:#?}");
+
+        let job_events = tokio::spawn(async move {
+            while let Some(event) = job.events().recv().await {
+                tracing::info!("Event: {event:?}");
+                if let JobEvent::Cancelled = event {
+                    break;
+                }
+            }
+        });
+
+        sleep(Duration::from_secs(1)).await;
+
+        tracing::debug!("{id}\n{manager:#?}");
+        manager.cancel_job(id).await?;
+        job_events.await?;
+
+        Ok(())
+    }
 }
