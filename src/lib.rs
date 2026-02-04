@@ -25,7 +25,7 @@ mod migration;
 mod organize;
 mod paths;
 mod state;
-mod tasks;
+mod jobs;
 
 pub use config::load_config;
 pub use migration::run_migrations;
@@ -84,7 +84,7 @@ pub struct Args {
 
 pub fn routes(state: AppState) -> Router {
     Router::new()
-        .merge(api::tasks::router())
+        .merge(api::jobs::router())
         .merge(api::songs::router())
         .merge(api::albums::router())
         .merge(api::directories::router())
@@ -159,10 +159,10 @@ pub enum Error {
     Database(#[from] db::DatabaseError),
     #[error("Metadata error: {0}")]
     Metadata(#[from] metadata::Error),
-    #[error("Task registry error: {0}")]
-    TaskRegistry(#[from] tasks::RegistryError),
     #[error("Organization error: {0}")]
     Organization(#[from] organize::OrganizeError),
+    #[error("Job Manager error: {0}")]
+    JobManager(#[from] state::JobManagerError),
     #[error("File operation manager error: {0}")]
     FileOperationManager(#[from] state::OperationManagerError),
 }

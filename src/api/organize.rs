@@ -11,7 +11,6 @@ use axum::{
     routing::{get, post},
 };
 
-use sqlx::Connection;
 use ts_rs::TS;
 
 use crate::{
@@ -20,7 +19,7 @@ use crate::{
     fs::{Operation, OperationEvent},
     metadata::{Metadata, item::ItemKey},
     organize,
-    state::{AppState, OperationManagerEvent},
+    state::{AppState},
 };
 
 #[derive(serde::Serialize, TS)]
@@ -57,7 +56,6 @@ pub fn router() -> Router<AppState> {
     )
 }
 
-#[axum::debug_handler]
 async fn organize_album_tracks(
     Path(title): Path<String>,
     State(AppState {

@@ -5,3 +5,15 @@ export type FileOperationManagerEvent = { timestamp: Date, } & ({ "kind": "faile
 export type FileOperationState = { "kind": "move", paths: { [key in string]?: string }, status: FileOperationStatus, } | { "kind": "copy", paths: { [key in string]?: string }, status: FileOperationStatus, } | { "kind": "delete", paths: Array<string>, status: FileOperationStatus, };
 
 export type FileOperationStatus = "pending" | "inProgress";
+
+export type JobExecutionReport = { startedAt: Date, completedAt: Date, cancelledAt: Date, completedSuccessfully: boolean, };
+
+export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "progress", source: bigint, current: bigint, total: bigint, step: number, });
+
+export type JobRegistryEvent = { "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "progress", source: bigint, current: bigint, total: bigint, step: number, };
+
+export type JobState = { status: JobStatus, currentStep: number, };
+
+export type JobStatus = "pending" | "inProgress";
+
+export type RegistryJob = { id: string, name: string, description: string, steps: number, };

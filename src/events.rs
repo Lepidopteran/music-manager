@@ -16,10 +16,7 @@ use tokio::sync::broadcast::Sender;
 use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use ts_rs::TS;
 
-use crate::{
-    AppState,
-    tasks::{TaskEvent as TaskReport, TaskEventType},
-};
+use crate::AppState;
 
 #[derive(Debug, Clone, serde::Serialize, TS)]
 #[ts(export, export_to = "bindings.ts")]
@@ -29,7 +26,6 @@ pub struct FileOperationManagerEvent {
     #[serde(with = "time::serde::rfc3339")]
     #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
-
 }
 
 impl From<super::state::OperationManagerEvent> for FileOperationManagerEvent {
@@ -51,37 +47,29 @@ impl From<FileOperationManagerEvent> for SseEvent {
 }
 
 #[derive(Debug, Clone, serde::Serialize, TS)]
-#[ts(export)]
-pub struct TaskEvent {
-    pub source: String,
-    pub kind: TaskEventType,
-    pub message: String,
-    pub current: Option<u64>,
-    pub total: Option<u64>,
-    pub step: Option<u8>,
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub struct JobManagerEvent {
+    #[serde(flatten)]
+    pub inner: super::state::JobManagerEvent,
     #[serde(with = "time::serde::rfc3339")]
     #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 }
 
-impl TaskEvent {
-    pub fn new(source: &str, event: TaskReport) -> Self {
+impl From<super::state::JobManagerEvent> for JobManagerEvent {
+    fn from(event: super::state::JobManagerEvent) -> Self {
         Self {
-            source: source.to_string(),
-            kind: event.kind,
-            message: event.message,
-            current: event.current,
-            total: event.total,
-            step: event.step,
-            timestamp: event.timestamp,
+            inner: event,
+            timestamp: OffsetDateTime::now_utc(),
         }
     }
 }
 
-impl From<TaskEvent> for SseEvent {
-    fn from(event: TaskEvent) -> Self {
+impl From<JobManagerEvent> for SseEvent {
+    fn from(event: JobManagerEvent) -> Self {
         SseEvent::default()
-            .event("task-event")
+            .event("job-event")
             .json_data(event)
             .expect("Failed to serialize event")
     }
