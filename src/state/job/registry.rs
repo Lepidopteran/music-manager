@@ -17,14 +17,14 @@ pub enum JobRegistryError {
 pub struct JobInfo {
     pub name: String,
     pub description: String,
-    pub steps: Vec<String>,
+    pub steps: BTreeMap<u8, String>,
 }
 
 impl JobInfo {
     pub fn new(
         name: impl Into<String>,
         description: impl Into<String>,
-        steps: Vec<String>,
+        steps: BTreeMap<u8, String>,
     ) -> Self {
         Self {
             name: name.into(),

@@ -11,13 +11,16 @@ pub use scan_songs::*;
 
 type Sender = mpsc::Sender<JobEvent>;
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum JobEvent {
-    #[default]
-    Started,
-    Completed,
-    Cancelled,
+    StepCompleted {
+        step: u8,
+        value: Option<String>,
+    },
+    Warning {
+        message: String,
+    },
     Progress {
         current: u64,
         total: u64,
@@ -28,14 +31,4 @@ pub enum JobEvent {
 #[async_trait]
 pub trait JobHandle: 'static + Send + Sync + Debug {
     async fn execute(&self, cancel_token: CancellationToken, tx: &Sender) -> Result<()>;
-}
-
-/// Util function to check if a job was cancelled, and if so, send a cancel event
-fn is_job_token_cancelled(token: &CancellationToken, tx: &Sender) -> bool {
-    if token.is_cancelled() {
-        let _ = tx.blocking_send(JobEvent::Cancelled);
-        true
-    } else {
-        false
-    }
 }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     Json, Router,
@@ -10,8 +10,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::state::{
-    AppState, JobExecutionReport, JobManager, JobState, JobStateId,
-    registry::{Job, JobId},
+    AppState, JobExecutionReport, JobManager, JobStateId, JobStates, registry::JobId,
 };
 
 #[derive(Debug, Serialize, TS)]
@@ -20,14 +19,14 @@ pub struct RegistryJob {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub steps: Vec<String>,
+    pub steps: BTreeMap<u8, String>,
 }
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/jobs/{id}/queue", post(queue_job).get(queued_job_id))
         .route("/api/jobs/{id}/report", get(job_report))
-        .route("/api/jobs/state/{id}", get(state))
+        .route("/api/jobs/state", get(state))
         .route("/api/jobs", get(list_jobs))
 }
 
@@ -52,11 +51,8 @@ async fn job_report(
     Ok(Json(manager.job_report(&job_id).await?))
 }
 
-async fn state(
-    State(manager): State<Arc<JobManager>>,
-    Path(state_id): Path<JobStateId>,
-) -> Result<Json<JobState>> {
-    Ok(Json(manager.job_state(state_id).await?))
+async fn state(State(manager): State<Arc<JobManager>>) -> Result<Json<JobStates>> {
+    Ok(Json(manager.states().await))
 }
 
 async fn list_jobs(State(manager): State<Arc<JobManager>>) -> Result<Json<Vec<RegistryJob>>> {

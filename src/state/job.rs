@@ -145,29 +145,12 @@ pub struct JobExecutionReport {
 #[ts(export, export_to = "bindings.ts")]
 #[serde(rename_all = "camelCase")]
 pub struct JobState {
-    job_id: JobId,
-    status: JobStatus,
-    current_step: u8,
+    pub job_id: JobId,
+    pub status: JobStatus,
+    pub current_step: u8,
+    pub values: BTreeMap<u8, String>,
     #[serde(skip)]
-    token: CancellationToken,
-}
-
-impl JobState {
-    pub fn job_id(&self) -> &JobId {
-        &self.job_id
-    }
-
-    pub fn status(&self) -> &JobStatus {
-        &self.status
-    }
-
-    pub fn current_step(&self) -> &u8 {
-        &self.current_step
-    }
-
-    pub fn cancel_token(&self) -> &CancellationToken {
-        &self.token
-    }
+    pub token: CancellationToken,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -182,23 +165,25 @@ pub enum JobManagerEvent {
     Cancelled {
         source: JobStateId,
     },
+    Warning {
+        source: JobStateId,
+        message: String,
+    },
+    Failed {
+        source: JobStateId,
+        message: String,
+    },
+    StepCompleted {
+        source: JobStateId,
+        step: u8,
+        value: Option<String>,
+    },
     Progress {
         source: JobStateId,
         current: u64,
         total: u64,
         step: u8,
     },
-}
-
-impl JobManagerEvent {
-    pub fn source(&self) -> &JobStateId {
-        match self {
-            JobManagerEvent::Started { source, .. } => source,
-            JobManagerEvent::Completed { source, .. } => source,
-            JobManagerEvent::Cancelled { source, .. } => source,
-            JobManagerEvent::Progress { source, .. } => source,
-        }
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -264,35 +249,11 @@ impl JobManager {
                             let _ = job_events.send(event.clone()).await;
 
                             match event {
-                                JobEvent::Started => {
-                                    let mut state = state.lock().await;
-                                    if let Some(state) = state.get_mut(&state_id) {
-                                        state.status = JobStatus::InProgress;
-                                    }
-
-                                    send_event(
-                                        &manager_events,
-                                        &JobManagerEvent::Started { source: state_id },
-                                    )
-                                    .await;
-
-                                    let mut reports = reports.lock().await;
-                                    Self::report(&mut reports, &id)
-                                        .started_at
-                                        .replace(OffsetDateTime::now_utc());
-                                }
                                 JobEvent::Progress {
                                     current,
                                     total,
                                     step,
                                 } => {
-                                    let mut state = state.lock().await;
-                                    if let Some(state) = state.get_mut(&state_id)
-                                        && state.current_step < step
-                                    {
-                                        state.current_step = step;
-                                    }
-
                                     send_event(
                                         &manager_events,
                                         &JobManagerEvent::Progress {
@@ -304,49 +265,72 @@ impl JobManager {
                                     )
                                     .await;
                                 }
-                                JobEvent::Completed => {
+                                JobEvent::StepCompleted { step, value } => {
                                     let mut state = state.lock().await;
-                                    state.remove(&state_id);
+                                    if let Some(state) = state.get_mut(&state_id) {
+                                        state.current_step = step + 1;
+                                        state
+                                            .values
+                                            .insert(step, value.clone().unwrap_or_default());
+                                    }
+
+                                    drop(state);
 
                                     send_event(
                                         &manager_events,
-                                        &JobManagerEvent::Completed { source: state_id },
+                                        &JobManagerEvent::StepCompleted {
+                                            source: state_id,
+                                            step,
+                                            value,
+                                        },
                                     )
                                     .await;
-
-                                    let mut reports = reports.lock().await;
-                                    let report = Self::report(&mut reports, &id);
-                                    report.completed_at.replace(OffsetDateTime::now_utc());
-                                    report.completed_successfully = true;
                                 }
-                                JobEvent::Cancelled => {
-                                    let mut state = state.lock().await;
-                                    state.remove(&state_id);
-
+                                JobEvent::Warning { message } => {
                                     send_event(
                                         &manager_events,
-                                        &JobManagerEvent::Cancelled { source: state_id },
+                                        &JobManagerEvent::Warning {
+                                            source: state_id,
+                                            message,
+                                        },
                                     )
                                     .await;
-
-                                    let mut reports = reports.lock().await;
-                                    Self::report(&mut reports, &id)
-                                        .cancelled_at
-                                        .replace(OffsetDateTime::now_utc());
                                 }
                             }
                         }
                     });
 
-                    if let Err(err) = job.execute(cancel_token, &tx).await {
+                    let _ = events_clone.send(JobManagerEvent::Started { source: state_id });
+                    if let Err(err) = job.execute(cancel_token.clone(), &tx).await {
                         tracing::error!("Job failed: {err}");
-                        state_clone.lock().await.remove(&state_id);
                         let mut reports = reports_clone.lock().await;
                         let report = Self::report(&mut reports, &report_id);
-
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
+
+                        let _ = events_clone.send(JobManagerEvent::Failed {
+                            source: state_id,
+                            message: err.to_string(),
+                        });
                     }
+
+                    if cancel_token.is_cancelled() {
+                        let mut reports = reports_clone.lock().await;
+                        let report = Self::report(&mut reports, &report_id);
+                        report.cancelled_at.replace(OffsetDateTime::now_utc());
+                        report.completed_successfully = false;
+
+                        let _ = events_clone.send(JobManagerEvent::Cancelled { source: state_id });
+                    } else {
+                        let mut reports = reports_clone.lock().await;
+                        let report = Self::report(&mut reports, &report_id);
+                        report.completed_at.replace(OffsetDateTime::now_utc());
+                        report.completed_successfully = true;
+
+                        let _ = events_clone.send(JobManagerEvent::Completed { source: state_id });
+                    }
+
+                    state_clone.lock().await.remove(&state_id);
                 } else {
                     queued.notify.notified().await;
                 }
@@ -387,6 +371,7 @@ impl JobManager {
             status: JobStatus::Pending,
             current_step: 0,
             token: CancellationToken::new(),
+            values: BTreeMap::new(),
             job_id: job_id.clone(),
         };
 
@@ -395,7 +380,7 @@ impl JobManager {
                 QueueItem {
                     unique,
                     state_id: id,
-                    cancel_token: state.cancel_token().clone(),
+                    cancel_token: state.token.clone(),
                     job_events: tx,
                     report_id: job_id.clone(),
                     job: self
@@ -477,13 +462,8 @@ impl JobManager {
             .ok_or(JobManagerError::StateNotFound)
     }
 
-    pub async fn job_state(&self, state_id: JobStateId) -> Result<JobState> {
-        let states = self.states.lock().await;
-
-        states
-            .get(&state_id)
-            .cloned()
-            .ok_or(JobManagerError::StateNotFound)
+    pub async fn states(&self) -> JobStates {
+        self.states.lock().await.clone()
     }
 
     fn report<'r>(reports: &'r mut JobReports, job_id: &JobId) -> &'r mut JobExecutionReport {
@@ -544,7 +524,7 @@ mod tests {
                     JobInfo::new(
                         "Test Job",
                         "Literally just a test job, what did you expect?",
-                        Vec::new(),
+                        BTreeMap::new(),
                     ),
                     TestJob {},
                 ),
