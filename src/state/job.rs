@@ -209,7 +209,7 @@ pub struct JobManager {
 
 impl JobManager {
     pub fn new(registry: JobRegistry) -> Self {
-        let (events, _) = broadcast::channel(256);
+        let (events, _) = broadcast::channel(1024 * 2);
         let states: Arc<Mutex<JobStates>> = Arc::new(Mutex::new(BTreeMap::new()));
         let reports: Arc<Mutex<JobReports>> = Arc::new(Mutex::new(
             registry
@@ -242,8 +242,6 @@ impl JobManager {
 
                     let manager_events = events_clone.clone();
                     let state = state_clone.clone();
-                    let reports = reports_clone.clone();
-                    let id = report_id.clone();
                     tokio::spawn(async move {
                         while let Some(event) = rx.recv().await {
                             let _ = job_events.send(event.clone()).await;
@@ -300,7 +298,11 @@ impl JobManager {
                         }
                     });
 
-                    let _ = events_clone.send(JobManagerEvent::Started { source: state_id });
+                    send_event(
+                        &events_clone,
+                        &JobManagerEvent::Started { source: state_id },
+                    )
+                    .await;
                     if let Err(err) = job.execute(cancel_token.clone(), &tx).await {
                         tracing::error!("Job failed: {err}");
                         let mut reports = reports_clone.lock().await;
@@ -308,10 +310,14 @@ impl JobManager {
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
-                        let _ = events_clone.send(JobManagerEvent::Failed {
-                            source: state_id,
-                            message: err.to_string(),
-                        });
+                        send_event(
+                            &events_clone,
+                            &JobManagerEvent::Failed {
+                                source: state_id,
+                                message: err.to_string(),
+                            },
+                        )
+                        .await;
                     }
 
                     if cancel_token.is_cancelled() {
@@ -320,14 +326,22 @@ impl JobManager {
                         report.cancelled_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
-                        let _ = events_clone.send(JobManagerEvent::Cancelled { source: state_id });
+                        send_event(
+                            &events_clone,
+                            &JobManagerEvent::Cancelled { source: state_id },
+                        )
+                        .await;
                     } else {
                         let mut reports = reports_clone.lock().await;
                         let report = Self::report(&mut reports, &report_id);
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = true;
 
-                        let _ = events_clone.send(JobManagerEvent::Completed { source: state_id });
+                        send_event(
+                            &events_clone,
+                            &JobManagerEvent::Completed { source: state_id },
+                        )
+                        .await;
                     }
 
                     state_clone.lock().await.remove(&state_id);
