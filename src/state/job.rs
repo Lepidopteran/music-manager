@@ -5,10 +5,7 @@ use std::{
 
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::{
-    sync::{Mutex, Notify, broadcast, mpsc},
-    task::JoinHandle,
-};
+use tokio::sync::{Mutex, Notify, broadcast, mpsc};
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
@@ -242,7 +239,6 @@ impl JobState {
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", tag = "kind")]
-#[ts(export, export_to = "bindings.ts", rename = "JobRegistryEvent")]
 pub enum JobManagerEvent {
     Started {
         source: JobStateId,

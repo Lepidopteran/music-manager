@@ -10,9 +10,7 @@ export type JobExecutionReport = { startedAt: Date, completedAt: Date, cancelled
 
 export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "progress", source: bigint, current: bigint, total: bigint, step: number, });
 
-export type JobRegistryEvent = { "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "progress", source: bigint, current: bigint, total: bigint, step: number, };
-
-export type JobState = { status: JobStatus, currentStep: number, };
+export type JobState = { jobId: string, status: JobStatus, currentStep: number, };
 
 export type JobStatus = "pending" | "inProgress";
 
