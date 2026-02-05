@@ -9,7 +9,10 @@ use axum::{
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::state::{AppState, Job, JobExecutionReport, JobId, JobManager, JobState, JobStateId};
+use crate::state::{
+    AppState, JobExecutionReport, JobManager, JobState, JobStateId,
+    registry::{Job, JobId},
+};
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export, export_to = "bindings.ts")]
@@ -17,7 +20,7 @@ pub struct RegistryJob {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub steps: u8,
+    pub steps: Vec<String>,
 }
 
 pub fn router() -> Router<AppState> {
@@ -61,11 +64,15 @@ async fn list_jobs(State(manager): State<Arc<JobManager>>) -> Result<Json<Vec<Re
         .registry()
         .jobs()
         .iter()
-        .map(|(id, job)| RegistryJob {
-            id: id.to_string(),
-            name: job.name().to_string(),
-            description: job.description().to_string(),
-            steps: job.steps(),
+        .map(|(id, job)| {
+            let info = job.info().clone();
+
+            RegistryJob {
+                id: id.to_string(),
+                name: info.name,
+                description: info.description,
+                steps: info.steps,
+            }
         })
         .collect::<Vec<_>>();
 

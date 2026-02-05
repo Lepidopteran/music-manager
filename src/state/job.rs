@@ -11,19 +11,21 @@ use ts_rs::TS;
 
 use crate::jobs::{JobEvent, JobHandle};
 
-type RegistryResult<T, E = JobRegistryError> = std::result::Result<T, E>;
-type ManagerResult<T, E = JobManagerError> = std::result::Result<T, E>;
+pub mod registry;
+
+use registry::*;
+
+type Result<T, E = JobManagerError> = std::result::Result<T, E>;
 
 pub type JobStateId = i64;
 
 pub type JobStates = BTreeMap<JobStateId, JobState>;
 pub type JobReports = BTreeMap<JobId, JobExecutionReport>;
 
-pub type JobId = String;
-
 #[derive(Debug)]
 struct QueueItem {
-    entry: (JobId, Job),
+    job: Arc<dyn JobHandle>,
+    report_id: JobId,
     state_id: JobStateId,
     cancel_token: CancellationToken,
     job_events: mpsc::Sender<JobEvent>,
@@ -83,75 +85,6 @@ impl Queue {
         if notify {
             self.notify.notify_waiters();
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Job {
-    name: String,
-    description: String,
-    steps: u8,
-    handle: Arc<dyn JobHandle>,
-}
-
-impl Job {
-    pub fn new<H: JobHandle>(name: &str, description: &str, steps: u8, handle: H) -> Self {
-        Self {
-            name: name.to_string(),
-            description: description.to_string(),
-            handle: Arc::new(handle),
-            steps,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn steps(&self) -> u8 {
-        self.steps
-    }
-
-    pub fn handle(&self) -> Arc<dyn crate::jobs::JobHandle> {
-        self.handle.clone()
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum JobRegistryError {
-    #[error("Job already exists")]
-    AlreadyExists,
-    #[error("Job not found")]
-    NotFound,
-}
-
-#[derive(Debug, Default)]
-pub struct JobRegistry {
-    jobs: BTreeMap<JobId, Job>,
-}
-
-impl JobRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn jobs(&self) -> &BTreeMap<JobId, Job> {
-        &self.jobs
-    }
-
-    pub fn register_job(&mut self, id: impl Into<JobId>, job: Job) -> RegistryResult<()> {
-        let id = id.into();
-
-        if self.jobs.contains_key(&id) {
-            return Err(JobRegistryError::AlreadyExists);
-        }
-
-        self.jobs.insert(id, job);
-        Ok(())
     }
 }
 
@@ -295,7 +228,7 @@ impl JobManager {
         let states: Arc<Mutex<JobStates>> = Arc::new(Mutex::new(BTreeMap::new()));
         let reports: Arc<Mutex<JobReports>> = Arc::new(Mutex::new(
             registry
-                .jobs
+                .jobs()
                 .keys()
                 .map(|id| (id.clone(), JobExecutionReport::default()))
                 .collect(),
@@ -310,8 +243,9 @@ impl JobManager {
         tokio::spawn(async move {
             loop {
                 if let Some(QueueItem {
+                    job,
                     state_id,
-                    entry: (job_id, job),
+                    report_id,
                     cancel_token,
                     job_events,
                     ..
@@ -324,7 +258,7 @@ impl JobManager {
                     let manager_events = events_clone.clone();
                     let state = state_clone.clone();
                     let reports = reports_clone.clone();
-                    let id = job_id.clone();
+                    let id = report_id.clone();
                     tokio::spawn(async move {
                         while let Some(event) = rx.recv().await {
                             let _ = job_events.send(event.clone()).await;
@@ -404,11 +338,11 @@ impl JobManager {
                         }
                     });
 
-                    if let Err(err) = job.handle().execute(cancel_token, &tx).await {
+                    if let Err(err) = job.execute(cancel_token, &tx).await {
                         tracing::error!("Job failed: {err}");
                         state_clone.lock().await.remove(&state_id);
                         let mut reports = reports_clone.lock().await;
-                        let report = Self::report(&mut reports, &job_id);
+                        let report = Self::report(&mut reports, &report_id);
 
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
@@ -433,13 +367,13 @@ impl JobManager {
         job_id: impl Into<JobId>,
         unique: bool,
         high_priority: bool,
-    ) -> ManagerResult<JobHandler> {
+    ) -> Result<JobHandler> {
         let job_id = job_id.into();
 
         if unique
             && self
                 .queue
-                .any(|item| item.unique && item.entry.0 == job_id)
+                .any(|item| item.unique && item.report_id == job_id)
                 .await
         {
             return Err(JobManagerError::AlreadyQueued);
@@ -459,18 +393,17 @@ impl JobManager {
         self.queue
             .add_item(
                 QueueItem {
+                    unique,
                     state_id: id,
                     cancel_token: state.cancel_token().clone(),
                     job_events: tx,
-                    unique,
-                    entry: (
-                        job_id.clone(),
-                        self.registry
-                            .jobs
-                            .get(&job_id)
-                            .cloned()
-                            .ok_or(JobRegistryError::NotFound)?,
-                    ),
+                    report_id: job_id.clone(),
+                    job: self
+                        .registry
+                        .jobs()
+                        .get(&job_id)
+                        .map(|job| job.handle())
+                        .ok_or(JobRegistryError::NotFound)?,
                 },
                 high_priority,
             )
@@ -487,7 +420,7 @@ impl JobManager {
         })
     }
 
-    pub async fn cancel_job(&self, state_id: JobStateId) -> ManagerResult<()> {
+    pub async fn cancel_job(&self, state_id: JobStateId) -> Result<()> {
         let mut states = self.states.lock().await;
 
         if let Some(state) = states.get_mut(&state_id) {
@@ -519,14 +452,14 @@ impl JobManager {
         &self.registry
     }
 
-    pub async fn job_queue_rank(&self, state_id: JobStateId) -> ManagerResult<usize> {
+    pub async fn job_queue_rank(&self, state_id: JobStateId) -> Result<usize> {
         self.queue
             .item_rank(state_id)
             .await
             .ok_or(JobManagerError::StateNotFound)
     }
 
-    pub async fn job_report(&self, job_id: &JobId) -> ManagerResult<JobExecutionReport> {
+    pub async fn job_report(&self, job_id: &JobId) -> Result<JobExecutionReport> {
         let reports = self.reports.lock().await;
 
         reports
@@ -535,16 +468,16 @@ impl JobManager {
             .ok_or(JobManagerError::ReportNotFound)
     }
 
-    pub async fn unique_job_state_id(&self, job_id: &JobId) -> ManagerResult<JobStateId> {
+    pub async fn unique_job_state_id(&self, job_id: &JobId) -> Result<JobStateId> {
         let list = self.queue.list.lock().await;
 
         list.iter()
-            .find(|item| item.unique && item.entry.0 == *job_id)
+            .find(|item| item.unique && item.report_id == *job_id)
             .map(|item| item.state_id)
             .ok_or(JobManagerError::StateNotFound)
     }
 
-    pub async fn job_state(&self, state_id: JobStateId) -> ManagerResult<JobState> {
+    pub async fn job_state(&self, state_id: JobStateId) -> Result<JobState> {
         let states = self.states.lock().await;
 
         states
@@ -608,9 +541,11 @@ mod tests {
             .register_job(
                 "test",
                 Job::new(
-                    "Test Job",
-                    "Literally a test, what did you expect?",
-                    1,
+                    JobInfo::new(
+                        "Test Job",
+                        "Literally just a test job, what did you expect?",
+                        Vec::new(),
+                    ),
                     TestJob {},
                 ),
             )

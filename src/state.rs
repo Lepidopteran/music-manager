@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
-use crate::jobs::SONG_SCAN_STEPS;
+use crate::state::registry::{Job, JobRegistry};
 
 use super::{config::Settings, jobs::ScanSongs};
 
@@ -64,12 +64,10 @@ fn setup_jobs(pool: &sqlx::Pool<sqlx::Sqlite>) -> JobRegistry {
     let mut registry = JobRegistry::default();
 
     registry
-        .register_job("scan-songs", Job::new(
-            "Scan Songs",
-            "Scans for new songs, updates existing ones, and deletes songs that no longer exist",
-            SONG_SCAN_STEPS,
-            ScanSongs::new(pool.clone()),
-        ))
+        .register_job(
+            "scan-songs",
+            Job::new(ScanSongs::job_info(), ScanSongs::new(pool.clone())),
+        )
         .expect("Failed to register job");
 
     registry

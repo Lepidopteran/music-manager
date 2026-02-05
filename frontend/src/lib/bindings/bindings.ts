@@ -14,4 +14,4 @@ export type JobState = { jobId: string, status: JobStatus, currentStep: number, 
 
 export type JobStatus = "pending" | "inProgress";
 
-export type RegistryJob = { id: string, name: string, description: string, steps: number, };
+export type RegistryJob = { id: string, name: string, description: string, steps: Array<string>, };

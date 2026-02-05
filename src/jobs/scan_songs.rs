@@ -9,11 +9,11 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     db::{self, Song},
     metadata::{item::ItemKey, read_metadata_from_path},
+    state::registry::JobInfo,
 };
 
 use super::*;
 
-pub const SONG_SCAN_STEPS: u8 = 2;
 const SONG_FILE_TYPES: [&str; 8] = ["mp3", "m4a", "flac", "wav", "ogg", "wma", "aac", "opus"];
 
 #[derive(Debug)]
@@ -24,6 +24,14 @@ pub struct ScanSongs {
 impl ScanSongs {
     pub fn new(db: sqlx::Pool<sqlx::Sqlite>) -> Self {
         Self { db }
+    }
+
+    pub fn job_info() -> JobInfo {
+        JobInfo::new(
+            "Scan Songs",
+            "Scans for new songs, updates existing ones, and deletes songs that no longer exist",
+            vec![String::from("Scanning for new songs")],
+        )
     }
 }
 
