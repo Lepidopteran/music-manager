@@ -498,7 +498,6 @@ mod tests {
             tx: &mpsc::Sender<JobEvent>,
         ) -> Result<()> {
             let mut index = 0;
-            tx.send(JobEvent::Started).await.unwrap();
             while !token.is_cancelled() {
                 tokio::time::sleep(Duration::from_millis(100)).await;
 
@@ -565,9 +564,6 @@ mod tests {
         let job_events = tokio::spawn(async move {
             while let Some(event) = job.events().recv().await {
                 tracing::info!("Event: {event:?}");
-                if let JobEvent::Cancelled = event {
-                    break;
-                }
             }
         });
 
