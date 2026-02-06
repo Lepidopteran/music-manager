@@ -58,7 +58,7 @@ async fn add_directory(
         name,
         path,
         display_name,
-    } = directories::add_directory(&mut connection, "", new_directory)
+    } = directories::add_directory(&mut connection, new_directory)
         .await
         .map_err(IntoResponse::into_response)?;
 

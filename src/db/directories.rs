@@ -39,7 +39,6 @@ impl IntoResponse for DatabaseDirectoryError {
 
 pub async fn add_directory(
     connection: &mut Connection,
-    sub_path: &str,
     directory: NewDirectory,
 ) -> Result<Directory> {
     if directory.path.trim().is_empty() {
