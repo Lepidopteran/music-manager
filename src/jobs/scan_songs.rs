@@ -34,13 +34,10 @@ impl ScanSongs {
             "Scan Songs",
             "Scans for new songs, updates existing ones, and deletes songs that no longer exist",
             BTreeMap::from([
-                (1, String::from("Fetching directories")),
-                (2, String::from("Fetching songs")),
-                (3, String::from("Finding songs that no longer exist")),
-                (4, String::from("Scanning for new songs")),
-                (5, String::from("Scanning for updated songs")),
-                (6, String::from("Applying changes to transaction")),
-                (7, String::from("Committing transaction")),
+                (1, String::from("Scanning for songs to delete")),
+                (2, String::from("Scanning for new songs")),
+                (3, String::from("Scanning for updated songs")),
+                (4, String::from("Applying and saving changes")),
             ]),
         )
     }
@@ -64,35 +61,10 @@ impl JobHandle for ScanSongs {
         let message = format!("Found {} directory(s)", directories.len());
         tracing::info!(message);
 
-        tx.send(JobEvent::StepCompleted {
-            step: 1,
-            value: directories.len().to_string().into(),
-        })
-        .await?;
-
         let existing_songs = query_as!(Song, "SELECT * FROM songs")
             .fetch_all(&self.db)
             .await
             .unwrap_or_default();
-
-        tx.send(JobEvent::StepCompleted {
-            step: 2,
-            value: existing_songs.len().to_string().into(),
-        })
-        .await?;
-
-        if !existing_songs.is_empty() {
-            let message = format!(
-                "Found {} existing song(s)... scanning for non-existing songs",
-                existing_songs.len()
-            );
-
-            tracing::info!(message);
-        } else {
-            let message = "No existing songs found... scanning for new songs";
-
-            tracing::info!(message);
-        }
 
         let non_existing_song_ids = existing_songs
             .iter()
@@ -101,15 +73,10 @@ impl JobHandle for ScanSongs {
             .collect::<HashSet<_>>();
 
         tx.send(JobEvent::StepCompleted {
-            step: 3,
+            step: 1,
             value: non_existing_song_ids.len().to_string().into(),
         })
         .await?;
-
-        tracing::info!(
-            "Found {} existing song(s) that no longer exist... scanning for new songs",
-            non_existing_song_ids.len()
-        );
 
         let existing_song_paths = existing_songs
             .iter()
@@ -177,28 +144,13 @@ impl JobHandle for ScanSongs {
         .expect("Failed to join thread");
 
         tx.send(JobEvent::StepCompleted {
-            step: 4,
+            step: 2,
             value: song_paths.len().to_string().into(),
         })
         .await?;
 
         if token.is_cancelled() {
             return Ok(());
-        }
-
-        if song_paths.is_empty() && !existing_songs.is_empty() {
-            tracing::info!(
-                "No new song(s) found... comparing metadata on {} existing song(s)...",
-                existing_songs.len()
-            );
-        } else if !song_paths.is_empty() && existing_songs.is_empty() {
-            tracing::info!("Found {} new song(s)...", song_paths.len());
-        } else {
-            tracing::info!(
-                "Found {} new song(s)... comparing metadata on {} existing song(s)...",
-                song_paths.len(),
-                existing_songs.len()
-            );
         }
 
         let existing_song_count = existing_songs.len();
@@ -214,7 +166,7 @@ impl JobHandle for ScanSongs {
                     let _ = tx.blocking_send(JobEvent::Progress {
                         current: index as u64,
                         total: existing_song_count as u64,
-                        step: 5,
+                        step: 3,
                     });
 
                     let path = PathBuf::from(&song.path);
@@ -277,7 +229,7 @@ impl JobHandle for ScanSongs {
         }
 
         tx.send(JobEvent::StepCompleted {
-            step: 5,
+            step: 3,
             value: updated_songs.len().to_string().into(),
         })
         .await?;
@@ -285,11 +237,8 @@ impl JobHandle for ScanSongs {
         let change_count =
             (song_paths.len() + updated_songs.len() + non_existing_song_ids.len()) as u64;
 
-        let change_message = format!("Found {change_count} change(s)... Applying changes...");
         let mut transaction = self.db.begin().await?;
         let mut current_change_index = 0;
-
-        tracing::info!(change_message);
 
         for song in song_paths.iter() {
             if token.is_cancelled() {
@@ -332,7 +281,7 @@ impl JobHandle for ScanSongs {
             tx.send(JobEvent::Progress {
                 current: current_change_index,
                 total: change_count,
-                step: 6,
+                step: 4,
             })
             .await?;
         }
@@ -372,7 +321,7 @@ impl JobHandle for ScanSongs {
             tx.send(JobEvent::Progress {
                 current: current_change_index,
                 total: change_count,
-                step: 6,
+                step: 4,
             })
             .await?;
         }
@@ -395,7 +344,7 @@ impl JobHandle for ScanSongs {
             tx.send(JobEvent::Progress {
                 current: current_change_index,
                 total: change_count,
-                step: 6,
+                step: 4,
             })
             .await?;
         }
@@ -404,18 +353,12 @@ impl JobHandle for ScanSongs {
             return Ok(());
         }
 
-        tx.send(JobEvent::StepCompleted {
-            step: 6,
-            value: None,
-        })
-        .await?;
-
         if let Err(err) = transaction.commit().await {
             tracing::error!("Song scan error: {err}");
         }
 
         tx.send(JobEvent::StepCompleted {
-            step: 7,
+            step: 4,
             value: None,
         })
         .await?;
