@@ -209,6 +209,7 @@ impl JobHandle for ScanSongs {
             .enumerate()
             .map(move |(index, song)| {
                 let tx = comparison_tx.clone();
+                let tx_clone = tx.clone();
                 spawn_blocking(move || {
                     let _ = tx.blocking_send(JobEvent::Progress {
                         current: index as u64,
@@ -220,7 +221,9 @@ impl JobHandle for ScanSongs {
                     let metadata = match read_metadata_from_path(&path) {
                         Ok(song) => Some(song),
                         Err(err) => {
-                            tracing::warn!("Failed to read tags: {}", err);
+                            let _ = tx_clone.blocking_send(JobEvent::Warning {
+                                message: format!("Failed to read metadata for song: {err}"),
+                            });
                             None
                         }
                     };

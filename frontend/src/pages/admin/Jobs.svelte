@@ -8,41 +8,74 @@
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import type { PageComponentProps } from "@lib/state/app.svelte";
-	import type { JobReport, JobManagerEvent } from "@bindings/bindings";
-	import { getJobs } from "@api/jobs";
+	import type {
+		RegistryJob,
+		JobManagerEvent,
+		JobState,
+	} from "@bindings/bindings";
+	import { getJobs, getJobStates, queueJob } from "@api/jobs";
+	import { match, P } from "ts-pattern";
+	import { SvelteMap } from "svelte/reactivity";
 
-	let jobs: Array<JobReport> = $state([]);
-	const events: Array<[JobManagerEvent, number]> = $state([]);
+	interface JobUiState extends JobState {
+		current: bigint;
+		total: bigint;
+	}
+
+	let jobs: Array<RegistryJob> = $state([]);
+	let jobStates: SvelteMap<bigint, JobUiState> = $state(new SvelteMap());
 
 	addSourceEventListener(eventSource, "job-event", (event) => {
-		events.push([event, events.length]);
+		const previousState = jobStates.get(event.source);
+		if (previousState && previousState?.status !== "inProgress") {
+			jobStates.set(event.source, {
+				...previousState,
+				status: "inProgress",
+			});
+		}
 
-		jobs = jobs.map((job) => {
-			if (job.id !== event.source) {
-				return job;
-			}
+		match(event)
+			.with(
+				P.union(
+					{ kind: "completed" },
+					{ kind: "failed" },
+					{ kind: "cancelled" },
+				),
+				(e) => {
+					if (!jobStates.has(e.source)) {
+						return;
+					}
 
-			switch (event.kind) {
-				case "cancelled":
-					return { ...job, status: "stopped" };
-				case "progress":
-				case "start":
-					return { ...job, status: "running" };
-				case "complete":
-					return { ...job, status: "idle" };
-			}
+					jobStates.delete(e.source);
+				},
+			)
+			.with({ kind: "progress" }, (e) => {
+				if (!previousState) {
+					return;
+				}
 
-			return job;
-		});
-	});
+				jobStates.set(e.source, {
+					...previousState,
+					currentStep: e.step,
+					current: e.current,
+					total: e.total,
+				});
+			})
+			.with({ kind: "stepCompleted" }, (e) => {
+				if (!previousState) {
+					return;
+				}
 
-	$effect(() => {
-		const element = document.querySelector(
-			`[data-log-index=\"${events.length - 1}\"]`,
-		);
+				const values = e.value
+					? { ...previousState.values, [e.step]: e.value }
+					: previousState.values;
 
-		$inspect(element, events.length - 1);
-		element?.scrollIntoView({ behavior: "instant", block: "center" });
+				jobStates.set(e.source, {
+					...previousState,
+					values,
+				});
+			})
+			.otherwise(() => {});
 	});
 
 	onMount(async () => {
@@ -55,25 +88,36 @@
 <div>
 	<ul class="space-y-2">
 		{#each jobs as job}
-			{@const logs = events.filter(([event, _]) => event.source === job.id)}
+			{@const state = jobStates
+				.values()
+				.find((state) => state.jobId === job.id)}
 			<li>
 				<div
 					data-id={job.id}
 					class={`bg-base-100 max-w-4xl mx-auto overflow-hidden rounded-theme shadow-md`}
 				>
 					<div class="flex divide-x-2 divide-base-text/25 w-full">
-						{#each { length: job.steps }, step}
-							{@const [lastProgress, _] = logs.findLast(
-								([event, _]) =>
-									(event.kind === "progress" && event.step === step + 1) ||
-									(event.kind === "progress" && !event.step),
-							) ?? [null, null]}
+						{#each Object.entries(job.steps) as [step, description]}
+							{@const max =
+								state && state.currentStep === Number(step)
+									? Number(state.total) || 100
+									: 100}
+
+							{@const value = state
+								? state.currentStep === Number(step)
+									? Number(state.current) || 0
+									: state.currentStep > Number(step)
+										? 100
+										: 0
+								: 0}
+
 							<Progress
-								value={job.status === "running"
-									? (lastProgress?.current ?? 0)
-									: 0}
-								max={lastProgress?.total ?? 100}
-								class="rounded-none! w-full"
+								{max}
+								{value}
+								class={[
+									"rounded-none! w-full",
+									state?.status !== "inProgress" && "opacity-50",
+								]}
 							/>
 						{/each}
 					</div>
@@ -84,40 +128,23 @@
 						</div>
 						<div>
 							<Button
-								aria-label={job.status === "running"
-									? `Stop ${job.name}`
-									: `Start ${job.name}`}
 								variant="primary"
+								disabled={state?.status === "pending"}
 								onclick={async () => {
-									if (job.status !== "running") {
-										startTask(job.id);
-									} else {
-										stopTask(job.id);
-									}
+									const state = await queueJob(job.id);
+									jobStates.set(state[0], state[1] as JobUiState);
 								}}
 							>
-								{#if job.status === "running"}
-									<Icon name="stop-fill" />
+								{#if state?.status === "inProgress"}
+									<Icon name="square-fill" />
+								{:else if state?.status === "pending"}
+									<Icon name="stopwatch-fill" />
 								{:else}
 									<Icon name="play-fill" />
 								{/if}
 							</Button>
 						</div>
 					</div>
-					<!-- <details class="space-y-2 mt-2 px-2"> -->
-					<!-- 	<summary -->
-					<!-- 		class="flex items-center gap-2 text-sm font-bold text-base-950/50 cursor-pointer select-none overflow-hidden" -->
-					<!-- 	> -->
-					<!-- 		Event Logs <span class="text-base-text/25 truncate w-32" -->
-					<!-- 			>{logs.at(-1)?.[0].message}</span -->
-					<!-- 		> -->
-					<!-- 	</summary> -->
-					<!-- 	<div class="space-y-2 mt-2 p-2 overflow-y-auto h-48"> -->
-					<!-- 		{#each logs as event} -->
-					<!-- 			<Event data-log-index={event[1]} event={event[0]} /> -->
-					<!-- 		{/each} -->
-					<!-- 	</div> -->
-					<!-- </details> -->
 				</div>
 			</li>
 		{/each}

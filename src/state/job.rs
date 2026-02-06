@@ -153,6 +153,18 @@ pub struct JobState {
     pub token: CancellationToken,
 }
 
+impl JobState {
+    pub fn new(job_id: JobId) -> Self {
+        Self {
+            job_id,
+            status: JobStatus::Pending,
+            current_step: 1,
+            values: BTreeMap::new(),
+            token: CancellationToken::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum JobManagerEvent {
@@ -381,13 +393,7 @@ impl JobManager {
 
         let id = OffsetDateTime::now_utc().unix_timestamp();
         let (tx, rx) = mpsc::channel(256);
-        let state = JobState {
-            status: JobStatus::Pending,
-            current_step: 0,
-            token: CancellationToken::new(),
-            values: BTreeMap::new(),
-            job_id: job_id.clone(),
-        };
+        let state = JobState::new(job_id.clone());
 
         self.queue
             .add_item(
