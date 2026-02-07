@@ -25,6 +25,6 @@ export async function queueJob(id: string): Promise<[bigint, JobState]> {
 	];
 }
 
-export async function stopTask(id: string): Promise<void> {
-	await fetchText(`/api/jobs/${id}/stop`, { method: "POST" });
+export async function stopJob(stateId: bigint): Promise<void> {
+	await fetchText(`/api/jobs/state/${stateId}/cancel`, { method: "POST" });
 }

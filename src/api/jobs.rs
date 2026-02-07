@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/jobs/{id}/queue", post(queue_job))
         .route("/api/jobs/state", get(state))
+        .route("/api/jobs/state/{id}/cancel", post(cancel_job))
         .route("/api/jobs/reports", get(job_reports))
         .route("/api/jobs", get(list_jobs))
 }
@@ -47,6 +48,10 @@ async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReport
 
 async fn state(State(manager): State<JobManager>) -> Result<Json<JobStates>> {
     Ok(Json(manager.states().await))
+}
+
+async fn cancel_job(State(manager): State<JobManager>, Path(id): Path<JobStateId>) -> Result<()> {
+    Ok(manager.cancel_job(id).await?)
 }
 
 async fn list_jobs(State(manager): State<JobManager>) -> Result<Json<Vec<RegistryJob>>> {
