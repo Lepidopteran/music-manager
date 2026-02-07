@@ -12,7 +12,7 @@ pub mod manager;
 
 type Result<T, E = JobRegistryError> = std::result::Result<T, E>;
 
-pub type JobStateId = i64;
+pub type JobStateId = uuid::Uuid;
 pub type JobId = String;
 
 #[derive(Debug, thiserror::Error)]

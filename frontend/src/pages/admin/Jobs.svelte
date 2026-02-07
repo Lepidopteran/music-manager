@@ -23,7 +23,7 @@
 	}
 
 	let jobs: Array<RegistryJob> = $state([]);
-	let jobStates: SvelteMap<bigint, JobUiState> = $state(new SvelteMap());
+	let jobStates: SvelteMap<string, JobUiState> = $state(new SvelteMap());
 
 	addSourceEventListener(eventSource, "job-event", (event) => {
 		const previousState = jobStates.get(event.source);

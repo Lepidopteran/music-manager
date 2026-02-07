@@ -26,6 +26,10 @@ pub struct RegistryJob {
     pub steps: BTreeMap<u8, String>,
 }
 
+#[derive(Debug, Serialize, TS)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct JobStateResponse(JobStates);
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/jobs/{id}/queue", post(queue_job))
@@ -46,8 +50,8 @@ async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReport
     Ok(Json(manager.reports().await))
 }
 
-async fn state(State(manager): State<JobManager>) -> Result<Json<JobStates>> {
-    Ok(Json(manager.states().await))
+async fn state(State(manager): State<JobManager>) -> Result<Json<JobStateResponse>> {
+    Ok(Json(JobStateResponse(manager.states().await)))
 }
 
 async fn cancel_job(State(manager): State<JobManager>, Path(id): Path<JobStateId>) -> Result<()> {

@@ -9,8 +9,8 @@ export async function getJobStates(): Promise<JobState[]> {
 	return await fetchJson("/api/jobs/state");
 }
 
-export async function queueJob(id: string): Promise<[bigint, JobState]> {
-	const stateId = await fetchJson<bigint>(`/api/jobs/${id}/queue`, {
+export async function queueJob(id: string): Promise<[string, JobState]> {
+	const stateId = await fetchJson<string>(`/api/jobs/${id}/queue`, {
 		method: "POST",
 	});
 

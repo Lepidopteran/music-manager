@@ -8,9 +8,11 @@ export type FileOperationStatus = "pending" | "inProgress";
 
 export type JobExecutionReport = { startedAt: Date, completedAt: Date, cancelledAt: Date, completedSuccessfully: boolean, };
 
-export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "warning", source: bigint, message: string, } | { "kind": "failed", source: bigint, message: string, } | { "kind": "stepCompleted", source: bigint, step: number, value: string | null, } | { "kind": "progress", source: bigint, current: bigint, total: bigint, step: number, });
+export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: string, } | { "kind": "completed", source: string, report: JobExecutionReport, } | { "kind": "cancelled", source: string, } | { "kind": "warning", source: string, message: string, } | { "kind": "failed", source: string, message: string, } | { "kind": "stepCompleted", source: string, step: number, value: string | null, } | { "kind": "progress", source: string, current: bigint, total: bigint, step: number, });
 
 export type JobState = { jobId: string, status: JobStatus, currentStep: number, values: { [key in number]?: string }, };
+
+export type JobStateResponse = { [key in string]?: JobState };
 
 export type JobStatus = "pending" | "inProgress";
 

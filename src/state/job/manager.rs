@@ -20,6 +20,7 @@ pub enum JobManagerEvent {
     },
     Completed {
         source: JobStateId,
+        report: JobExecutionReport,
     },
     Cancelled {
         source: JobStateId,
@@ -199,7 +200,10 @@ impl JobManager {
 
                         send_event(
                             &events_clone,
-                            &JobManagerEvent::Completed { source: state_id },
+                            &JobManagerEvent::Completed {
+                                source: state_id,
+                                report: report.clone(),
+                            },
                         )
                         .await;
                     }
@@ -239,7 +243,7 @@ impl JobManager {
 
         tracing::debug!("Queueing job: {job_id}");
 
-        let id = OffsetDateTime::now_utc().unix_timestamp();
+        let id = JobStateId::new_v4();
         let (tx, rx) = mpsc::channel(256);
         let state = JobState::new(job_id.clone());
 
@@ -483,4 +487,3 @@ mod tests {
         Ok(())
     }
 }
-
