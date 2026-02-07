@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
-use crate::state::registry::{Job, JobRegistry};
+use crate::state::job::{Job, JobRegistry};
 
 use super::{config::Settings, jobs::ScanSongs};
 
@@ -41,7 +41,7 @@ impl AppState {
             }
         });
 
-        let job_manager = JobManager::new(setup_jobs(&db));
+        let job_manager = job::manager::JobManager::new(setup_jobs(&db));
         let mut rx = job_manager.events();
         let tx_clone = tx.clone();
         tokio::spawn(async move {

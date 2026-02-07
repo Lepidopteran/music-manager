@@ -1,17 +1,16 @@
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::{Mutex, broadcast};
-
-use crate::state::job::JobRegistry;
-
-pub type JobStates = BTreeMap<JobStateId, state::JobState>;
-pub type JobReports = BTreeMap<JobId, state::JobExecutionReport>;
-
-type Result<T, E = JobManagerError> = std::result::Result<T, E>;
+use tokio::sync::{Mutex, Notify, broadcast};
+use tokio_util::sync::CancellationToken;
 
 use super::*;
+
+pub type JobStates = BTreeMap<JobStateId, JobState>;
+pub type JobReports = BTreeMap<JobId, JobExecutionReport>;
+
+type Result<T, E = JobManagerError> = std::result::Result<T, E>;
 
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase", tag = "kind")]
@@ -75,7 +74,7 @@ impl JobManager {
             registry
                 .jobs()
                 .keys()
-                .map(|id| (id.clone(), state::JobExecutionReport::default()))
+                .map(|id| (id.clone(), JobExecutionReport::default()))
                 .collect(),
         ));
 
@@ -242,7 +241,7 @@ impl JobManager {
 
         let id = OffsetDateTime::now_utc().unix_timestamp();
         let (tx, rx) = mpsc::channel(256);
-        let state = state::JobState::new(job_id.clone());
+        let state = JobState::new(job_id.clone());
 
         self.queue
             .add_item(
@@ -314,7 +313,7 @@ impl JobManager {
         self.states.lock().await.clone()
     }
 
-    fn report<'r>(reports: &'r mut JobReports, job_id: &JobId) -> &'r mut state::JobExecutionReport {
+    fn report<'r>(reports: &'r mut JobReports, job_id: &JobId) -> &'r mut JobExecutionReport {
         reports
             .get_mut(job_id)
             .expect("Job not found, this shouldn't happen...")

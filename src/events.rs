@@ -51,14 +51,14 @@ impl From<FileOperationManagerEvent> for SseEvent {
 #[ts(export, export_to = "bindings.ts")]
 pub struct JobManagerEvent {
     #[serde(flatten)]
-    pub inner: super::state::JobManagerEvent,
+    pub inner: super::state::job::manager::JobManagerEvent,
     #[serde(with = "time::serde::rfc3339")]
     #[ts(type = "Date")]
     pub timestamp: OffsetDateTime,
 }
 
-impl From<super::state::JobManagerEvent> for JobManagerEvent {
-    fn from(event: super::state::JobManagerEvent) -> Self {
+impl From<super::state::job::manager::JobManagerEvent> for JobManagerEvent {
+    fn from(event: super::state::job::manager::JobManagerEvent) -> Self {
         Self {
             inner: event,
             timestamp: OffsetDateTime::now_utc(),

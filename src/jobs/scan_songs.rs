@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     db::{self, Song},
     metadata::{item::ItemKey, read_metadata_from_path},
-    state::registry::JobInfo,
+    state::job::JobInfo,
 };
 
 use super::*;

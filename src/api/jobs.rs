@@ -10,7 +10,11 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::state::{
-    registry::JobId, AppState, JobExecutionReport, JobManager, JobReports, JobStateId, JobStates
+    AppState, JobManager,
+    job::{
+        JobId, JobStateId,
+        manager::{JobReports, JobStates},
+    },
 };
 
 #[derive(Debug, Serialize, TS)]
@@ -31,23 +35,21 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn queue_job(
-    State(manager): State<Arc<JobManager>>,
+    State(manager): State<JobManager>,
     Path(id): Path<JobId>,
 ) -> Result<Json<JobStateId>> {
     Ok(Json(manager.queue(id, true, true).await?.id()))
 }
 
-async fn job_reports(
-    State(manager): State<Arc<JobManager>>,
-) -> Result<Json<JobReports>> {
+async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReports>> {
     Ok(Json(manager.reports().await))
 }
 
-async fn state(State(manager): State<Arc<JobManager>>) -> Result<Json<JobStates>> {
+async fn state(State(manager): State<JobManager>) -> Result<Json<JobStates>> {
     Ok(Json(manager.states().await))
 }
 
-async fn list_jobs(State(manager): State<Arc<JobManager>>) -> Result<Json<Vec<RegistryJob>>> {
+async fn list_jobs(State(manager): State<JobManager>) -> Result<Json<Vec<RegistryJob>>> {
     let jobs = manager
         .registry()
         .jobs()

@@ -6,7 +6,10 @@ use super::{
     Error,
     db::{DatabaseError, songs::DatabaseSongError},
     organize::OrganizeError,
-    state::{JobManagerError, OperationManagerError, registry::JobRegistryError},
+    state::{
+        OperationManagerError,
+        job::{JobRegistryError, manager::JobManagerError},
+    },
 };
 
 pub mod albums;
