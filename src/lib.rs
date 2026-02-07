@@ -162,7 +162,7 @@ pub enum Error {
     #[error("Organization error: {0}")]
     Organization(#[from] organize::OrganizeError),
     #[error("Job Manager error: {0}")]
-    JobManager(#[from] state::JobManagerError),
+    JobManager(#[from] state::job::manager::JobManagerError),
     #[error("File operation manager error: {0}")]
     FileOperationManager(#[from] state::OperationManagerError),
 }

@@ -10,7 +10,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::state::{
-    AppState, JobExecutionReport, JobManager, JobStateId, JobStates, registry::JobId,
+    registry::JobId, AppState, JobExecutionReport, JobManager, JobReports, JobStateId, JobStates
 };
 
 #[derive(Debug, Serialize, TS)]
@@ -24,17 +24,10 @@ pub struct RegistryJob {
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/api/jobs/{id}/queue", post(queue_job).get(queued_job_id))
-        .route("/api/jobs/{id}/report", get(job_report))
+        .route("/api/jobs/{id}/queue", post(queue_job))
         .route("/api/jobs/state", get(state))
+        .route("/api/jobs/reports", get(job_reports))
         .route("/api/jobs", get(list_jobs))
-}
-
-async fn queued_job_id(
-    State(app): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<JobStateId>> {
-    Ok(Json(app.job_manager.unique_job_state_id(&id).await?))
 }
 
 async fn queue_job(
@@ -44,11 +37,10 @@ async fn queue_job(
     Ok(Json(manager.queue(id, true, true).await?.id()))
 }
 
-async fn job_report(
+async fn job_reports(
     State(manager): State<Arc<JobManager>>,
-    Path(job_id): Path<JobId>,
-) -> Result<Json<JobExecutionReport>> {
-    Ok(Json(manager.job_report(&job_id).await?))
+) -> Result<Json<JobReports>> {
+    Ok(Json(manager.reports().await))
 }
 
 async fn state(State(manager): State<Arc<JobManager>>) -> Result<Json<JobStates>> {

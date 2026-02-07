@@ -8,18 +8,18 @@ use crate::state::registry::{Job, JobRegistry};
 use super::{config::Settings, jobs::ScanSongs};
 
 mod fs;
-mod job;
+pub mod job;
 
 pub use fs::*;
-pub use job::*;
 
+pub type JobManager = Arc<job::manager::JobManager>;
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
 pub type FileOperationManager = Arc<OperationManager>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
-    pub job_manager: Arc<JobManager>,
+    pub job_manager: JobManager,
     pub event_sender: Sender<Event>,
     pub file_operation_manager: FileOperationManager,
     pub db: Database,
@@ -73,7 +73,7 @@ fn setup_jobs(pool: &sqlx::Pool<sqlx::Sqlite>) -> JobRegistry {
     registry
 }
 
-impl FromRef<AppState> for Arc<JobManager> {
+impl FromRef<AppState> for JobManager {
     fn from_ref(state: &AppState) -> Self {
         state.job_manager.clone()
     }
