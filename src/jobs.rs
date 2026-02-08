@@ -30,5 +30,5 @@ pub enum JobEvent {
 
 #[async_trait]
 pub trait JobHandle: 'static + Send + Sync + Debug {
-    async fn execute(&self, cancel_token: CancellationToken, tx: &Sender) -> Result<()>;
+    async fn execute(&self, cancel_token: CancellationToken, tx: Sender) -> Result<()>;
 }

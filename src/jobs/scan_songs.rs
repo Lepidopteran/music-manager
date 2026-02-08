@@ -45,7 +45,7 @@ impl ScanSongs {
 
 #[async_trait]
 impl JobHandle for ScanSongs {
-    async fn execute(&self, token: CancellationToken, tx: &Sender) -> Result<()> {
+    async fn execute(&self, token: CancellationToken, tx: Sender) -> Result<()> {
         let directories =
             sqlx::query_as::<_, (String, String)>("SELECT path, name FROM directories")
                 .fetch_all(&self.db)

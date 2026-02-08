@@ -1,11 +1,11 @@
-import type { JobState, RegistryJob } from "@bindings/bindings";
+import type { JobState, JobStateResponse, RegistryJob } from "@bindings/bindings";
 import { fetchJson, fetchText } from "@lib/utils/api";
 
 export async function getJobs(): Promise<RegistryJob[]> {
 	return await fetchJson<RegistryJob[]>("/api/jobs");
 }
 
-export async function getJobStates(): Promise<JobState[]> {
+export async function getJobStates(): Promise<JobStateResponse> {
 	return await fetchJson("/api/jobs/state");
 }
 

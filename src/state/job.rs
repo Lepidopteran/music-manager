@@ -95,35 +95,6 @@ impl JobRegistry {
     }
 }
 
-#[derive(Debug)]
-pub struct JobHandler {
-    state_id: JobStateId,
-    job_id: JobId,
-    events: mpsc::Receiver<JobEvent>,
-}
-
-impl JobHandler {
-    pub fn new(id: JobStateId, job_id: JobId, events: mpsc::Receiver<JobEvent>) -> Self {
-        Self {
-            state_id: id,
-            job_id,
-            events,
-        }
-    }
-
-    pub fn id(&self) -> JobStateId {
-        self.state_id
-    }
-
-    pub fn job_id(&self) -> &JobId {
-        &self.job_id
-    }
-
-    pub fn events(&mut self) -> &mut mpsc::Receiver<JobEvent> {
-        &mut self.events
-    }
-}
-
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export, export_to = "bindings.ts")]
 #[serde(rename_all = "camelCase")]

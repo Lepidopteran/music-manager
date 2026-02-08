@@ -2,7 +2,7 @@
 
 export type FileOperationManagerEvent = { timestamp: Date, } & ({ "kind": "failed", source: bigint, error: string, } | { "kind": "started", source: bigint, } | { "kind": "completed", source: bigint, } | { "kind": "cancelled", source: bigint, } | { "kind": "moved", source: bigint, from: string, to: string, } | { "kind": "renamed", source: bigint, from: string, to: string, } | { "kind": "copied", source: bigint, from: string, to: string, } | { "kind": "deleted", source: bigint, path: string, } | { "kind": "progress", source: bigint, copied_bytes: bigint, total_bytes: bigint, file_index: number, file_count: number, });
 
-export type FileOperationState = { "kind": "move", paths: { [key in string]?: string }, status: FileOperationStatus, } | { "kind": "copy", paths: { [key in string]?: string }, status: FileOperationStatus, } | { "kind": "delete", paths: Array<string>, status: FileOperationStatus, };
+export type FileOperationState = { "kind": "move", paths: { [key in string]: string }, status: FileOperationStatus, } | { "kind": "copy", paths: { [key in string]: string }, status: FileOperationStatus, } | { "kind": "delete", paths: Array<string>, status: FileOperationStatus, };
 
 export type FileOperationStatus = "pending" | "inProgress";
 
@@ -10,10 +10,10 @@ export type JobExecutionReport = { startedAt: Date, completedAt: Date, cancelled
 
 export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: string, } | { "kind": "completed", source: string, report: JobExecutionReport, } | { "kind": "cancelled", source: string, } | { "kind": "warning", source: string, message: string, } | { "kind": "failed", source: string, message: string, } | { "kind": "stepCompleted", source: string, step: number, value: string | null, } | { "kind": "progress", source: string, current: bigint, total: bigint, step: number, });
 
-export type JobState = { jobId: string, status: JobStatus, currentStep: number, values: { [key in number]?: string }, };
+export type JobState = { jobId: string, status: JobStatus, currentStep: number, values: { [key in number]: string }, };
 
-export type JobStateResponse = { [key in string]?: JobState };
+export type JobStateResponse = { [key in string]: JobState };
 
 export type JobStatus = "pending" | "inProgress";
 
-export type RegistryJob = { id: string, name: string, description: string, steps: { [key in number]?: string }, };
+export type RegistryJob = { id: string, name: string, description: string, steps: { [key in number]: string }, };

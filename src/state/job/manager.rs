@@ -2,7 +2,7 @@ use std::{collections::VecDeque, sync::Arc};
 
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::{Mutex, Notify, broadcast};
+use tokio::sync::{Mutex, Notify, broadcast, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use super::*;
@@ -103,8 +103,11 @@ impl JobManager {
 
                     let manager_events = events_clone.clone();
                     let state = state_clone.clone();
+                    let job_token = cancel_token.child_token();
                     tokio::spawn(async move {
-                        while let Some(event) = rx.recv().await {
+                        while let Some(event) = rx.recv().await
+                            && !job_token.is_cancelled()
+                        {
                             let _ = job_events.send(event.clone()).await;
 
                             match event {
@@ -157,14 +160,40 @@ impl JobManager {
                                 }
                             }
                         }
+
+                        drop(job_events);
                     });
+
+                    let mut states = state_clone.lock().await;
+                    let state = states.get_mut(&state_id).unwrap();
+                    state.status = JobStatus::InProgress;
+
+                    drop(states);
 
                     send_event(
                         &events_clone,
                         &JobManagerEvent::Started { source: state_id },
                     )
                     .await;
-                    if let Err(err) = job.execute(cancel_token.clone(), &tx).await {
+
+                    let result = job.execute(cancel_token.child_token(), tx).await;
+
+                    if result.is_ok() && !cancel_token.is_cancelled() {
+                        let mut reports = reports_clone.lock().await;
+                        let report = Self::report(&mut reports, &report_id);
+                        report.completed_at.replace(OffsetDateTime::now_utc());
+                        report.completed_successfully = true;
+
+                        send_event(
+                            &events_clone,
+                            &JobManagerEvent::Completed {
+                                source: state_id,
+                                report: report.clone(),
+                            },
+                        )
+                        .await;
+
+                    } else if let Err(err) = result.as_ref() {
                         tracing::error!("Job failed: {err}");
                         let mut reports = reports_clone.lock().await;
                         let report = Self::report(&mut reports, &report_id);
@@ -179,9 +208,7 @@ impl JobManager {
                             },
                         )
                         .await;
-                    }
-
-                    if cancel_token.is_cancelled() {
+                    } else {
                         let mut reports = reports_clone.lock().await;
                         let report = Self::report(&mut reports, &report_id);
                         report.cancelled_at.replace(OffsetDateTime::now_utc());
@@ -190,20 +217,6 @@ impl JobManager {
                         send_event(
                             &events_clone,
                             &JobManagerEvent::Cancelled { source: state_id },
-                        )
-                        .await;
-                    } else {
-                        let mut reports = reports_clone.lock().await;
-                        let report = Self::report(&mut reports, &report_id);
-                        report.completed_at.replace(OffsetDateTime::now_utc());
-                        report.completed_successfully = true;
-
-                        send_event(
-                            &events_clone,
-                            &JobManagerEvent::Completed {
-                                source: state_id,
-                                report: report.clone(),
-                            },
                         )
                         .await;
                     }
@@ -246,13 +259,21 @@ impl JobManager {
         let id = JobStateId::new_v4();
         let (tx, rx) = mpsc::channel(256);
         let state = JobState::new(job_id.clone());
+        let cancel_token = state.token.child_token();
+
+        let mut states = self.states.lock().await;
+        states.insert(id, state);
+
+        tracing::debug!("States: {states:#?}");
+
+        drop(states);
 
         self.queue
             .add_item(
                 QueueItem {
                     unique,
+                    cancel_token,
                     state_id: id,
-                    cancel_token: state.token.clone(),
                     job_events: tx,
                     report_id: job_id.clone(),
                     job: self
@@ -266,8 +287,6 @@ impl JobManager {
             )
             .await;
 
-        self.states.lock().await.insert(id, state);
-
         tracing::debug!("Job queued: {job_id}");
 
         Ok(JobHandler {
@@ -279,6 +298,7 @@ impl JobManager {
 
     pub async fn cancel_job(&self, state_id: JobStateId) -> Result<()> {
         let mut states = self.states.lock().await;
+        tracing::debug!("Cancelling job: {state_id}, {states:#?}");
 
         if let Some(state) = states.get_mut(&state_id) {
             if state.status == JobStatus::InProgress {
@@ -326,6 +346,27 @@ impl JobManager {
 
 async fn send_event(tx: &broadcast::Sender<JobManagerEvent>, event: &JobManagerEvent) {
     let _ = tx.send(event.clone());
+}
+
+#[derive(Debug)]
+pub struct JobHandler {
+    state_id: JobStateId,
+    job_id: JobId,
+    events: mpsc::Receiver<JobEvent>,
+}
+
+impl JobHandler {
+    pub fn id(&self) -> JobStateId {
+        self.state_id
+    }
+
+    pub fn job_id(&self) -> &JobId {
+        &self.job_id
+    }
+
+    pub fn events(&mut self) -> &mut mpsc::Receiver<JobEvent> {
+        &mut self.events
+    }
 }
 
 #[derive(Debug)]
@@ -406,20 +447,24 @@ mod tests {
         async fn execute(
             &self,
             token: CancellationToken,
-            tx: &mpsc::Sender<JobEvent>,
+            tx: mpsc::Sender<JobEvent>,
         ) -> Result<()> {
             let mut index = 0;
-            while !token.is_cancelled() {
-                tokio::time::sleep(Duration::from_millis(100)).await;
 
-                index += 1;
-                tx.send(JobEvent::Progress {
-                    current: index,
-                    total: 0,
-                    step: 1,
-                })
-                .await
-                .unwrap();
+            loop {
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    _ = sleep(Duration::from_millis(100)) => {
+                        index += 1;
+                        tx.send(JobEvent::Progress {
+                            current: index,
+                            total: u64::MAX,
+                            step: 1,
+                        })
+                        .await
+                        .expect("Failed to send event");
+                    }
+                }
             }
 
             Ok(())
@@ -466,22 +511,32 @@ mod tests {
     }
 
     #[test(tokio::test)]
-    async fn test_cancelling_adding_duplicate_jobs() -> Result<()> {
+    async fn test_cancelling_jobs() -> Result<()> {
         let manager = JobManager::new(registry());
         let mut job = manager.queue("test", true, true).await?;
         let id = job.state_id;
         log::debug!("{job:#?}");
 
+        let mut manager_events = manager.events();
+        tokio::spawn(async move {
+            while let Ok(event) = manager_events.recv().await {
+                tracing::info!("Job Managaer Event: {event:?}");
+            }
+        });
+
         let job_events = tokio::spawn(async move {
             while let Some(event) = job.events().recv().await {
-                tracing::info!("Event: {event:?}");
+                tracing::info!("Job Event: {event:?}");
             }
         });
 
         sleep(Duration::from_secs(1)).await;
 
-        tracing::debug!("{id}\n{manager:#?}");
+        tracing::debug!("Attempting to cancel \"{id}\"");
         manager.cancel_job(id).await?;
+
+        tracing::debug!("Cancelled \"{id}\"");
+
         job_events.await?;
 
         Ok(())
