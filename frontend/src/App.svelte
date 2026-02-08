@@ -2,9 +2,9 @@
 	import Button from "@components/Button.svelte";
 	import Directories from "@pages/Directories.svelte";
 	import Albums from "@pages/Albums.svelte";
-	import Tasks from "@pages/admin/Tasks.svelte";
 	import Logo from "./components/Logo.svelte";
 	import Icon from "@components/Icon.svelte";
+	import Jobs from "@pages/admin/Jobs.svelte";
 
 	import { PaneGroup, Pane, PaneResizer } from "paneforge";
 
@@ -38,10 +38,10 @@
 			component: Directories,
 		},
 		{
-			path: "/tasks",
-			name: "Tasks",
+			path: "/jobs",
+			name: "Jobs",
 			icon: "play-fill",
-			component: Tasks,
+			component: Jobs,
 		},
 	];
 
@@ -147,7 +147,7 @@
 			<PaneResizer disabled={!editorEnabled}>
 				<div
 					class={[
-						"size-full absolute z-[1] left-0 top-0",
+						"size-full absolute z-1 left-0 top-0",
 						onMobile.current ? "pb-32" : "p-3",
 						!editorEnabled && "pointer-events-none",
 						editorPane?.isCollapsed()
@@ -158,7 +158,7 @@
 					]}
 				></div>
 				<div
-					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-[1] -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${editorPane?.isCollapsed() ? "opacity-0" : ""}`}
+					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${editorPane?.isCollapsed() ? "opacity-0" : ""}`}
 				>
 					<Icon
 						name="up-line"

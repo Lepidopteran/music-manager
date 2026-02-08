@@ -44,14 +44,17 @@ thiserror = "2.0.8"
 scraper = "0.23.1"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tower = "0.5.2"
-ts-rs = "11.0.1"
+ts-rs = { version = "12.0.0", features = ["uuid-impl"] }
 sanitize-filename = { git = "https://github.com/kardeiz/sanitize-filename.git", rev = "a2808090c9c2a962e64d8ddc503b18981e8d6c57" }
+async-trait = "0.1.89"
+tokio-util = "0.7.18"
+ignore = "0.4.25"
 
 [dependencies.uuid]
 version = "1.17.0"
-# Lets you generate random UUIDs
 features = [
-    "v4",
+	"v4",
+	"serde"
 ]
 
 [dev-dependencies]

@@ -6,8 +6,10 @@ use super::{
     Error,
     db::{DatabaseError, songs::DatabaseSongError},
     organize::OrganizeError,
-    state::OperationManagerError,
-    tasks::RegistryError,
+    state::{
+        OperationManagerError,
+        job::{JobRegistryError, manager::JobManagerError},
+    },
 };
 
 pub mod albums;
@@ -15,9 +17,9 @@ pub mod cover_art;
 pub mod directories;
 pub mod fs;
 pub mod info;
+pub mod jobs;
 pub mod organize;
 pub mod songs;
-pub mod tasks;
 pub mod ui;
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
@@ -52,7 +54,7 @@ impl IntoResponse for Error {
             Self::Io(err) => internal_error(err).into_response(),
             Self::Metadata(err) => internal_error(err).into_response(),
             Self::Organization(err) => err.into_response(),
-            Self::TaskRegistry(err) => err.into_response(),
+            Self::JobManager(err) => err.into_response(),
             Self::FileOperationManager(err) => err.into_response(),
         }
     }
@@ -72,12 +74,17 @@ impl IntoResponse for OrganizeError {
     }
 }
 
-impl IntoResponse for RegistryError {
+impl IntoResponse for JobManagerError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            RegistryError::NotFound => not_found(self).into_response(),
-            RegistryError::StateError(err) => bad_request(err).into_response(),
-            _ => internal_error(self).into_response(),
+            JobManagerError::Registry(err) => match err {
+                JobRegistryError::NotFound => not_found(err).into_response(),
+                JobRegistryError::AlreadyExists => conflict(err).into_response(),
+            },
+            JobManagerError::AlreadyQueued => conflict(self).into_response(),
+            JobManagerError::StateNotFound | JobManagerError::ReportNotFound => {
+                not_found(self).into_response()
+            }
         }
     }
 }
