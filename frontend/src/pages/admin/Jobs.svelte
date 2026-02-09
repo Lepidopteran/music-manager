@@ -8,71 +8,46 @@
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import type { PageComponentProps } from "@lib/state/app.svelte";
-	import type {
-		RegistryJob,
-		JobManagerEvent,
-		JobState,
-	} from "@bindings/bindings";
+	import type { RegistryJob, JobState } from "@bindings/bindings";
 	import { getJobs, getJobStates, queueJob } from "@api/jobs";
 	import { match, P } from "ts-pattern";
 	import { SvelteMap } from "svelte/reactivity";
 
 	interface JobUiState extends JobState {
-		current: bigint;
-		total: bigint;
+		current?: bigint;
+		total?: bigint;
 	}
 
 	let jobs: Array<RegistryJob> = $state([]);
 	let jobStates: SvelteMap<string, JobUiState> = $state(new SvelteMap());
 
 	addSourceEventListener(eventSource, "job-event", (event) => {
-		const previousState = jobStates.get(event.source);
-		if (previousState && previousState?.status !== "inProgress") {
-			jobStates.set(event.source, {
-				...previousState,
-				status: "inProgress",
-			});
-		}
-
 		match(event)
-			.with(
-				P.union(
-					{ kind: "completed" },
-					{ kind: "failed" },
-					{ kind: "cancelled" },
-				),
-				(e) => {
-					if (!jobStates.has(e.source)) {
-						return;
-					}
-
-					jobStates.delete(e.source);
-				},
-			)
-			.with({ kind: "progress" }, (e) => {
+			.with({ kind: "stateAdded" }, (e) => {
+				jobStates.set(e.source, e.state as JobUiState);
+			})
+			.with({ kind: "stateUpdated" }, (e) => {
+				const previousState = jobStates.get(e.source);
 				if (!previousState) {
 					return;
 				}
 
 				jobStates.set(e.source, {
 					...previousState,
-					currentStep: e.step,
-					current: e.current,
-					total: e.total,
+					...e.state,
 				});
 			})
-			.with({ kind: "stepCompleted" }, (e) => {
+			.with({ kind: "stateRemoved" }, (e) => jobStates.delete(e.source))
+			.with({ kind: "progress" }, (e) => {
+				const previousState = jobStates.get(e.source);
 				if (!previousState) {
 					return;
 				}
 
-				const values = e.value
-					? { ...previousState.values, [e.step]: e.value }
-					: previousState.values;
-
 				jobStates.set(e.source, {
 					...previousState,
-					values,
+					current: e.current,
+					total: e.total,
 				});
 			})
 			.otherwise(() => {});
@@ -80,6 +55,9 @@
 
 	onMount(async () => {
 		jobs = await getJobs();
+
+		const states = Object.entries(await getJobStates());
+		jobStates = new SvelteMap(states) as SvelteMap<string, JobUiState>;
 	});
 
 	let props: PageComponentProps = $props();
