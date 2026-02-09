@@ -1,8 +1,11 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+};
 
 use serde::Serialize;
 use time::OffsetDateTime;
-use tokio::sync::{Mutex, Notify, broadcast, oneshot};
+use tokio::sync::{Mutex, MutexGuard, Notify, broadcast};
 use tokio_util::sync::CancellationToken;
 
 use super::*;
@@ -43,6 +46,22 @@ pub enum JobManagerEvent {
         current: u64,
         total: u64,
         step: u8,
+    },
+    StateAdded {
+        source: JobStateId,
+        #[serde(flatten)]
+        state: JobState,
+    },
+    StateUpdated {
+        source: JobStateId,
+        #[serde(flatten)]
+        state: JobState,
+    },
+    StateRemoved {
+        source: JobStateId,
+    },
+    OrderUpdated {
+        queue: Vec<JobStateId>,
     },
 }
 
@@ -88,19 +107,34 @@ impl JobManager {
 
         tokio::spawn(async move {
             loop {
-                if let Some(QueueItem {
-                    job,
+                if let Some((
                     state_id,
-                    report_id,
-                    cancel_token,
-                    job_events,
-                    ..
-                }) = {
-                    let mut queued = queued.list.lock().await;
-                    queued.pop_front()
+                    QueueItem {
+                        job,
+                        report_id,
+                        cancel_token,
+                        job_events,
+                        ..
+                    },
+                )) = {
+                    let mut order = queued.order.lock().await;
+                    let mut queued = queued.items.lock().await;
+
+                    let entry = order.pop_front().and_then(|id| queued.remove_entry(&id));
+                    drop(queued);
+
+                    let new_order = order.clone();
+                    drop(order);
+
+                    events_clone
+                        .send(JobManagerEvent::OrderUpdated {
+                            queue: new_order.into(),
+                        })
+                        .expect("Couldn't send event");
+
+                    entry
                 } {
                     let (tx, mut rx) = mpsc::channel::<JobEvent>(256);
-
                     let manager_events = events_clone.clone();
                     let state = state_clone.clone();
                     let job_token = cancel_token.child_token();
@@ -134,6 +168,15 @@ impl JobManager {
                                         state
                                             .values
                                             .insert(step, value.clone().unwrap_or_default());
+
+                                        send_event(
+                                            &manager_events,
+                                            &JobManagerEvent::StateUpdated {
+                                                source: state_id,
+                                                state: state.clone(),
+                                            },
+                                        )
+                                        .await;
                                     }
 
                                     drop(state);
@@ -192,7 +235,6 @@ impl JobManager {
                             },
                         )
                         .await;
-
                     } else if let Err(err) = result.as_ref() {
                         tracing::error!("Job failed: {err}");
                         let mut reports = reports_clone.lock().await;
@@ -221,7 +263,7 @@ impl JobManager {
                         .await;
                     }
 
-                    state_clone.lock().await.remove(&state_id);
+                    Self::remove_state(state_clone.lock().await, &events_clone, state_id).await;
                 } else {
                     queued.notify.notified().await;
                 }
@@ -248,8 +290,11 @@ impl JobManager {
         if unique
             && self
                 .queue
-                .any(|item| item.unique && item.report_id == job_id)
+                .items
+                .lock()
                 .await
+                .values()
+                .any(|item| item.unique && item.report_id == job_id)
         {
             return Err(JobManagerError::AlreadyQueued);
         }
@@ -261,19 +306,14 @@ impl JobManager {
         let state = JobState::new(job_id.clone());
         let cancel_token = state.token.child_token();
 
-        let mut states = self.states.lock().await;
-        states.insert(id, state);
-
-        tracing::debug!("States: {states:#?}");
-
-        drop(states);
+        Self::add_state(self.states.lock().await, &self.events, id, state).await;
 
         self.queue
             .add_item(
+                id,
                 QueueItem {
                     unique,
                     cancel_token,
-                    state_id: id,
                     job_events: tx,
                     report_id: job_id.clone(),
                     job: self
@@ -286,6 +326,14 @@ impl JobManager {
                 high_priority,
             )
             .await;
+
+        send_event(
+            &self.events,
+            &JobManagerEvent::OrderUpdated {
+                queue: self.queue.order.lock().await.clone().into(),
+            },
+        )
+        .await;
 
         tracing::debug!("Job queued: {job_id}");
 
@@ -311,7 +359,7 @@ impl JobManager {
 
                 Ok(())
             } else {
-                states.remove(&state_id);
+                Self::remove_state(states, &self.events, state_id).await;
                 self.queue.remove_item(state_id, false).await;
 
                 Ok(())
@@ -335,6 +383,27 @@ impl JobManager {
 
     pub async fn states(&self) -> JobStates {
         self.states.lock().await.clone()
+    }
+
+    async fn add_state<'l>(
+        mut states: MutexGuard<'l, JobStates>,
+        events: &broadcast::Sender<JobManagerEvent>,
+        id: JobStateId,
+        state: JobState,
+    ) {
+        states.insert(id, state.clone());
+        drop(states);
+
+        send_event(events, &JobManagerEvent::StateAdded { source: id, state }).await;
+    }
+
+    async fn remove_state<'l>(
+        mut states: MutexGuard<'l, JobStates>,
+        events: &broadcast::Sender<JobManagerEvent>,
+        id: JobStateId,
+    ) {
+        states.remove(&id);
+        send_event(events, &JobManagerEvent::StateRemoved { source: id }).await;
     }
 
     fn report<'r>(reports: &'r mut JobReports, job_id: &JobId) -> &'r mut JobExecutionReport {
@@ -373,7 +442,6 @@ impl JobHandler {
 struct QueueItem {
     job: Arc<dyn JobHandle>,
     report_id: JobId,
-    state_id: JobStateId,
     cancel_token: CancellationToken,
     job_events: mpsc::Sender<JobEvent>,
     unique: bool,
@@ -381,36 +449,34 @@ struct QueueItem {
 
 #[derive(Debug)]
 struct Queue {
-    list: Mutex<VecDeque<QueueItem>>,
+    order: Mutex<VecDeque<JobStateId>>,
+    items: Mutex<HashMap<JobStateId, QueueItem>>,
     notify: Notify,
 }
 
 impl Queue {
     pub fn new() -> Self {
         Self {
-            list: Mutex::new(VecDeque::new()),
+            items: Mutex::new(HashMap::new()),
+            order: Mutex::new(VecDeque::new()),
             notify: Notify::new(),
         }
     }
 
-    /// Returns true if any item in the queue matches the predicate
-    async fn any<F: Fn(&QueueItem) -> bool>(&self, predicate: F) -> bool {
-        tracing::debug!("Locking Queue");
-        let list = self.list.lock().await;
-        list.iter().any(predicate)
-    }
-
     /// Adds an item to the queue
-    async fn add_item(&self, item: QueueItem, high_priority: bool) {
+    async fn add_item(&self, id: JobStateId, item: QueueItem, high_priority: bool) {
         tracing::debug!("Locking Queue");
-        let mut list = self.list.lock().await;
+        let mut queue = self.items.lock().await;
+        queue.insert(id, item);
+        drop(queue);
 
+        let mut order = self.order.lock().await;
         if high_priority {
-            list.push_front(item);
-            drop(list);
+            order.push_front(id);
+            drop(order);
         } else {
-            list.push_back(item);
-            drop(list);
+            order.push_back(id);
+            drop(order);
         }
 
         self.notify.notify_waiters();
@@ -418,9 +484,14 @@ impl Queue {
 
     /// Removes an item from the queue
     async fn remove_item(&self, state_id: JobStateId, notify: bool) {
-        let mut list = self.list.lock().await;
-        list.retain(|item| item.state_id != state_id);
-        drop(list);
+        let mut order = self.order.lock().await;
+        let mut queue = self.items.lock().await;
+
+        order.retain(|id| *id != state_id);
+        queue.remove(&state_id);
+
+        drop(queue);
+        drop(order);
 
         if notify {
             self.notify.notify_waiters();
