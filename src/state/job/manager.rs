@@ -49,12 +49,10 @@ pub enum JobManagerEvent {
     },
     StateAdded {
         source: JobStateId,
-        #[serde(flatten)]
         state: JobState,
     },
     StateUpdated {
         source: JobStateId,
-        #[serde(flatten)]
         state: JobState,
     },
     StateRemoved {
