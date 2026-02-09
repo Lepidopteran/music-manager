@@ -123,14 +123,16 @@ impl JobManager {
                     let entry = order.pop_front().and_then(|id| queued.remove_entry(&id));
                     drop(queued);
 
-                    let new_order = order.clone();
-                    drop(order);
+                    if entry.is_some() {
+                        let new_order = order.clone();
+                        drop(order);
 
-                    events_clone
-                        .send(JobManagerEvent::OrderUpdated {
-                            queue: new_order.into(),
-                        })
-                        .expect("Couldn't send event");
+                        events_clone
+                            .send(JobManagerEvent::OrderUpdated {
+                                queue: new_order.into(),
+                            })
+                            .expect("Couldn't send event");
+                    }
 
                     entry
                 } {
