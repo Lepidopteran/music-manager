@@ -16,14 +16,17 @@ pub type JobReports = BTreeMap<JobId, JobExecutionReport>;
 type Result<T, E = JobManagerError> = std::result::Result<T, E>;
 
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[serde(rename_all = "camelCase", tag = "kind")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "kind"
+)]
 pub enum JobManagerEvent {
     Started {
         source: JobStateId,
     },
     Completed {
         source: JobStateId,
-        report: JobExecutionReport,
     },
     Cancelled {
         source: JobStateId,
@@ -60,6 +63,10 @@ pub enum JobManagerEvent {
     },
     OrderUpdated {
         queue: Vec<JobStateId>,
+    },
+    ReportUpdated {
+        job_id: JobId,
+        report: JobExecutionReport,
     },
 }
 
@@ -221,24 +228,20 @@ impl JobManager {
 
                     let result = job.execute(cancel_token.child_token(), tx).await;
 
+                    let mut reports = reports_clone.lock().await;
+                    let report = Self::report(&mut reports, &report_id);
                     if result.is_ok() && !cancel_token.is_cancelled() {
-                        let mut reports = reports_clone.lock().await;
-                        let report = Self::report(&mut reports, &report_id);
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = true;
 
                         send_event(
                             &events_clone,
-                            &JobManagerEvent::Completed {
-                                source: state_id,
-                                report: report.clone(),
-                            },
+                            &JobManagerEvent::Completed { source: state_id },
                         )
                         .await;
                     } else if let Err(err) = result.as_ref() {
                         tracing::error!("Job failed: {err}");
-                        let mut reports = reports_clone.lock().await;
-                        let report = Self::report(&mut reports, &report_id);
+
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
@@ -262,6 +265,17 @@ impl JobManager {
                         )
                         .await;
                     }
+
+                    send_event(
+                        &events_clone,
+                        &JobManagerEvent::ReportUpdated {
+                            job_id: report_id,
+                            report: report.clone(),
+                        },
+                    )
+                    .await;
+
+                    drop(reports);
 
                     Self::remove_state(state_clone.lock().await, &events_clone, state_id).await;
                 } else {

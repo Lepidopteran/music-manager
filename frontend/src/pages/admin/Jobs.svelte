@@ -107,16 +107,30 @@
 						<div>
 							<Button
 								variant="primary"
-								disabled={state?.status === "pending"}
 								onclick={async () => {
-									const state = await queueJob(job.id);
-									jobStates.set(state[0], state[1] as JobUiState);
+									if (
+										state?.status === "inProgress" ||
+										state?.status === "pending"
+									) {
+										await cancelJob(key!);
+										return;
+									}
+
+									const id = await queueJob(job.id);
+
+									jobQueue = [...jobQueue, id];
+									jobStates.set(id, {
+										jobId: job.id,
+										status: "pending",
+										currentStep: 1,
+										values: {},
+									});
 								}}
 							>
 								{#if state?.status === "inProgress"}
 									<Icon name="square-fill" />
 								{:else if state?.status === "pending"}
-									<Icon name="stopwatch-fill" />
+									<Icon name="close-fill" />
 								{:else}
 									<Icon name="play-fill" />
 								{/if}
