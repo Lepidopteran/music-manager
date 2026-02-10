@@ -346,24 +346,22 @@ impl JobManager {
 
     pub async fn cancel_job(&self, state_id: JobStateId) -> Result<()> {
         let mut states = self.states.lock().await;
-        tracing::debug!("Cancelling job: {state_id}, {states:#?}");
-
         if let Some(state) = states.get_mut(&state_id) {
             if state.status == JobStatus::InProgress {
-                let mut reports = self.reports.lock().await;
                 state.token.cancel();
 
+                tracing::debug!("Stopped job: {state_id}");
+
+                let mut reports = self.reports.lock().await;
                 let report = Self::report(&mut reports, &state.job_id);
                 report.cancelled_at.replace(OffsetDateTime::now_utc());
                 report.completed_successfully = false;
-
-                Ok(())
             } else {
                 Self::remove_state(states, &self.events, state_id).await;
                 self.queue.remove_item(state_id, false).await;
-
-                Ok(())
             }
+
+            Ok(())
         } else {
             Err(JobManagerError::StateNotFound)
         }
