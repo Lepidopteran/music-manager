@@ -8,8 +8,19 @@
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import type { PageComponentProps } from "@lib/state/app.svelte";
-	import type { RegistryJob, JobState } from "@bindings/bindings";
-	import { getJobs, getJobStates, queueJob } from "@api/jobs";
+	import type {
+		RegistryJob,
+		JobState,
+		JobExecutionReport,
+	} from "@bindings/bindings";
+	import {
+		getJobs,
+		getJobStates,
+		queueJob,
+		cancelJob,
+		getJobQueueOrder,
+		getJobReports,
+	} from "@api/jobs";
 	import { match, P } from "ts-pattern";
 	import { SvelteMap } from "svelte/reactivity";
 
@@ -20,12 +31,16 @@
 
 	let jobs: Array<RegistryJob> = $state([]);
 	let jobStates: SvelteMap<string, JobUiState> = $state(new SvelteMap());
+	let jobQueue: Array<string> = $state([]);
+	let jobReports: SvelteMap<string, JobExecutionReport> = $state(
+		new SvelteMap(),
+	);
 
 	addSourceEventListener(eventSource, "job-event", (event) => {
 		match(event)
-			.with({ kind: "stateAdded" }, (e) => {
-				jobStates.set(e.source, e.state as JobUiState);
-			})
+			.with({ kind: "stateAdded" }, (e) =>
+				jobStates.set(e.source, e.state as JobUiState),
+			)
 			.with({ kind: "stateUpdated" }, (e) => {
 				const previousState = jobStates.get(e.source);
 				if (!previousState) {
@@ -37,7 +52,9 @@
 					...e.state,
 				});
 			})
+			.with({ kind: "reportUpdated" }, (e) => jobReports.set(e.jobId, e.report))
 			.with({ kind: "stateRemoved" }, (e) => jobStates.delete(e.source))
+			.with({ kind: "orderUpdated" }, (e) => (jobQueue = e.queue))
 			.with({ kind: "progress" }, (e) => {
 				const previousState = jobStates.get(e.source);
 				if (!previousState) {
@@ -56,23 +73,26 @@
 	onMount(async () => {
 		jobs = await getJobs();
 
-		const states = Object.entries(await getJobStates());
-		jobStates = new SvelteMap(states) as SvelteMap<string, JobUiState>;
+		jobStates = new SvelteMap(
+			Object.entries(await getJobStates()),
+		) as SvelteMap<string, JobUiState>;
+
+		jobQueue = await getJobQueueOrder();
+		jobReports = new SvelteMap(Object.entries(await getJobReports()));
 	});
 
 	let props: PageComponentProps = $props();
 </script>
 
-<div>
+<div class="p-4 max-w-4xl">
 	<ul class="space-y-2">
 		{#each jobs as job}
-			{@const state = jobStates
-				.values()
-				.find((state) => state.jobId === job.id)}
+			{@const [key, state] =
+				jobStates.entries().find(([_, state]) => state.jobId === job.id) ?? []}
 			<li>
 				<div
 					data-id={job.id}
-					class={`bg-base-100 max-w-4xl mx-auto overflow-hidden rounded-theme shadow-md`}
+					class={["bg-base-100 overflow-hidden rounded-theme shadow-md"]}
 				>
 					<div class="flex divide-x-2 divide-base-text/25 w-full">
 						{#each Object.entries(job.steps) as [step, description]}
@@ -99,10 +119,10 @@
 							/>
 						{/each}
 					</div>
-					<div class="flex justify-between items-center pr-4">
+					<div class="flex justify-between items-center pl-2 pr-3">
 						<div>
-							<p class="font-bold text-lg pt-2 pl-2">{job.name}</p>
-							<p class="pl-2">{job.description}</p>
+							<p class="font-bold text-lg">{job.name}</p>
+							<p>{job.description}</p>
 						</div>
 						<div>
 							<Button
