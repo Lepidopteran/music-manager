@@ -156,14 +156,19 @@ impl JobHandle for ScanSongs {
 
         let existing_song_count = existing_songs.len();
         let comparison_tx = tx.clone();
+        let child_token = token.child_token();
         let comparison_tasks = existing_songs
             .into_iter()
             .filter(|song| !non_existing_song_ids.contains(&song.id))
             .enumerate()
             .map(move |(index, song)| {
                 let tx = comparison_tx.clone();
-                let tx_clone = tx.clone();
+                let child_token_clone = child_token.clone();
                 spawn_blocking(move || {
+                    if child_token_clone.is_cancelled() {
+                        return None;
+                    }
+
                     let _ = tx.blocking_send(JobEvent::Progress {
                         current: index as u64,
                         total: existing_song_count as u64,
@@ -174,7 +179,7 @@ impl JobHandle for ScanSongs {
                     let metadata = match read_metadata_from_path(&path) {
                         Ok(song) => Some(song),
                         Err(err) => {
-                            let _ = tx_clone.blocking_send(JobEvent::Warning {
+                            let _ = tx.blocking_send(JobEvent::Warning {
                                 message: format!("Failed to read metadata for song: {err}"),
                             });
                             None
