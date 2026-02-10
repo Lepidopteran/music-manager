@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { getTasks, startTask, stopTask } from "@api/tasks";
-	import Event from "@components/Event.svelte";
 	import Progress from "@components/Progress.svelte";
 	import { eventSource } from "@lib/state/server-events.svelte";
 	import { addSourceEventListener } from "@lib/utils/api";
