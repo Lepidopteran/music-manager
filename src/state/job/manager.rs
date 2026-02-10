@@ -254,8 +254,6 @@ impl JobManager {
                         )
                         .await;
                     } else {
-                        let mut reports = reports_clone.lock().await;
-                        let report = Self::report(&mut reports, &report_id);
                         report.cancelled_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
