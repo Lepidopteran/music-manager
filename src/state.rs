@@ -1,27 +1,25 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
-use super::{
-    events::TaskEvent,
-    tasks::{self, Registry, RegistryError},
-};
+use crate::state::job::{Job, JobRegistry};
 
-use crate::config::Settings;
+use super::{config::Settings, jobs::ScanSongs};
 
 mod fs;
+pub mod job;
 
 pub use fs::*;
 
+pub type JobManager = Arc<job::manager::JobManager>;
 pub type Database = sqlx::Pool<sqlx::Sqlite>;
-pub type TaskRegistry = Arc<Mutex<Registry>>;
 pub type FileOperationManager = Arc<OperationManager>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub settings: Settings,
-    pub tasks: TaskRegistry,
+    pub job_manager: JobManager,
     pub event_sender: Sender<Event>,
     pub file_operation_manager: FileOperationManager,
     pub db: Database,
@@ -30,68 +28,60 @@ pub struct AppState {
 impl AppState {
     pub fn new(db: Database, settings: Settings) -> Self {
         let (tx, _) = tokio::sync::broadcast::channel(1024);
-        let tasks = setup_tasks(db.clone(), tx.clone());
-        let file_operation_manager = OperationManager::new();
 
+        let file_operation_manager = OperationManager::new();
         let mut rx = file_operation_manager.events();
 
         let tx_clone = tx.clone();
         tokio::spawn(async move {
             while let Ok(item) = rx.recv().await {
-                let _ = tx_clone.send(Event::from(super::events::FileOperationManagerEvent::from(item)));
+                let _ = tx_clone.send(Event::from(super::events::FileOperationManagerEvent::from(
+                    item,
+                )));
+            }
+        });
+
+        let job_manager = job::manager::JobManager::new(setup_jobs(&db));
+        let mut rx = job_manager.events();
+        let tx_clone = tx.clone();
+        tokio::spawn(async move {
+            while let Ok(item) = rx.recv().await {
+                let _ = tx_clone.send(Event::from(super::events::JobManagerEvent::from(item)));
             }
         });
 
         Self {
             db,
-            tasks,
             settings,
             event_sender: tx,
+            job_manager: Arc::new(job_manager),
             file_operation_manager: Arc::new(file_operation_manager),
         }
     }
 }
 
-/// Set up the tasks that can run in the background
-fn setup_tasks(pool: sqlx::Pool<sqlx::Sqlite>, tx: Sender<Event>) -> Arc<Mutex<Registry>> {
-    let mut registry = Registry::default();
+fn setup_jobs(pool: &sqlx::Pool<sqlx::Sqlite>) -> JobRegistry {
+    let mut registry = JobRegistry::default();
 
-    let scan_songs_pool = pool.clone();
+    registry
+        .register_job(
+            "scan-songs",
+            Job::new(ScanSongs::job_info(), ScanSongs::new(pool.clone())),
+        )
+        .expect("Failed to register job");
 
-    if let Err(RegistryError::AlreadyExists) =
-        registry.register(move || Box::new(tasks::ScanSongs::new(scan_songs_pool.clone())))
-    {
-        tracing::warn!("Task already registered");
+    registry
+}
+
+impl FromRef<AppState> for JobManager {
+    fn from_ref(state: &AppState) -> Self {
+        state.job_manager.clone()
     }
-
-    for (name, channel) in registry.event_channels() {
-        let sender = tx.clone();
-        tokio::spawn(async move {
-            let mut channel = channel;
-
-            loop {
-                let event = channel.borrow_and_update().clone();
-                let _ = sender.send(TaskEvent::new(&name, event).into());
-
-                if channel.changed().await.is_err() {
-                    break;
-                }
-            }
-        });
-    }
-
-    Arc::new(Mutex::new(registry))
 }
 
 impl FromRef<AppState> for Sender<Event> {
     fn from_ref(state: &AppState) -> Self {
         state.event_sender.clone()
-    }
-}
-
-impl FromRef<AppState> for TaskRegistry {
-    fn from_ref(state: &AppState) -> Self {
-        state.tasks.clone()
     }
 }
 

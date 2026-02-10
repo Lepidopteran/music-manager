@@ -10,7 +10,7 @@
 	{max}
 	{value}
 	{...rest}
-	class={`h-2 rounded-theme-sm bg-base-400 overflow-hidden ${rest.class}`}
+	class={["h-2 rounded-theme-sm bg-base-400 overflow-hidden", rest.class || ""]}
 >
 	{(Number(value) * 100) / Number(max)}%
 </progress>
