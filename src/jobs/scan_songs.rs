@@ -4,6 +4,7 @@ use std::{
 };
 
 use color_eyre::eyre::Result;
+use futures::{StreamExt, stream};
 use sqlx::query_as;
 use time::OffsetDateTime;
 use tokio::task::spawn_blocking;
@@ -209,12 +210,16 @@ impl JobHandle for ScanSongs {
                 })
             });
 
-        let updated_songs = futures::future::join_all(comparison_tasks)
-            .await
-            .into_iter()
-            .filter_map(Result::ok)
-            .flatten()
-            .collect::<Vec<(_, _)>>();
+        let updated_songs = stream::iter(comparison_tasks)
+            .buffer_unordered(16)
+            .filter_map(|res| async move { res.ok() })
+            .flat_map(stream::iter)
+            .collect::<Vec<(_, _)>>()
+            .await;
+
+        if token.is_cancelled() {
+            return Ok(());
+        }
 
         if !updated_songs.is_empty() {
             tracing::info!("Found {} updated song(s)...", updated_songs.len());
