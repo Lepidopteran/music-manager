@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap};
 
 use axum::{
     Json, Router,
     extract::{Path, State},
-    response::{IntoResponse, Result},
+    response::{Result},
     routing::{get, post},
 };
 use serde::Serialize;
@@ -36,6 +36,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/jobs/state", get(state))
         .route("/api/jobs/state/{id}/cancel", post(cancel_job))
         .route("/api/jobs/reports", get(job_reports))
+        .route("/api/jobs/order", get(job_order))
         .route("/api/jobs", get(list_jobs))
 }
 
@@ -44,6 +45,10 @@ async fn queue_job(
     Path(id): Path<JobId>,
 ) -> Result<Json<JobStateId>> {
     Ok(Json(manager.queue(id, true, true).await?.id()))
+}
+
+async fn job_order(State(manager): State<JobManager>) -> Result<Json<Vec<JobStateId>>> {
+    Ok(Json(manager.queue_order().await))
 }
 
 async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReports>> {

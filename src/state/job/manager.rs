@@ -381,6 +381,10 @@ impl JobManager {
         self.reports.lock().await.clone()
     }
 
+    pub async fn queue_order(&self) -> Vec<JobStateId> {
+        self.queue.order.lock().await.clone().into()
+    }
+
     pub async fn states(&self) -> JobStates {
         self.states.lock().await.clone()
     }
