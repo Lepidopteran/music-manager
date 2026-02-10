@@ -10,6 +10,8 @@ export type JobExecutionReport = { startedAt: Date, completedAt: Date, cancelled
 
 export type JobManagerEvent = { timestamp: Date, } & ({ "kind": "started", source: string, } | { "kind": "completed", source: string, report: JobExecutionReport, } | { "kind": "cancelled", source: string, } | { "kind": "warning", source: string, message: string, } | { "kind": "failed", source: string, message: string, } | { "kind": "stepCompleted", source: string, step: number, value: string | null, } | { "kind": "progress", source: string, current: bigint, total: bigint, step: number, } | { "kind": "stateAdded", source: string, state: JobState, } | { "kind": "stateUpdated", source: string, state: JobState, } | { "kind": "stateRemoved", source: string, } | { "kind": "orderUpdated", queue: Array<string>, });
 
+export type JobReportsResponse = { [key in string]: JobExecutionReport };
+
 export type JobState = { jobId: string, status: JobStatus, currentStep: number, values: { [key in number]: string }, };
 
 export type JobStateResponse = { [key in string]: JobState };

@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap};
+use std::collections::BTreeMap;
 
 use axum::{
     Json, Router,
     extract::{Path, State},
-    response::{Result},
+    response::Result,
     routing::{get, post},
 };
 use serde::Serialize;
@@ -30,6 +30,10 @@ pub struct RegistryJob {
 #[ts(export, export_to = "bindings.ts")]
 pub struct JobStateResponse(JobStates);
 
+#[derive(Debug, Serialize, TS)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct JobReportsResponse(JobReports);
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/jobs/{id}/queue", post(queue_job))
@@ -51,8 +55,8 @@ async fn job_order(State(manager): State<JobManager>) -> Result<Json<Vec<JobStat
     Ok(Json(manager.queue_order().await))
 }
 
-async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReports>> {
-    Ok(Json(manager.reports().await))
+async fn job_reports(State(manager): State<JobManager>) -> Result<Json<JobReportsResponse>> {
+    Ok(Json(JobReportsResponse(manager.reports().await)))
 }
 
 async fn state(State(manager): State<JobManager>) -> Result<Json<JobStateResponse>> {

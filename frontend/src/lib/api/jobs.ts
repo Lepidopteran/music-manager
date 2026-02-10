@@ -1,4 +1,8 @@
-import type { JobState, JobStateResponse, RegistryJob } from "@bindings/bindings";
+import type {
+	JobReportsResponse,
+	JobStateResponse,
+	RegistryJob,
+} from "@bindings/bindings";
 import { fetchJson, fetchText } from "@lib/utils/api";
 
 export async function getJobs(): Promise<RegistryJob[]> {
@@ -11,6 +15,14 @@ export async function getJobStates(): Promise<JobStateResponse> {
 
 export async function queueJob(id: string): Promise<[string, JobState]> {
 	const stateId = await fetchJson<string>(`/api/jobs/${id}/queue`, {
+export async function getJobReports(): Promise<JobReportsResponse> {
+	return await fetchJson("/api/jobs/reports");
+}
+
+export async function getJobQueue(): Promise<string[]> {
+	return await fetchJson<string[]>("/api/jobs/queue");
+}
+
 		method: "POST",
 	});
 
@@ -25,6 +37,6 @@ export async function queueJob(id: string): Promise<[string, JobState]> {
 	];
 }
 
-export async function stopJob(stateId: bigint): Promise<void> {
+export async function cancelJob(stateId: string): Promise<void> {
 	await fetchText(`/api/jobs/state/${stateId}/cancel`, { method: "POST" });
 }
