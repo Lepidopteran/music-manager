@@ -31,14 +31,14 @@ pub enum JobEvent {
 /// Util function to send job events without freaking out if the channel is closed
 async fn emit_event(tx: &Sender, event: JobEvent) {
     if let Err(err) = tx.send(event).await {
-        tracing::error!("Failed to send event: {err}");
+        tracing::warn!("Failed to send event: {err}");
     }
 }
 
 /// Util function to send blocking job events without freaking out if the channel is closed
 fn emit_blocking_event(tx: &Sender, event: JobEvent) {
     if let Err(err) = tx.blocking_send(event) {
-        tracing::error!("Failed to send event: {err}");
+        tracing::warn!("Failed to send event: {err}");
     }
 }
 
