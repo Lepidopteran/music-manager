@@ -9,12 +9,11 @@
 	interface Props {
 		value: string;
 		required?: boolean;
-		label?: string;
 	}
 
 	const componentName = uniqueId("directory-explorer");
 
-	let { label, required, value = $bindable("/") }: Props = $props();
+	let { required, value = $bindable("/") }: Props = $props();
 	let activeIndex = $state(-1);
 
 	let level = $derived.by(() => {
@@ -93,7 +92,6 @@
 <div class="space-y-2">
 	<TextInput
 		id={`${componentName}-input`}
-		{label}
 		{required}
 		{onkeydown}
 		aria-controls={`${componentName}-listbox`}

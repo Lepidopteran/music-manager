@@ -22,7 +22,7 @@
 	let selectedDirectory: Directory | undefined = $state();
 
 	let newDirectory: NewDirectory = $state({
-		displayName: null, 
+		displayName: null,
 		path: "",
 	});
 
@@ -87,15 +87,21 @@
 				path: string,
 				name: string | null,
 				pathSize: bigint | null,
-				freeSpace: bigint | null, 
+				freeSpace: bigint | null,
 				totalSpace: bigint | null,
 			)}
 				<tr class="border-inherit *:overflow-hidden">
 					<td class="p-cell truncate">{path}</td>
 					<td class="p-cell">{name}</td>
-					<td class="p-cell text-right">{pathSize ? formatBytes(pathSize) : "-"}</td>
-					<td class="p-cell text-right">{freeSpace ? formatBytes(freeSpace) : "-"}</td>
-					<td class="p-cell text-right">{totalSpace ? formatBytes(totalSpace) : "-"}</td>
+					<td class="p-cell text-right"
+						>{pathSize ? formatBytes(pathSize) : "-"}</td
+					>
+					<td class="p-cell text-right"
+						>{freeSpace ? formatBytes(freeSpace) : "-"}</td
+					>
+					<td class="p-cell text-right"
+						>{totalSpace ? formatBytes(totalSpace) : "-"}</td
+					>
 				</tr>
 			{/snippet}
 			{#each directories as directory}
@@ -117,16 +123,16 @@
 	>
 </div>
 
-<Modal title="Add Directory" bind:open={newDirectoryModalOpen} class="w-1/3">
+<Modal title="Add Directory" bind:open={newDirectoryModalOpen}>
 	<div class="flex flex-col gap-4">
-		<TextInput
-			label="Name"
-			required
-			placeholder="Name"
-			bind:value={newDirectory.displayName}
-		/>
+		<label class="block">
+			<span class="block text-sm text-base-950/75">Display Name</span>
+			<TextInput
+				placeholder="Music..."
+				bind:value={newDirectory.displayName}
+			/>
+		</label>
 		<ServerDirectoryExplorer
-			label="Location"
 			required
 			bind:value={newDirectory.path}
 		/>
@@ -136,7 +142,6 @@
 <Modal
 	title={`Remove ${selectedDirectory?.name}?`}
 	bind:open={deleteDirectoryModalOpen}
-	class="w-1/3"
 >
 	Are you sure you want to remove this directory?
 	<br />

@@ -123,13 +123,16 @@
 			{#if isSong(selectedItem)}
 				{#each Object.entries(selectedItem.song) as [key, value]}
 					{#if value && !excludedFields.includes(key as keyof Song)}
-						<TextInput
-							class="w-full"
-							label={renameField(key)}
-							floatingLabel={true}
-							{suffixChild}
-							bind:value={selectedItem.song[key as keyof Song] as string}
-						/>
+						<label class="w-full">
+							<span class="block text-sm text-base-950/50">
+								{renameField(key)}
+							</span>
+							<TextInput
+								class="w-full block"
+								{suffixChild}
+								bind:value={selectedItem.song[key as keyof Song] as string}
+							/>
+						</label>
 					{/if}
 				{/each}
 			{:else}
@@ -139,26 +142,28 @@
 
 				{#each keys as key}
 					{#if !excludedFields.includes(key) && selectedItem.songs.some((song) => song[key] !== null && song[key] !== undefined)}
-						<TextInput
-							class="w-full"
-							label={renameField(key)}
-							floatingLabel={true}
-							{suffixChild}
-							bind:value={
-								() =>
-									selectedItem.songs.every(
-										(song) =>
-											song[key] === selectedItem.songs[0][key],
-									)
-										? selectedItem.songs[0][key]?.toString()
-										: `Different across (${selectedItem.songs.length}) tracks`,
-								(newValue) =>
-									(selectedItem.songs = selectedItem.songs.map((song) => ({
-										...song,
-										[key]: newValue,
-									})))
-							}
-						/>
+						<label class="w-full block">
+							<span class="block text-sm text-base-950/50">
+								{renameField(key)}
+							</span>
+							<TextInput
+								class="w-full"
+								{suffixChild}
+								bind:value={
+									() =>
+										selectedItem.songs.every(
+											(song) => song[key] === selectedItem.songs[0][key],
+										)
+											? selectedItem.songs[0][key]?.toString()
+											: `Different across (${selectedItem.songs.length}) tracks`,
+									(newValue) =>
+										(selectedItem.songs = selectedItem.songs.map((song) => ({
+											...song,
+											[key]: newValue,
+										})))
+								}
+							/>
+						</label>
 					{/if}
 				{/each}
 			{/if}
