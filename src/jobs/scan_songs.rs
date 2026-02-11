@@ -54,7 +54,16 @@ impl JobHandle for ScanSongs {
                 .unwrap_or_default();
 
         if directories.is_empty() {
-            tracing::warn!("No directories found, cancelling scan");
+            let message = "No directories found, cancelling scan";
+            tracing::warn!(message);
+
+            emit_event(
+                &tx,
+                JobEvent::Warning {
+                    message: message.into(),
+                },
+            )
+            .await;
 
             return Ok(());
         }
@@ -73,11 +82,14 @@ impl JobHandle for ScanSongs {
             .filter_map(|song| (!PathBuf::from(&song.path).exists()).then_some(song.id))
             .collect::<HashSet<_>>();
 
-        tx.send(JobEvent::StepCompleted {
-            step: 1,
-            value: non_existing_song_ids.len().to_string().into(),
-        })
-        .await?;
+        emit_event(
+            &tx,
+            JobEvent::StepCompleted {
+                step: 1,
+                value: non_existing_song_ids.len().to_string().into(),
+            },
+        )
+        .await;
 
         let existing_song_paths = existing_songs
             .iter()
@@ -115,7 +127,7 @@ impl JobHandle for ScanSongs {
                             if let Ok(entry) = result.inspect_err(|err| {
                                 let message = format!("Skipping entry due to error: {err}");
                                 tracing::warn!(message);
-                                let _ = event_channel.blocking_send(JobEvent::Warning { message });
+                                emit_blocking_event(&event_channel, JobEvent::Warning { message });
                             }) && entry
                                 .file_type()
                                 .is_some_and(|file_type| file_type.is_file())
@@ -144,11 +156,14 @@ impl JobHandle for ScanSongs {
         .await
         .expect("Failed to join thread");
 
-        tx.send(JobEvent::StepCompleted {
-            step: 2,
-            value: song_paths.len().to_string().into(),
-        })
-        .await?;
+        emit_event(
+            &tx,
+            JobEvent::StepCompleted {
+                step: 2,
+                value: song_paths.len().to_string().into(),
+            },
+        )
+        .await;
 
         if token.is_cancelled() {
             return Ok(());
@@ -169,19 +184,25 @@ impl JobHandle for ScanSongs {
                         return None;
                     }
 
-                    let _ = tx.blocking_send(JobEvent::Progress {
-                        current: index as u64,
-                        total: existing_song_count as u64,
-                        step: 3,
-                    });
+                    emit_blocking_event(
+                        &tx,
+                        JobEvent::Progress {
+                            current: index as u64,
+                            total: existing_song_count as u64,
+                            step: 3,
+                        },
+                    );
 
                     let path = PathBuf::from(&song.path);
                     let metadata = match read_metadata_from_path(&path) {
                         Ok(song) => Some(song),
                         Err(err) => {
-                            let _ = tx.blocking_send(JobEvent::Warning {
-                                message: format!("Failed to read metadata for song: {err}"),
-                            });
+                            emit_blocking_event(
+                                &tx,
+                                JobEvent::Warning {
+                                    message: format!("Failed to read metadata for song: {err}"),
+                                },
+                            );
                             None
                         }
                     };
@@ -238,11 +259,14 @@ impl JobHandle for ScanSongs {
             return Ok(());
         }
 
-        tx.send(JobEvent::StepCompleted {
-            step: 3,
-            value: updated_songs.len().to_string().into(),
-        })
-        .await?;
+        emit_event(
+            &tx,
+            JobEvent::StepCompleted {
+                step: 3,
+                value: updated_songs.len().to_string().into(),
+            },
+        )
+        .await;
 
         let change_count =
             (song_paths.len() + updated_songs.len() + non_existing_song_ids.len()) as u64;
@@ -288,12 +312,15 @@ impl JobHandle for ScanSongs {
 
             current_change_index += 1;
 
-            tx.send(JobEvent::Progress {
-                current: current_change_index,
-                total: change_count,
-                step: 4,
-            })
-            .await?;
+            emit_event(
+                &tx,
+                JobEvent::Progress {
+                    current: current_change_index,
+                    total: change_count,
+                    step: 4,
+                },
+            )
+            .await;
         }
 
         if token.is_cancelled() {
@@ -328,12 +355,15 @@ impl JobHandle for ScanSongs {
 
             current_change_index += 1;
 
-            tx.send(JobEvent::Progress {
-                current: current_change_index,
-                total: change_count,
-                step: 4,
-            })
-            .await?;
+            emit_event(
+                &tx,
+                JobEvent::Progress {
+                    current: current_change_index,
+                    total: change_count,
+                    step: 4,
+                },
+            )
+            .await;
         }
 
         if token.is_cancelled() {
@@ -351,27 +381,31 @@ impl JobHandle for ScanSongs {
 
             current_change_index += 1;
 
-            tx.send(JobEvent::Progress {
-                current: current_change_index,
-                total: change_count,
-                step: 4,
-            })
-            .await?;
+            emit_event(
+                &tx,
+                JobEvent::Progress {
+                    current: current_change_index,
+                    total: change_count,
+                    step: 4,
+                },
+            )
+            .await;
         }
 
         if token.is_cancelled() {
             return Ok(());
         }
 
-        if let Err(err) = transaction.commit().await {
-            tracing::error!("Song scan error: {err}");
-        }
+        transaction.commit().await?;
 
-        tx.send(JobEvent::StepCompleted {
-            step: 4,
-            value: None,
-        })
-        .await?;
+        emit_event(
+            &tx,
+            JobEvent::StepCompleted {
+                step: 4,
+                value: None,
+            },
+        )
+        .await;
 
         tracing::info!("Finished song scans...");
 
