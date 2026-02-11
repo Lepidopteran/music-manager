@@ -132,11 +132,12 @@ impl JobManager {
                         let new_order = order.clone();
                         drop(order);
 
-                        events_clone
-                            .send(JobManagerEvent::OrderUpdated {
+                        Self::send_event(
+                            &events_clone,
+                            JobManagerEvent::OrderUpdated {
                                 queue: new_order.into(),
-                            })
-                            .expect("Couldn't send event");
+                            },
+                        );
                     }
 
                     entry
@@ -157,16 +158,15 @@ impl JobManager {
                                     total,
                                     step,
                                 } => {
-                                    send_event(
+                                    Self::send_event(
                                         &manager_events,
-                                        &JobManagerEvent::Progress {
+                                        JobManagerEvent::Progress {
                                             source: state_id,
                                             current,
                                             total,
                                             step,
                                         },
-                                    )
-                                    .await;
+                                    );
                                 }
                                 JobEvent::StepCompleted { step, value } => {
                                     let mut state = state.lock().await;
@@ -176,37 +176,34 @@ impl JobManager {
                                             .values
                                             .insert(step, value.clone().unwrap_or_default());
 
-                                        send_event(
+                                        Self::send_event(
                                             &manager_events,
-                                            &JobManagerEvent::StateUpdated {
+                                            JobManagerEvent::StateUpdated {
                                                 source: state_id,
                                                 state: state.clone(),
                                             },
-                                        )
-                                        .await;
+                                        );
                                     }
 
                                     drop(state);
 
-                                    send_event(
+                                    Self::send_event(
                                         &manager_events,
-                                        &JobManagerEvent::StepCompleted {
+                                        JobManagerEvent::StepCompleted {
                                             source: state_id,
                                             step,
                                             value,
                                         },
-                                    )
-                                    .await;
+                                    );
                                 }
                                 JobEvent::Warning { message } => {
-                                    send_event(
+                                    Self::send_event(
                                         &manager_events,
-                                        &JobManagerEvent::Warning {
+                                        JobManagerEvent::Warning {
                                             source: state_id,
                                             message,
                                         },
-                                    )
-                                    .await;
+                                    );
                                 }
                             }
                         }
@@ -220,58 +217,65 @@ impl JobManager {
 
                     drop(states);
 
-                    send_event(
+                    Self::send_event(&events_clone, JobManagerEvent::Started { source: state_id });
+
+                    let mut reports = reports_clone.lock().await;
+                    let report = Self::report(&mut reports, &report_id);
+                    report.started_at.replace(OffsetDateTime::now_utc());
+
+                    Self::send_event(
                         &events_clone,
-                        &JobManagerEvent::Started { source: state_id },
-                    )
-                    .await;
+                        JobManagerEvent::ReportUpdated {
+                            job_id: report_id.clone(),
+                            report: report.clone(),
+                        },
+                    );
+
+                    drop(reports);
 
                     let result = job.execute(cancel_token.child_token(), tx).await;
 
                     let mut reports = reports_clone.lock().await;
                     let report = Self::report(&mut reports, &report_id);
+
                     if result.is_ok() && !cancel_token.is_cancelled() {
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = true;
 
-                        send_event(
+                        Self::send_event(
                             &events_clone,
-                            &JobManagerEvent::Completed { source: state_id },
-                        )
-                        .await;
+                            JobManagerEvent::Completed { source: state_id },
+                        );
                     } else if let Err(err) = result.as_ref() {
                         tracing::error!("Job failed: {err}");
 
                         report.completed_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
-                        send_event(
+                        Self::send_event(
                             &events_clone,
-                            &JobManagerEvent::Failed {
+                            JobManagerEvent::Failed {
                                 source: state_id,
                                 message: err.to_string(),
                             },
-                        )
-                        .await;
+                        );
                     } else {
                         report.cancelled_at.replace(OffsetDateTime::now_utc());
                         report.completed_successfully = false;
 
-                        send_event(
+                        Self::send_event(
                             &events_clone,
-                            &JobManagerEvent::Cancelled { source: state_id },
-                        )
-                        .await;
+                            JobManagerEvent::Cancelled { source: state_id },
+                        );
                     }
 
-                    send_event(
+                    Self::send_event(
                         &events_clone,
-                        &JobManagerEvent::ReportUpdated {
+                        JobManagerEvent::ReportUpdated {
                             job_id: report_id,
                             report: report.clone(),
                         },
-                    )
-                    .await;
+                    );
 
                     drop(reports);
 
@@ -339,13 +343,12 @@ impl JobManager {
             )
             .await;
 
-        send_event(
+        Self::send_event(
             &self.events,
-            &JobManagerEvent::OrderUpdated {
+            JobManagerEvent::OrderUpdated {
                 queue: self.queue.order.lock().await.clone().into(),
             },
-        )
-        .await;
+        );
 
         tracing::debug!("Job queued: {job_id}");
 
@@ -408,7 +411,7 @@ impl JobManager {
         states.insert(id, state.clone());
         drop(states);
 
-        send_event(events, &JobManagerEvent::StateAdded { source: id, state }).await;
+        Self::send_event(events, JobManagerEvent::StateAdded { source: id, state });
     }
 
     async fn remove_state<'l>(
@@ -417,7 +420,7 @@ impl JobManager {
         id: JobStateId,
     ) {
         states.remove(&id);
-        send_event(events, &JobManagerEvent::StateRemoved { source: id }).await;
+        Self::send_event(events, JobManagerEvent::StateRemoved { source: id });
     }
 
     fn report<'r>(reports: &'r mut JobReports, job_id: &JobId) -> &'r mut JobExecutionReport {
@@ -425,10 +428,12 @@ impl JobManager {
             .get_mut(job_id)
             .expect("Job not found, this shouldn't happen...")
     }
-}
 
-async fn send_event(tx: &broadcast::Sender<JobManagerEvent>, event: &JobManagerEvent) {
-    let _ = tx.send(event.clone());
+    fn send_event(tx: &broadcast::Sender<JobManagerEvent>, event: JobManagerEvent) {
+        if let Err(err) = tx.send(event) {
+            tracing::warn!("Failed to send event: {err}");
+        }
+    }
 }
 
 #[derive(Debug)]
