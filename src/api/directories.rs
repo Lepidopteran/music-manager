@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use fs_extra::dir::get_size;
 use serde::Serialize;
 
@@ -49,10 +51,10 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn add_directory(
-    State(db): State<Pool>,
+    State(pool): State<Pool>,
     Json(new_directory): Json<NewDirectory>,
 ) -> Result<Json<DirectoryResponse>> {
-    let mut connection = db.acquire().await.map_err(internal_error)?; 
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
 
     let DirectoryDB {
         name,
@@ -78,10 +80,10 @@ async fn add_directory(
 }
 
 async fn remove_directory(
-    State(db): State<Pool>,
+    State(pool): State<Pool>,
     Path(name): Path<String>,
 ) -> Result<StatusCode> {
-    let mut connection  = db.acquire().await.map_err(internal_error)?;
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
     directories::remove_directory(&mut connection, name)
         .await
         .map_err(IntoResponse::into_response)?;
@@ -89,10 +91,8 @@ async fn remove_directory(
     Ok(StatusCode::OK)
 }
 
-async fn get_directories(
-    State(db): State<Pool>,
-) -> Result<Json<Vec<DirectoryResponse>>> {
-    let mut connection = db.acquire().await.map_err(internal_error)?;
+async fn get_directories(State(pool): State<Pool>) -> Result<Json<Vec<DirectoryResponse>>> {
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
 
     let disks = Disks::new_with_refreshed_list();
     let directories = directories::get_directories(&mut connection)
@@ -122,42 +122,37 @@ async fn get_directories(
     Ok(Json(directories_with_space))
 }
 
-async fn get_directory_folders(path: Path<String>) -> Result<Json<Vec<String>>, impl IntoResponse> {
+async fn get_directory_folders(path: Path<String>) -> Result<Json<BTreeSet<String>>> {
     if path.to_string().trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Path cannot be empty".to_string()));
+        return Err(bad_request("Path cannot be empty").into());
     }
 
     let path = std::path::PathBuf::from(&path.to_string());
 
     if !path.exists() {
-        return Err((StatusCode::BAD_REQUEST, "Path does not exist".to_string()));
+        return Err(bad_request("Path does not exist").into());
     }
 
     if !path.is_dir() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Path is not a directory".to_string(),
-        ));
+        return Err(bad_request("Path is not a directory").into());
     }
 
     if path.is_relative() {
-        return Err((StatusCode::BAD_REQUEST, "Path must be absolute".to_string()));
+        return Err(bad_request("Path must be absolute").into());
     }
 
-    let directories = match std::fs::read_dir(path) {
-        Ok(entries) => entries
-            .filter_map(|entry| {
-                if let Ok(entry) = entry
-                    && let Ok(metadata) = std::fs::metadata(entry.path())
-                    && metadata.is_dir()
-                {
-                    return Some(entry.file_name().to_string_lossy().to_string());
-                }
-                None
-            })
-            .collect(),
-        Err(err) => return Err(internal_error(err)),
-    };
+    let directories = std::fs::read_dir(path)
+        .map_err(internal_error)?
+        .filter_map(|entry| {
+            if let Ok(entry) = entry
+                && let Ok(metadata) = std::fs::metadata(entry.path())
+                && metadata.is_dir()
+            {
+                return Some(entry.file_name().to_string_lossy().to_string());
+            }
+            None
+        })
+        .collect::<BTreeSet<String>>();
 
     Ok(Json(directories))
 }
