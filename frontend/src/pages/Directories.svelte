@@ -127,15 +127,12 @@
 	<div class="flex flex-col gap-4">
 		<label class="block">
 			<span class="block text-sm text-base-950/75">Display Name</span>
-			<TextInput
-				placeholder="Music..."
-				bind:value={newDirectory.displayName}
-			/>
+			<TextInput placeholder="Music..." bind:value={newDirectory.displayName} />
 		</label>
-		<ServerDirectoryExplorer
-			required
-			bind:value={newDirectory.path}
-		/>
+		<label class="block">
+			<span class="block text-sm text-base-950/75">Path</span>
+			<ServerDirectoryExplorer required bind:value={newDirectory.path} />
+		</label>
 		<Button variant="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
 </Modal>
