@@ -15,7 +15,6 @@ use super::{
 pub mod albums;
 pub mod cover_art;
 pub mod directories;
-pub mod fs;
 pub mod info;
 pub mod jobs;
 pub mod organize;
