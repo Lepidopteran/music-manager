@@ -51,37 +51,39 @@
 </div>
 
 <style>
-	div {
-		position: relative;
-		align-items: center;
-		padding: calc(var(--spacing) * 2) calc(var(--spacing));
-		border-radius: var(--radius-theme);
-		display: inline-flex;
-		background-color: var(--color-base-300);
+	@layer components {
+		div {
+			position: relative;
+			align-items: center;
+			border-radius: var(--radius-theme);
+			display: inline-flex;
+			background-color: var(--color-base-300);
 
-		& > input {
-			text-align: inherit;
-			display: block;
-			width: 100%;
-		}
+			& > input {
+				text-align: inherit;
+				display: block;
+				width: 100%;
+				padding: calc(var(--spacing) * 2) calc(var(--spacing));
+			}
 
-		&.input-ghost {
-			background-color: transparent;
-			box-shadow: none;
+			&.input-ghost {
+				background-color: transparent;
+				box-shadow: none;
 
-			&:has(input:not(:disabled):not([disabled])):hover {
-				background-color: rgb(from var(--color-base-300) r g b / 50%);
+				&:has(input:not(:disabled):not([disabled])):hover {
+					background-color: rgb(from var(--color-base-300) r g b / 50%);
+				}
 			}
 		}
-	}
 
-	input {
-		transition: all 50ms linear;
+		input {
+			transition: all 50ms linear;
 
-		&:disabled,
-		&[disabled] {
-			cursor: not-allowed;
-			opacity: 0.5;
+			&:disabled,
+			&[disabled] {
+				cursor: not-allowed;
+				opacity: 0.5;
+			}
 		}
 	}
 </style>
