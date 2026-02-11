@@ -13,6 +13,7 @@ use sqlx::query_scalar;
 use crate::{
     AppState,
     metadata::{CoverArt, CoverArtType, get_cover_art},
+    state::Pool,
 };
 
 use super::*;
@@ -52,7 +53,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn get_song_cover_art(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<Pool>,
     Path((song_id, cover_type)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<Response, impl IntoResponse> {
@@ -84,7 +85,7 @@ async fn get_song_cover_art(
     };
 
     let path = match query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+        .fetch_one(&pool)
         .await
     {
         Ok(song) => song,
@@ -117,11 +118,11 @@ async fn get_song_cover_art(
 }
 
 async fn get_song_cover_art_metadata(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<Pool>,
     Path(song_id): Path<String>,
 ) -> Result<Json<Vec<CoverArtMetadata>>, impl IntoResponse> {
     let path = match query_scalar!("SELECT path FROM songs WHERE id = ?", song_id)
-        .fetch_one(&db)
+        .fetch_one(&pool)
         .await
         .map_err(internal_error)
     {
@@ -143,7 +144,7 @@ async fn get_song_cover_art_metadata(
 }
 
 async fn get_album_cover_art(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<Pool>,
     Path((album, cover_type)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<Response, impl IntoResponse> {
@@ -175,7 +176,7 @@ async fn get_album_cover_art(
     };
 
     let paths = match query_scalar!("SELECT path FROM songs WHERE album = ?", album)
-        .fetch_all(&db)
+        .fetch_all(&pool)
         .await
     {
         Ok(song) => song,
@@ -218,11 +219,11 @@ async fn get_album_cover_art(
 }
 
 async fn get_album_cover_art_metadata(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
+    State(pool): State<Pool>,
     Path(album): Path<String>,
 ) -> Result<Json<Vec<CoverArtMetadata>>, impl IntoResponse> {
     let path = match query_scalar!("SELECT path FROM songs WHERE album = ?", album)
-        .fetch_one(&db)
+        .fetch_one(&pool)
         .await
         .map_err(internal_error)
     {

@@ -6,7 +6,10 @@ use axum::{
 };
 
 use crate::{
-    AppState, api::internal_error, db::{Album, songs}
+    AppState,
+    api::internal_error,
+    db::{Album, songs},
+    state::Pool,
 };
 
 pub fn router() -> Router<AppState> {
@@ -15,11 +18,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/albums/", get(get_albums))
 }
 
-async fn get_album(
-    State(db): State<sqlx::Pool<sqlx::Sqlite>>,
-    Path(title): Path<String>,
-) -> Result<Json<Album>> {
-    let mut connection = db.acquire().await.map_err(internal_error)?;
+async fn get_album(State(pool): State<Pool>, Path(title): Path<String>) -> Result<Json<Album>> {
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
     let album = songs::get_album(&mut connection, title)
         .await
         .map_err(IntoResponse::into_response)?;
@@ -27,8 +27,8 @@ async fn get_album(
     Ok(Json(album))
 }
 
-async fn get_albums(State(db): State<sqlx::Pool<sqlx::Sqlite>>) -> Result<Json<Vec<Album>>> {
-    let mut connection = db.acquire().await.map_err(internal_error)?;
+async fn get_albums(State(pool): State<Pool>) -> Result<Json<Vec<Album>>> {
+    let mut connection = pool.acquire().await.map_err(internal_error)?;
     let albums = songs::get_albums(&mut connection)
         .await
         .map_err(IntoResponse::into_response)?;

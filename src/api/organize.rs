@@ -60,7 +60,7 @@ async fn organize_album_tracks(
     Path(title): Path<String>,
     State(AppState {
         file_operation_manager: manager,
-        db,
+        pool: db,
         ..
     }): State<AppState>,
     Query(options): Query<PathRenameOptions>,

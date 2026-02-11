@@ -14,7 +14,7 @@ use ts_rs::TS;
 
 use crate::{
     db::{Directory as DirectoryDB, NewDirectory, directories},
-    state::{AppState, Database},
+    state::{AppState, Pool},
 };
 
 use super::*;
@@ -49,7 +49,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn add_directory(
-    State(db): State<Database>,
+    State(db): State<Pool>,
     Json(new_directory): Json<NewDirectory>,
 ) -> Result<Json<DirectoryResponse>> {
     let mut connection = db.acquire().await.map_err(internal_error)?; 
@@ -78,7 +78,7 @@ async fn add_directory(
 }
 
 async fn remove_directory(
-    State(db): State<Database>,
+    State(db): State<Pool>,
     Path(name): Path<String>,
 ) -> Result<StatusCode> {
     let mut connection  = db.acquire().await.map_err(internal_error)?;
@@ -90,7 +90,7 @@ async fn remove_directory(
 }
 
 async fn get_directories(
-    State(db): State<Database>,
+    State(db): State<Pool>,
 ) -> Result<Json<Vec<DirectoryResponse>>> {
     let mut connection = db.acquire().await.map_err(internal_error)?;
 

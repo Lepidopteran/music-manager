@@ -13,7 +13,7 @@ pub mod job;
 pub use fs::*;
 
 pub type JobManager = Arc<job::manager::JobManager>;
-pub type Database = sqlx::Pool<sqlx::Sqlite>;
+pub type Pool = sqlx::SqlitePool;
 pub type FileOperationManager = Arc<OperationManager>;
 
 #[derive(Clone)]
@@ -22,11 +22,11 @@ pub struct AppState {
     pub job_manager: JobManager,
     pub event_sender: Sender<Event>,
     pub file_operation_manager: FileOperationManager,
-    pub db: Database,
+    pub pool: Pool,
 }
 
 impl AppState {
-    pub fn new(db: Database, settings: Settings) -> Self {
+    pub fn new(db: Pool, settings: Settings) -> Self {
         let (tx, _) = tokio::sync::broadcast::channel(1024);
 
         let file_operation_manager = OperationManager::new();
@@ -51,7 +51,7 @@ impl AppState {
         });
 
         Self {
-            db,
+            pool: db,
             settings,
             event_sender: tx,
             job_manager: Arc::new(job_manager),
@@ -91,9 +91,9 @@ impl FromRef<AppState> for FileOperationManager {
     }
 }
 
-impl FromRef<AppState> for sqlx::Pool<sqlx::Sqlite> {
+impl FromRef<AppState> for Pool {
     fn from_ref(state: &AppState) -> Self {
-        state.db.clone()
+        state.pool.clone()
     }
 }
 
