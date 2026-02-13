@@ -34,19 +34,19 @@
 	]}
 >
 	{#if prefixChild}
-		<span
-			class={["user-select-none", prefixDecorative && "pointer-events-none"]}
+		<div
+			class={["user-select-none h-full", prefixDecorative && "pointer-events-none"]}
 		>
 			{@render prefixChild()}
-		</span>
+		</div>
 	{/if}
 	<input type="text" class="outline-none" {placeholder} bind:value {...rest} />
 	{#if suffixChild}
-		<span
-			class={["user-select-none", suffixDecorative && "pointer-events-none"]}
+		<div
+			class={["user-select-none h-full", suffixDecorative && "pointer-events-none"]}
 		>
 			{@render suffixChild()}
-		</span>
+		</div>
 	{/if}
 </div>
 
@@ -54,9 +54,9 @@
 	@layer components {
 		div {
 			position: relative;
+			display: inline-flex;
 			align-items: center;
 			border-radius: var(--radius-theme);
-			display: inline-flex;
 			background-color: var(--color-base-300);
 
 			& > input {
