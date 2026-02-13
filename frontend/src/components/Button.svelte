@@ -13,7 +13,7 @@
 	let {
 		type = "button",
 		toggleable = false,
-		active = false,
+		active = $bindable(false),
 		variant = "base",
 		children,
 		...rest
@@ -40,7 +40,12 @@
 
 <button
 	{...rest}
-	class={`btn inline-flex inset-shadow-xs inset-shadow-highlight/25 cursor-pointer rounded-theme ${variant === "base" ? "" : `btn-${variant}`} ${active ? "btn-active" : ""} ${rest.class || ""}`}
+	class={[
+		"btn inset-shadow-xs inset-shadow-highlight/25",
+		variant !== "base" && `btn-${variant}`,
+		active && "btn-active",
+		rest.class,
+	]}
 	role={toggleable ? "switch" : "button"}
 	aria-checked={toggleable ? active : undefined}
 	data-active={active || undefined}
@@ -59,6 +64,9 @@
 			justify-content: center;
 			align-items: center;
 			gap: 0.5rem;
+			display: inline-flex;
+			border-radius: var(--radius-theme);
+			cursor: pointer;
 
 			&:disabled {
 				cursor: not-allowed;
