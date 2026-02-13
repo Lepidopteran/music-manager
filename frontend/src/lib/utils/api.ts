@@ -30,19 +30,7 @@ export async function fetchJson<T>(
 			}) as FetchError;
 		}
 
-		const json: T = await response.json();
-		if (json && typeof json === "object") {
-			for (const [key, value] of Object.entries(json)) {
-				if (typeof value === "string") {
-					const date = new Date(value);
-					(json as Record<string, unknown>)[key] = isNaN(date.getTime())
-						? value
-						: date;
-				}
-			}
-		}
-
-		return json;
+		return await response.json();
 	} catch (error) {
 		console.error(`Failed to fetch: ${url}`, error);
 		throw error;
