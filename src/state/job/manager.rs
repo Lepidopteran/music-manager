@@ -93,7 +93,7 @@ pub struct JobManager {
 
 impl JobManager {
     pub fn new(registry: JobRegistry) -> Self {
-        let (events, _) = broadcast::channel(1024 * 2);
+        let (events, _) = broadcast::channel(1024 * 8);
         let states: Arc<Mutex<JobStates>> = Arc::new(Mutex::new(BTreeMap::new()));
         let reports: Arc<Mutex<JobReports>> = Arc::new(Mutex::new(
             registry
