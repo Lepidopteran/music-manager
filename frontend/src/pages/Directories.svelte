@@ -13,8 +13,9 @@
 		createDirectory,
 		deleteDirectory,
 	} from "@api/directory";
-	import ServerDirectoryExplorer from "@components/input/ServerDirectoryExplorer.svelte";
+	import ServerDirectoryExplorer from "@components/input/ServerDirectory.svelte";
 	import type { AppState, PageComponentProps } from "@lib/state/app.svelte";
+	import ServerDirectory from "@components/input/ServerDirectory.svelte";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -131,7 +132,7 @@
 		</label>
 		<label class="block">
 			<span class="block text-sm text-base-950/75">Path</span>
-			<ServerDirectoryExplorer required bind:value={newDirectory.path} />
+			<ServerDirectory bind:value={newDirectory.path} />
 		</label>
 		<Button variant="primary" onclick={handleNewDirectory}>Add</Button>
 	</div>
