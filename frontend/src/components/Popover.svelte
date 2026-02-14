@@ -10,6 +10,8 @@
 		InlineOptions,
 		ShiftOptions,
 		SizeOptions,
+		FloatingElement,
+		Middleware,
 	} from "@floating-ui/dom";
 
 	import {
@@ -21,30 +23,25 @@
 		inline,
 		size,
 	} from "@floating-ui/dom";
-	import type { Middleware } from "@floating-ui/dom";
 
 	const uuid = $props.id();
 
-	export const id = `popover-${uuid}`;
-
-	interface Props extends Omit<
-		HTMLAttributes<HTMLDivElement>,
-		"id" | "popover"
-	> {
+	interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "popover"> {
 		open?: boolean;
 		children?: Snippet;
-		popoverMode?: "hint" | "manual";
-		reference?: HTMLElement;
 		placement?: Placement;
 		offset?: OffsetOptions;
+		popoverMode?: "hint" | "manual";
+		reference?: Element | string;
+		size?: SizeOptions | Derivable<SizeOptions>;
 		flip?: boolean | FlipOptions | Derivable<FlipOptions>;
 		shift?: boolean | ShiftOptions | Derivable<ShiftOptions>;
 		inline?: boolean | InlineOptions | Derivable<InlineOptions>;
-		size?: SizeOptions | Derivable<SizeOptions>;
 	}
 
 	let {
-		open: opened = $bindable(false),
+		id = `popover-${uuid}`,
+		open = $bindable(false),
 		popoverMode: popover = "manual",
 		offset: offsetOptions,
 		flip: flipOptions,
@@ -71,13 +68,21 @@
 		}
 	}
 
-	const popoverAttachment: Attachment<HTMLDivElement> = (popover) => {
-		if (!reference) {
+	const popoverAttachment: Attachment<FloatingElement> = (popover) => {
+		const referenceElement =
+			typeof reference === "string"
+				? document.getElementById(reference) ||
+					document.querySelector(reference)
+				: reference;
+
+		console.debug("popoverAttachment", referenceElement, reference);
+
+		if (!referenceElement) {
 			return;
 		}
 
-		const cleanUp = autoUpdate(reference, popover, () => {
-			computePosition(reference, popover, {
+		const cleanUp = autoUpdate(referenceElement, popover, () => {
+			computePosition(referenceElement, popover, {
 				placement,
 				strategy: "fixed",
 				middleware: [
@@ -101,7 +106,7 @@
 	let popoverRef: HTMLDivElement;
 
 	$effect(() => {
-		if (opened) {
+		if (open) {
 			popoverRef.showPopover();
 		} else {
 			popoverRef.hidePopover();
@@ -109,15 +114,15 @@
 	});
 
 	export function popup() {
-		opened = true;
+		open = true;
 	}
 
 	export function popdown() {
-		opened = false;
+		open = false;
 	}
 
 	export function toggle() {
-		opened = !opened;
+		open = !open;
 	}
 
 	export function focus() {
