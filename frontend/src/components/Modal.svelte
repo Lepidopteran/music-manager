@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import type { Action } from "svelte/action";
 	import Button from "./Button.svelte";
 	import type { ClassValue } from "svelte/elements";
 
@@ -30,33 +29,6 @@
 		...rest
 	}: Props = $props();
 
-	const closeAction: Action = (node) => {
-		const close = (event: MouseEvent) => {
-			const { left, right, top, bottom } = node.getBoundingClientRect();
-			if (
-				event.clientX < left ||
-				event.clientX > right ||
-				event.clientY < top ||
-				event.clientY > bottom
-			) {
-				if (
-					!canSoftClose ||
-					(node.contains(event.target as HTMLElement) && event.target !== node)
-				)
-					return;
-				open = false;
-			}
-		};
-
-		$effect(() => {
-			node.addEventListener("click", close);
-
-			return () => {
-				node.removeEventListener("click", close);
-			};
-		});
-	};
-
 	$effect(() => {
 		open ? dialog.showModal() : dialog.close();
 	});
@@ -66,7 +38,28 @@
 	{...rest}
 	class={`m-auto max-sm:w-11/12 bg-base-200 max-w-lg rounded-theme-lg shadow-lg inset-shadow-xs inset-shadow-highlight/25 backdrop:backdrop-blur`}
 	bind:this={dialog}
-	use:closeAction
+	{@attach (node) => {
+		const close = (event: MouseEvent) => {
+			if (!canSoftClose) return;
+
+			const { left, right, top, bottom } = node.getBoundingClientRect();
+			if (
+				(event.target === node || !node.contains(event.target as Node)) &&
+				(event.clientX < left ||
+					event.clientX > right ||
+					event.clientY < top ||
+					event.clientY > bottom)
+			) {
+				open = false;
+			}
+		};
+
+		node.addEventListener("click", close);
+
+		return () => {
+			node.removeEventListener("click", close);
+		};
+	}}
 >
 	{#if showTitle}
 		<div class="flex gap-4 py-2 px-4 items-center justify-between shadow">
