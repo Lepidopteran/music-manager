@@ -9,8 +9,8 @@
 		name: Icons;
 		hFlip?: boolean;
 		vFlip?: boolean;
-		rotate?: number | string;
 		size?: number | string;
+		rotate?: number;
 	}
 
 	let {
@@ -18,6 +18,7 @@
 		size = "1em",
 		hFlip = false,
 		vFlip = false,
+		rotate = 0,
 		class: className,
 		...rest
 	}: Props = $props();
@@ -33,6 +34,7 @@
 
 	const renderData = $derived(
 		iconToSVG(iconData, {
+			rotate,
 			hFlip,
 			vFlip,
 			width: size,
