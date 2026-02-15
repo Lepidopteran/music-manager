@@ -51,10 +51,10 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn add_directory(
-    State(pool): State<Pool>,
+    State(app): State<AppState>,
     Json(new_directory): Json<NewDirectory>,
 ) -> Result<Json<DirectoryResponse>> {
-    let mut connection = pool.acquire().await.map_err(internal_error)?;
+    let mut connection = app.pool.acquire().await.map_err(internal_error)?;
 
     let DirectoryDB {
         name,
@@ -69,6 +69,7 @@ async fn add_directory(
         .iter()
         .find(|disk| path.contains(&disk.mount_point().to_string_lossy().to_string()));
 
+    app.job_manager.queue("scan-songs", false, false).await?;
     Ok(Json(DirectoryResponse {
         free_space: disk.map(|disk| disk.available_space()),
         total_space: disk.map(|disk| disk.total_space()),
