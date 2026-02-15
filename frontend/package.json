@@ -33,6 +33,7 @@
 		"@fontsource-variable/jetbrains-mono": "^5.2.8",
 		"@iconify/utils": "^2.3.0",
 		"@tailwindcss/vite": "^4.1.18",
+		"@tanstack/table-core": "^8.21.3",
 		"paneforge": "^1.0.2",
 		"path-to-regexp": "^8.3.0",
 		"prettier-plugin-svelte": "^3.4.1",

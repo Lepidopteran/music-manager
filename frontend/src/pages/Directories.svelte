@@ -16,6 +16,9 @@
 	import ServerDirectoryExplorer from "@components/input/ServerDirectory.svelte";
 	import type { AppState, PageComponentProps } from "@lib/state/app.svelte";
 	import ServerDirectory from "@components/input/ServerDirectory.svelte";
+	import Table from "@components/table/Table.svelte";
+
+	import type { ContentValueReturnType } from "@components/table/table.svelte";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -27,7 +30,7 @@
 		path: "",
 	});
 
-	const directories: Array<Directory> = $state([]);
+	let directories: Array<Directory> = $state([]);
 
 	async function handleNewDirectory() {
 		const directory = await createDirectory(newDirectory);
@@ -48,7 +51,7 @@
 	}
 
 	onMount(async () => {
-		directories.push(...(await getDirectories()));
+		directories = await getDirectories();
 	});
 
 	let props: PageComponentProps = $props();
@@ -58,65 +61,52 @@
 	<h1 class="text-3xl font-bold">Directories</h1>
 	<p>This is the list of directories used to scan and manage your music</p>
 	<p>Go ahead and add some</p>
-	<table
-		class="w-full border border-base-600/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg max-w-3xl"
-	>
-		<caption class="p-2 text-left text-lg">Directories</caption>
-
-		<colgroup>
-			<col />
-			<col class="w-12 md:w-24" />
-			<col class="w-0 collapse md:w-28 md:visible" />
-			<col class="w-32" />
-			<col class="w-0 collapse md:w-28 md:visible" />
-		</colgroup>
-		<thead class="bg-base-300 border-inherit">
-			<tr
-				class="border-inherit text-sm text-primary-800 *:first:rounded-tl-theme *:last:rounded-tr-theme shadow-md"
-			>
-				<th class="p-cell text-left">Location</th>
-				<th class="p-cell text-left">Name</th>
-				<th class="p-cell text-right">Path Size</th>
-				<th class="p-cell text-right">Drive Usage</th>
-				<th class="p-cell text-right">Drive Total</th>
-			</tr>
-		</thead>
-		<tbody
-			class="divide-y divide-primary-600/15 border-inherit inset-shadow-xs inset-shadow-highlight/25"
-		>
-			{#snippet row(
-				path: string,
-				name: string | null,
-				pathSize: bigint | null,
-				freeSpace: bigint | null,
-				totalSpace: bigint | null,
-			)}
-				<tr class="border-inherit *:overflow-hidden">
-					<td class="p-cell truncate">{path}</td>
-					<td class="p-cell">{name}</td>
-					<td class="p-cell text-right"
-						>{pathSize ? formatBytes(pathSize) : "-"}</td
-					>
-					<td class="p-cell text-right"
-						>{freeSpace ? formatBytes(freeSpace) : "-"}</td
-					>
-					<td class="p-cell text-right"
-						>{totalSpace ? formatBytes(totalSpace) : "-"}</td
-					>
-				</tr>
-			{/snippet}
-			{#each directories as directory}
-				{@render row(
-					directory.path,
-					directory.displayName,
-					directory.pathSize,
-					directory.freeSpace,
-					directory.totalSpace,
-				)}
-			{/each}
-		</tbody>
-	</table>
-
+	<Table
+		data={directories}
+		columns={[
+			{
+				accessorKey: "path",
+				header: "Path",
+				meta: {
+					alignment: "left",
+				},
+			},
+			{
+				accessorKey: "displayName",
+				header: "Display Name",
+				meta: {
+					alignment: "left",
+				},
+			},
+			{
+				accessorKey: "pathSize",
+				header: "Size",
+				cell: ({ getValue }) =>
+					getValue() ? formatBytes(getValue() as number) : "-",
+				meta: {
+					alignment: "right",
+				},
+			},
+			{
+				accessorKey: "freeSpace",
+				header: "Free Space",
+				cell: ({ getValue }) =>
+					getValue() ? formatBytes(getValue() as number) : "-",
+				meta: {
+					alignment: "right",
+				},
+			},
+			{
+				accessorKey: "totalSpace",
+				header: "Total Space",
+				cell: ({ getValue }) =>
+					getValue() ? formatBytes(getValue() as number) : "-",
+				meta: {
+					alignment: "right",
+				},
+			},
+		]}
+	/>
 	<Button
 		variant="primary"
 		class="font-bold w-40"
@@ -151,11 +141,3 @@
 		</Button>
 	</div>
 </Modal>
-
-<style>
-	th,
-	td {
-		white-space: nowrap;
-		overflow: hidden;
-	}
-</style>
