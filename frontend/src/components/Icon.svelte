@@ -1,23 +1,16 @@
 <script lang="ts">
 	import { icons as mingcute } from "@iconify-json/mingcute";
-
-	import {
-		iconToSVG,
-		getIconData,
-	} from "@iconify/utils";
+	import { iconToSVG, getIconData } from "@iconify/utils";
 
 	import type { Icons } from "@lib/icons";
-	import type { ClassValue } from "svelte/elements";
+	import type { HTMLAttributes } from "svelte/elements";
 
-
-	interface Props {
+	interface Props extends HTMLAttributes<SVGElement> {
 		name: Icons;
 		hFlip?: boolean;
 		vFlip?: boolean;
 		rotate?: number | string;
 		size?: number | string;
-		class?: ClassValue;
-		[key: string]: unknown;
 	}
 
 	let {
@@ -29,23 +22,25 @@
 		...rest
 	}: Props = $props();
 
-	const iconData = getIconData(mingcute, name);
+	const iconData = $derived.by(() => {
+		let data = getIconData(mingcute, name);
+		if (!data) {
+			throw new Error(`Icon "${name}" not found`);
+		}
 
-	if (!iconData) {
-		throw new Error(`Icon ${name} not found`);
-	}
-
-	const renderData = iconToSVG(iconData, {
-		hFlip,
-		vFlip,
-		width: size,
-		height: size,
+		return data;
 	});
+
+	const renderData = $derived(
+		iconToSVG(iconData, {
+			hFlip,
+			vFlip,
+			width: size,
+			height: size,
+		}),
+	);
 </script>
 
-<svg
-	{...renderData.attributes}
-	class={[className]}
->
+<svg {...renderData.attributes} class={[className]} {...rest}>
 	{@html renderData.body}
 </svg>
