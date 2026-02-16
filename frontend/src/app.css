@@ -29,9 +29,29 @@
 	--color-base-950: var(--base-950);
 	--color-highlight: var(--highlight);
 	--color-success: var(--success);
+	--color-success-text: color-mix(
+		in oklch,
+		var(--success) 25%,
+		black
+	);
 	--color-warning: var(--warning);
+	--color-warning-text: color-mix(
+		in oklch,
+		var(--warning) 25%,
+		black
+	);
 	--color-error: var(--error);
+	--color-error-text: color-mix(
+		in oklch,
+		var(--error) 25%,
+		black
+	);
 	--color-info: var(--info);
+	--color-info-text: color-mix(
+		in oklch,
+		var(--info) 250%,
+		black
+	);
 	--spacing-cell: var(--cell-padding);
 	--spacing-cell-sm: calc(var(--spacing-cell) * 0.5);
 	--spacing-cell-md: calc(var(--spacing-cell) * 1);
