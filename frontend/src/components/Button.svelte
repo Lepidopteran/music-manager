@@ -6,7 +6,16 @@
 	interface Props extends HTMLButtonAttributes {
 		toggleable?: boolean;
 		active?: boolean;
-		variant?: "primary" | "base" | "secondary" | "ghost" | "none";
+		variant?:
+			| "primary"
+			| "base"
+			| "secondary"
+			| "ghost"
+			| "info"
+			| "success"
+			| "warning"
+			| "error"
+			| "none";
 		children?: Snippet;
 	}
 
@@ -131,18 +140,63 @@
 				}
 			}
 
-			&.btn-secondary {
-				color: var(--secondary-950);
-				background-color: var(--secondary-400);
+			&.btn-info {
+				color: var(--color-info-text);
+				background-color: var(--color-info);
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: var(--secondary-500);
+						background-color: hsl(var(--color-info) h s l + 50%);
 					}
 				}
 
 				&.btn-active {
-					background-color: var(--secondary-500);
+					background-color: hsl(var(--color-info) h s l + 50%);
+				}
+			}
+
+			&.btn-success {
+				color: var(--color-success-text);
+				background-color: var(--color-success);
+
+				@media (hover: hover) {
+					&:hover {
+						background-color: hsl(var(--color-success) h s l + 50%);
+					}
+				}
+
+				&.btn-active {
+					background-color: hsl(var(--color-success) h s l + 50%);
+				}
+			}
+
+			&.btn-warning {
+				color: var(--color-warning-text);
+				background-color: var(--color-warning);
+
+				@media (hover: hover) {
+					&:hover {
+						background-color: hsl(var(--color-warning) h s l + 50%);
+					}
+				}
+
+				&.btn-active {
+					background-color: hsl(var(--color-warning) h s l + 50%);
+				}
+			}
+
+			&.btn-error {
+				color: var(--color-error-text);
+				background-color: var(--color-error);
+
+				@media (hover: hover) {
+					&:hover {
+						background-color: hsl(var(--color-error) h s l + 50%);
+					}
+				}
+
+				&.btn-active {
+					background-color: hsl(var(--color-error) h s l + 50%);
 				}
 			}
 		}
