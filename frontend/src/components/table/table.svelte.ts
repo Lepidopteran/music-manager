@@ -38,10 +38,7 @@ export function createTable<D extends RowData>(options: TableOptions<D>) {
 	const table = createCoreTable(resolvedOptions);
 	let state = $state<TableState>(table.initialState);
 
-	$inspect(state);
-	$inspect(table);
 	function updateOptions() {
-		console.debug("updateOptions", options);
 		table.setOptions((prev) => {
 			return {
 				...prev,
@@ -49,7 +46,6 @@ export function createTable<D extends RowData>(options: TableOptions<D>) {
 				state: { ...state, ...options.state },
 
 				onStateChange: (updater) => {
-					console.debug("onStateChange", updater);
 					if (typeof updater === "function") {
 						state = updater(state);
 					} else {
