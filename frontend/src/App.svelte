@@ -11,11 +11,10 @@
 	import { AppState, type Page } from "@lib/state/app.svelte";
 	import Editor from "@components/music/Editor.svelte";
 	import { fade } from "svelte/transition";
-	import { MediaQuery } from "svelte/reactivity";
 	import { prefersReducedMotion } from "svelte/motion";
+	import { onMobile } from "@lib/state/screen.svelte";
 
 	let theme = $state("dark");
-	let onMobile = new MediaQuery("(max-width: 650px)");
 	let menuOpen = $state(true);
 
 	const routes: Array<Page> = [
