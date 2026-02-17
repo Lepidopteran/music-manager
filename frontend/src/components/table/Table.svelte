@@ -9,14 +9,41 @@
 	import { createTable } from "./table.svelte";
 	import CellContent from "./CellContent.svelte";
 	import Checkbox from "@components/Checkbox.svelte";
+	import { SvelteSet } from "svelte/reactivity";
 
 	interface Props extends HTMLAttributes<HTMLTableElement> {
 		columns: ColumnDef<D, V>[];
 		data: D[];
 		options?: Partial<TableOptions<D>>;
+		/**
+		 * Allows the ability to click and drag to select multiple rows.
+		 *
+		 * Requires selection to be enabled.
+		 */
+		scrubSelection?: boolean;
 	}
 
-	let { columns, data, class: className, options, ...rest }: Props = $props();
+	let isScrubbing = $state(false);
+	let ignoredScrubRows: SvelteSet<string> = $state(new SvelteSet());
+
+	function endScrubbing() {
+		if (!isScrubbing) {
+			return;
+		}
+
+		isScrubbing = false;
+		ignoredScrubRows.clear();
+	}
+
+	let {
+		columns,
+		data,
+		class: className,
+		options,
+		scrubSelection = true,
+		...rest
+	}: Props = $props();
+
 	const tableOptions = $derived({
 		data,
 		columns,
@@ -35,11 +62,24 @@
 	const headerGroups = $derived(getHeaderGroups());
 </script>
 
+<svelte:window
+	onpointercancel={() => endScrubbing()}
+	onpointerup={() => endScrubbing()}
+/>
+
 <table
 	class={[
 		className,
 		"w-full border border-base-600/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
 	]}
+	onpointerup={() => endScrubbing()}
+	onpointerdown={(event) => {
+		if (!scrubSelection || event.button !== 0) {
+			return;
+		}
+
+		isScrubbing = true;
+	}}
 	{...rest}
 >
 	<colgroup>
@@ -103,6 +143,14 @@
 							indeterminate={row.getIsSomeSelected()}
 							checked={row.getIsSelected()}
 							onchange={row.getToggleSelectedHandler()}
+							onpointermove={() => {
+								if (!isScrubbing || ignoredScrubRows.has(row.id)) {
+									return;
+								}
+
+								ignoredScrubRows.add(row.id);
+								row.getToggleSelectedHandler()(new Event("change"));
+							}}
 						/>
 					</td>
 				{/if}
