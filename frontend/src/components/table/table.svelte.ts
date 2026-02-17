@@ -10,6 +10,7 @@ import type { Component, ComponentProps, Snippet } from "svelte";
 declare module "@tanstack/table-core" {
 	interface ColumnMeta<TData extends RowData, TValue> {
 		alignment?: "left" | "center" | "right"; 
+		truncate?: boolean | "start" | "end";
 	}
 }
 

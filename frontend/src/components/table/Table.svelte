@@ -88,7 +88,7 @@
 		{/if}
 		{#each headerGroups as { headers }}
 			{#each headers as { column: { getSize } }}
-				<col style={`width: ${getSize()}px;`} />
+				<col style:width={getSize()} class="min-w-0" />
 			{/each}
 		{/each}
 	</colgroup>
@@ -110,8 +110,12 @@
 
 				{#each headers as { getContext, column: { columnDef: { header, meta } } }}
 					<th
-						class="p-cell first:rounded-tl-theme last:rounded-tr-theme"
-						style:text-align={meta?.alignment}
+						class={[
+							"p-cell first:rounded-tl-theme last:rounded-tr-theme",
+							meta?.truncate !== false && "truncate",
+						]}
+						style:direction={meta?.truncate === "end" ? "rtl" : undefined}
+						style:text-align={meta?.alignment || "left"}
 					>
 						<CellContent
 							content={{
@@ -141,6 +145,7 @@
 						<Checkbox
 							variant={row.getIsSelected() ? "primary" : "base"}
 							indeterminate={row.getIsSomeSelected()}
+							disabled={!row.getCanSelect()}
 							checked={row.getIsSelected()}
 							onchange={row.getToggleSelectedHandler()}
 							onpointermove={() => {
@@ -156,8 +161,12 @@
 				{/if}
 				{#each row.getVisibleCells() as { getContext, column: { columnDef: { cell, meta } } }}
 					<td
-						class="p-cell trunecate border-inherit border-t"
-						style:text-align={meta?.alignment}
+						class={[
+							"p-cell truncate border-inherit border-t",
+							meta?.truncate !== false && "truncate",
+						]}
+						style:direction={meta?.truncate === "start" ? "rtl" : undefined}
+						style:text-align={meta?.alignment || "left"}
 					>
 						<CellContent
 							content={{ kind: "cell", context: getContext(), value: cell }}
