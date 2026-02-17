@@ -146,12 +146,12 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: hsl(var(--color-info) h s l + 50%);
+						background-color: oklch(from var(--color-info) calc(l * 1.25) c h);
 					}
 				}
 
 				&.btn-active {
-					background-color: hsl(var(--color-info) h s l + 50%);
+					background-color: oklch(from var(--color-info) calc(l * 1.25) c h);
 				}
 			}
 
@@ -161,12 +161,12 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: hsl(var(--color-success) h s l + 50%);
+						background-color: oklch(from var(--color-success) calc(l * 1.25) c h);
 					}
 				}
 
 				&.btn-active {
-					background-color: hsl(var(--color-success) h s l + 50%);
+					background-color: oklch(from var(--color-success) calc(l * 1.25) c h);
 				}
 			}
 
@@ -176,12 +176,12 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: hsl(var(--color-warning) h s l + 50%);
+						background-color: oklch(from var(--color-warning) calc(l * 1.25) c h);
 					}
 				}
 
 				&.btn-active {
-					background-color: hsl(var(--color-warning) h s l + 50%);
+					background-color: oklch(from var(--color-warning) calc(l * 1.25) c h);
 				}
 			}
 
@@ -191,12 +191,12 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: hsl(var(--color-error) h s l + 50%);
+						background-color: oklch(from var(--color-error) calc(l * 1.25) c h);
 					}
 				}
 
 				&.btn-active {
-					background-color: hsl(var(--color-error) h s l + 50%);
+					background-color: oklch(from var(--color-error) calc(l * 1.25) c h);
 				}
 			}
 		}
