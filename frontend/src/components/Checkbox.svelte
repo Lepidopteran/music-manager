@@ -12,20 +12,13 @@
 			| "error";
 	}
 
-	let {
-		class: className,
-		variant = "base",
-		...rest
-	}: Props = $props();
+	let { class: className, variant = "base", ...rest }: Props = $props();
 </script>
 
 <input
 	type="checkbox"
 	{...rest}
-	class={[
-		variant !== "base" && `checkbox-${variant}`,
-		className,
-	]}
+	class={[variant !== "base" && `checkbox-${variant}`, className]}
 />
 
 <style>
