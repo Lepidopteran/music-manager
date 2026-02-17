@@ -12,7 +12,7 @@
 	import Editor from "@components/music/Editor.svelte";
 	import { fade } from "svelte/transition";
 	import { prefersReducedMotion } from "svelte/motion";
-	import { onMobile } from "@lib/state/screen.svelte";
+	import { onSmallScreen } from "@lib/state/screen.svelte";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
@@ -71,7 +71,7 @@
 			return;
 		}
 
-		menuOpen = !onMobile.current;
+		menuOpen = !onSmallScreen.current;
 
 		if (!editorEnabled) {
 			editorPane.collapse();
@@ -133,10 +133,10 @@
 		class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
 	>
 		<PaneGroup
-			direction={onMobile.current ? "vertical" : "horizontal"}
+			direction={onSmallScreen.current ? "vertical" : "horizontal"}
 			autoSaveId="mainPane"
 		>
-			<Pane minSize={onMobile.current ? 0 : 30}>
+			<Pane minSize={onSmallScreen.current ? 0 : 30}>
 				{#each routes as route}
 					<div class="h-full" hidden={route.path !== app.path}>
 						<route.component {app} visible={route.path === app.path} />
@@ -147,10 +147,10 @@
 				<div
 					class={[
 						"size-full absolute z-1 left-0 top-0",
-						onMobile.current ? "pb-32" : "p-3",
+						onSmallScreen.current ? "pb-32" : "p-3",
 						!editorEnabled && "pointer-events-none",
 						editorPane?.isCollapsed()
-							? onMobile.current
+							? onSmallScreen.current
 								? "translate-y-full"
 								: "-translate-x-full"
 							: "",
@@ -184,7 +184,7 @@
 						}}
 						class={[
 							"h-full",
-							onMobile.current ? "rounded-t-theme-xl overflow-hidden" : "",
+							onSmallScreen.current ? "rounded-t-theme-xl overflow-hidden" : "",
 						]}
 					>
 						<Editor bind:selectedItem={app.selectedItem} />
