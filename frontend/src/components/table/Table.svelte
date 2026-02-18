@@ -102,6 +102,7 @@
 					>
 						<Checkbox
 							indeterminate={getIsSomeRowsSelected()}
+							disabled={!data.length}
 							checked={getIsAllRowsSelected()}
 							onchange={getToggleAllRowsSelectedHandler()}
 						/>
