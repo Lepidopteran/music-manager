@@ -1,6 +1,6 @@
 import type { Directory } from "@bindings/Directory";
 import type { NewDirectory } from "@bindings/NewDirectory";
-import { fetchJson } from "@utils/api";
+import { fetchJson, fetchText } from "@utils/api";
 
 /**
  * Fetch the list of directories.
@@ -30,7 +30,7 @@ export async function createDirectory(
  * @returns Promise resolving when the directory is deleted.
  */
 export async function deleteDirectory(name: string): Promise<void> {
-	await fetchJson<void>(`/api/directories/${name}`, {
+	await fetchText(`/api/directories/${name}`, {
 		method: "DELETE",
 	});
 }
