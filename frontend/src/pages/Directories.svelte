@@ -13,17 +13,27 @@
 		createDirectory,
 		deleteDirectory,
 	} from "@api/directory";
-	import ServerDirectoryExplorer from "@components/input/ServerDirectory.svelte";
-	import type { AppState, PageComponentProps } from "@lib/state/app.svelte";
+	import type { PageComponentProps } from "@lib/state/app.svelte";
 	import ServerDirectory from "@components/input/ServerDirectory.svelte";
 	import Table from "@components/table/Table.svelte";
 
-	import type { ContentValueReturnType } from "@components/table/table.svelte";
+	import { onMediumScreen } from "@lib/state/screen.svelte";
+	import Icon from "@components/Icon.svelte";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
 
-	let selectedDirectory: Directory | undefined = $state();
+	let rowSelection: Record<string, boolean> = $state({});
+	let selectedDirectories = $derived(
+		Object.keys(rowSelection)
+			.filter((key) => rowSelection[key])
+			.map((key) => {
+				return directories.find((directory) => directory.name === key);
+			})
+			.filter((directory) => directory !== undefined),
+	);
+
+	let directoriesToBeDeleted: Set<string> = $state(new Set());
 
 	let newDirectory: NewDirectory = $state({
 		displayName: null,
@@ -43,16 +53,22 @@
 	}
 
 	async function handleDeleteDirectory() {
-		if (!selectedDirectory) return;
-		await deleteDirectory(selectedDirectory.name);
-		directories.splice(directories.indexOf(selectedDirectory), 1);
 		deleteDirectoryModalOpen = false;
-		selectedDirectory = undefined;
+		directoriesToBeDeleted = new Set(selectedDirectories.map((d) => d.name));
+
+		for (const directory of selectedDirectories) {
+			await deleteDirectory(directory.name);
+			directories = directories.filter((d) => d.name !== directory.name);
+			directoriesToBeDeleted.delete(directory.name);
+		}
 	}
 
 	onMount(async () => {
 		directories = await getDirectories();
 	});
+
+	$inspect(rowSelection);
+	$inspect(directories);
 
 	let props: PageComponentProps = $props();
 </script>
@@ -63,17 +79,37 @@
 	<p>Go ahead and add some</p>
 	<Table
 		data={directories}
+		class="select-none"
+		options={{
+			getRowId: (row) => row.name,
+			enableRowSelection: (row) =>
+				!directoriesToBeDeleted.has(row.original.name),
+			state: {
+				rowSelection,
+				columnVisibility: {
+					totalSpace: onMediumScreen.current,
+					freeSpace: onMediumScreen.current,
+				},
+			},
+			onRowSelectionChange: (updater) => {
+				rowSelection =
+					typeof updater === "function" ? updater(rowSelection) : updater;
+			},
+		}}
 		columns={[
 			{
 				accessorKey: "path",
 				header: "Path",
+				enableHiding: false,
 				meta: {
+					truncate: "start",
 					alignment: "left",
 				},
 			},
 			{
 				accessorKey: "displayName",
 				header: "Display Name",
+				enableHiding: false,
 				meta: {
 					alignment: "left",
 				},
@@ -98,6 +134,7 @@
 			},
 			{
 				accessorKey: "totalSpace",
+				enableHiding: true,
 				header: "Total Space",
 				cell: ({ getValue }) =>
 					getValue() ? formatBytes(getValue() as number) : "-",
@@ -107,11 +144,25 @@
 			},
 		]}
 	/>
-	<Button
-		variant="primary"
-		class="font-bold w-40"
-		onclick={() => (newDirectoryModalOpen = true)}>Add Directory</Button
-	>
+	<div class="flex gap-4">
+		<Button
+			variant="primary"
+			class="w-40"
+			onclick={() => (newDirectoryModalOpen = true)}
+		>
+			<span aria-hidden="true">+</span>
+			Add Directory
+		</Button>
+		<Button
+			variant="error"
+			class="w-30"
+			onclick={() => (deleteDirectoryModalOpen = true)}
+			disabled={!selectedDirectories.length}
+		>
+			<Icon name="delete-fill" aria-hidden="true" />
+			Remove
+		</Button>
+	</div>
 </div>
 
 <Modal title="Add Directory" bind:open={newDirectoryModalOpen}>
@@ -128,14 +179,19 @@
 	</div>
 </Modal>
 <Modal
-	title={`Remove ${selectedDirectory?.name}?`}
+	title={`Remove ${selectedDirectories.length > 1 ? `${selectedDirectories.length} directories` : `${selectedDirectories[0]?.displayName || "directory"}`}?`}
 	bind:open={deleteDirectoryModalOpen}
 >
-	Are you sure you want to remove this directory?
+	Are you sure you want to remove {selectedDirectories.length > 1
+		? `${selectedDirectories.length} directories`
+		: `${`"${selectedDirectories[0]?.displayName}"` || "directory"}`}?
 	<br />
-	This will not delete the directory, it will just be removed from the list
+	This will not delete the directory from the server, it will just be removed from
+	the list
 	<div class="flex gap-2">
-		<Button variant="primary" onclick={handleDeleteDirectory}>Delete</Button>
+		<Button variant="error" class="font-bold" onclick={handleDeleteDirectory}
+			>Delete</Button
+		>
 		<Button onclick={() => (deleteDirectoryModalOpen = false)} class="py-0">
 			Cancel
 		</Button>
