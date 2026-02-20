@@ -49,7 +49,7 @@
 		}
 
 		newDirectoryModalOpen = false;
-		directories.push(directory);
+		directories = [...directories, directory];
 	}
 
 	async function handleDeleteDirectory() {
