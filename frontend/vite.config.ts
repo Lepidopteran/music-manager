@@ -1,7 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
-
 import { resolve } from "node:path";
 
 // https://vite.dev/config/
@@ -21,15 +20,17 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			"/api": {
-				target: "http://localhost:3000",
-				changeOrigin: true,
-			},
+			"/api": { target: "http://localhost:3000", changeOrigin: true },
 		},
 	},
-	build: {
-		outDir: "../dist",
-		emptyOutDir: true,
-	},
+	build: { outDir: "../dist", emptyOutDir: true },
 	plugins: [svelte(), tailwindcss()],
+	test: {
+		expect: { requireAssertions: true },
+		projects: [
+			{
+				extends: "./vite.config.ts",
+			}
+		],
+	},
 });
