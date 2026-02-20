@@ -162,13 +162,20 @@
 	role="combobox"
 	aria-autocomplete="list"
 	aria-expanded={explorerOpen}
-	aria-controls={`server-directory-listbox-${uuid}`}
+	aria-controls={`${id}-listbox`}
 	aria-activedescendant={selectedIndex >= 0 && explorerOpen
-		? `server-directory-listbox-${uuid}-option-${selectedIndex}`
+		? `${id}-listbox-option-${selectedIndex}`
 		: null}
 	onfocus={() => (explorerOpen = true)}
 	onblur={(e) => {
-		if (!e.relatedTarget) {
+		const relatedTarget = e.relatedTarget as HTMLElement;
+
+		if (
+			!relatedTarget ||
+			!(document.getElementById(`${id}-popover`) as HTMLElement).contains(
+				relatedTarget,
+			)
+		) {
 			explorerOpen = false;
 		}
 	}}
@@ -201,7 +208,7 @@
 				}
 			})
 			.otherwise(() => {
-				if (!explorerOpen) {
+				if (!explorerOpen && e.key !== "Tab") {
 					explorerOpen = true;
 				}
 			});
@@ -214,6 +221,7 @@
 	bind:value
 ></TextInput>
 <Popover
+	id={`${id}-popover`}
 	reference={id}
 	tabindex={-1}
 	class="bg-base-200 backdrop-blur-sm shadow-lg rounded-theme border border-base-300/50"
@@ -231,7 +239,7 @@
 	}}
 >
 	<ListBox
-		id={`server-directory-listbox-${uuid}`}
+		id={`${id}-listbox`}
 		bind:this={listBoxRef}
 		tabindex={-1}
 		busy={fetching}
@@ -259,12 +267,7 @@
 		class="focus:border border-primary w-full"
 	>
 		{#snippet option(folder)}
-			<Icon
-				name="folder-fill"
-				class="inline mr-1"
-				inline={true}
-				aria-hidden="true"
-			/>
+			<Icon name="folder-fill" class="inline mr-1" aria-hidden="true" />
 			{#each highlightWords(folder) as fragment}
 				{@const { kind, value } = fragment}
 				{#if kind === "highlight"}
