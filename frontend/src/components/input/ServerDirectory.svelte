@@ -4,6 +4,7 @@
 	import ListBox from "@components/ListBox.svelte";
 	import Popover from "@components/Popover.svelte";
 	import TextInput from "@components/TextInput.svelte";
+	import { isInViewport } from "@lib/attachments/viewport";
 	import { untrack, type ComponentProps } from "svelte";
 	import { match } from "ts-pattern";
 
@@ -205,6 +206,11 @@
 				}
 			});
 	}}
+	{@attach isInViewport((inViewport) => {
+		if (!inViewport && explorerOpen) {
+			explorerOpen = false;
+		}
+	})}
 	bind:value
 ></TextInput>
 <Popover
