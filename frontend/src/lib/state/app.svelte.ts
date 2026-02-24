@@ -81,17 +81,17 @@ function mapPageToRoute(page: Page): Route {
 }
 
 export class AppState {
-	private _fetchingTracks = $state(false);
-	private _organizingArtists = $state(false);
-	private _organizingAlbums = $state(false);
-	private _tracks: SvelteMap<string, Song> = $state(new SvelteMap());
-	private _editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
-	private _artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
-	private _albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
-	private _selectedItem: Item | null = $state(null);
-	private _routes: Array<Route>;
-	private _page: PageResponse = $state(null);
-	private _path = $derived(this._page?.path || "/");
+	#fetchingTracks = $state(false);
+	#organizingArtists = $state(false);
+	#organizingAlbums = $state(false);
+	#tracks: SvelteMap<string, Song> = $state(new SvelteMap());
+	#editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
+	#artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
+	#albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
+	#selectedItem: Item | null = $state(null);
+	#routes: Array<Route>;
+	#page: PageResponse = $state(null);
+	#path = $derived(this.#page?.path || "/");
 
 	private _worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
@@ -101,46 +101,46 @@ export class AppState {
 	autoOrganizeAlbums = $state(false);
 
 	constructor(pages: Array<Page>) {
-		this._routes = pages.map(mapPageToRoute);
-		this._fetchingTracks = true;
+		this.#routes = pages.map(mapPageToRoute);
+		this.#fetchingTracks = true;
 
-		$inspect(`Fetching tracks: ${this._fetchingTracks}`);
-		$inspect(`Organizing artists: ${this._organizingArtists}`);
-		$inspect(`Organizing albums: ${this._organizingAlbums}`);
+		$inspect(`Fetching tracks: ${this.#fetchingTracks}`);
+		$inspect(`Organizing artists: ${this.#organizingArtists}`);
+		$inspect(`Organizing albums: ${this.#organizingAlbums}`);
 
 		this._worker.onmessage = (event: MessageEvent<SongWorkerResponse>) => {
 			const { data } = event;
 
 			match(data)
 				.with({ type: "initialize" }, (data) => {
-					this._tracks = new SvelteMap(data.payload);
+					this.#tracks = new SvelteMap(data.payload);
 				})
 				.with({ type: "groupArtists" }, (data) => {
 					for (const [key, value] of data.payload) {
-						this._artists.set(key, value);
+						this.#artists.set(key, value);
 					}
 
-					this._organizingArtists = false;
+					this.#organizingArtists = false;
 				})
 				.with({ type: "groupAlbums" }, (data) => {
 					for (const [key, value] of data.payload) {
-						this._albums.set(key, value);
+						this.#albums.set(key, value);
 					}
 
-					this._organizingAlbums = false;
+					this.#organizingAlbums = false;
 				})
 				.exhaustive();
 		};
 
 		// TODO: Consider trying an alternative way to update updatedTracks
 		$effect(() => {
-			if (this._selectedItem) {
-				this._editItem(this._selectedItem);
+			if (this.#selectedItem) {
+				this.#editItem(this.#selectedItem);
 			}
 		});
 
 		$effect(() => {
-			if (this._tracks.size > 0) {
+			if (this.#tracks.size > 0) {
 				if (this.autoOrganizeArtists) {
 					this.scheduleOrganizeArtists();
 				}
@@ -155,11 +155,11 @@ export class AppState {
 	}
 
 	extendTrackInfo(id: string, info: SongMetadata) {
-		const track = this._tracks.get(id);
+		const track = this.#tracks.get(id);
 
 		if (track) {
 			Object.assign(track, info);
-			this._tracks.set(id, track);
+			this.#tracks.set(id, track);
 		} else {
 			throw new Error("Track not found");
 		}
@@ -167,15 +167,15 @@ export class AppState {
 
 	async fetchTracks() {
 		const tracks: Array<Song> = (await getSongs()) as Array<Song>;
-		this._sendMessage({
+		this.#sendMessage({
 			type: "initialize",
 			payload: tracks,
 		});
 	}
 
 	changePage(path: string) {
-		this._page = this._resolveRoute(path, this._routes);
-		const callback = this._routes.find((route) => route.path === path)?.callback;
+		this.#page = this.#resolveRoute(path, this.#routes);
+		const callback = this.#routes.find((route) => route.path === path)?.callback;
 
 		if (callback) {
 			callback(this);
@@ -183,18 +183,18 @@ export class AppState {
 	}
 
 	scheduleOrganizeArtists() {
-		this._artists.clear();
-		this._sendMessage({ type: "groupArtists" });
-		this._organizingArtists = true;
+		this.#artists.clear();
+		this.#sendMessage({ type: "groupArtists" });
+		this.#organizingArtists = true;
 	}
 
 	scheduleOrganizeAlbums() {
-		this._albums.clear();
-		this._sendMessage({ type: "groupAlbums" });
-		this._organizingAlbums = true;
+		this.#albums.clear();
+		this.#sendMessage({ type: "groupAlbums" });
+		this.#organizingAlbums = true;
 	}
 
-	private _resolveRoute(path: string, routes: Array<Route>): PageResponse {
+	#resolveRoute(path: string, routes: Array<Route>): PageResponse {
 		for (const route of routes) {
 			const match = route.matcher(path);
 
@@ -211,7 +211,7 @@ export class AppState {
 					hideNavigation: route.hideNavigation,
 					displayEditor: route.displayEditor,
 					params,
-					child: this._resolveRoute(
+					child: this.#resolveRoute(
 						path.slice(route.path.length) || "/",
 						route.children || [],
 					),
@@ -222,20 +222,20 @@ export class AppState {
 		return null;
 	}
 
-	private _sendMessage(message: SongWorkerRequest) {
+	#sendMessage(message: SongWorkerRequest) {
 		this._worker.postMessage(message);
 	}
 
-	private _editItem(item: Item) {
+	#editItem(item: Item) {
 		if (isGroup(item)) {
 			for (const song of item.songs) {
-				this._editItem({ type: "song", song });
+				this.#editItem({ type: "song", song });
 			}
 
 			return;
 		}
 
-		const original = this._tracks.get(item.song.id);
+		const original = this.#tracks.get(item.song.id);
 
 		if (
 			original
@@ -249,59 +249,59 @@ export class AppState {
 				return original[key] === item.song[key];
 			})
 		) {
-			this._editedTracks.delete(item.song.id.toString());
+			this.#editedTracks.delete(item.song.id.toString());
 			return;
 		}
 
-		this._editedTracks.set(item.song.id.toString(), item.song);
+		this.#editedTracks.set(item.song.id.toString(), item.song);
 	}
 
 	get page() {
-		return this._page;
+		return this.#page;
 	}
 
 	get path() {
-		return this._path;
+		return this.#path;
 	}
 
 	get tracks() {
-		return this._tracks;
+		return this.#tracks;
 	}
 
 	get artists() {
-		return this._artists;
+		return this.#artists;
 	}
 
 	get albums() {
-		return this._albums;
+		return this.#albums;
 	}
 
 	get editedTracks() {
-		return this._editedTracks;
+		return this.#editedTracks;
 	}
 
 	get organizingArtists() {
-		return this._organizingArtists;
+		return this.#organizingArtists;
 	}
 
 	get organizingAlbums() {
-		return this._organizingAlbums;
+		return this.#organizingAlbums;
 	}
 
 	get fetchingTracks() {
-		return this._fetchingTracks;
+		return this.#fetchingTracks;
 	}
 
 	get selectedItem() {
-		return this._selectedItem;
+		return this.#selectedItem;
 	}
 
 	set selectedItem(item: Item | null) {
-		if (isItemEqual(this._selectedItem, item)) {
+		if (isItemEqual(this.#selectedItem, item)) {
 			return;
 		}
 
-		this._selectedItem = item;
+		this.#selectedItem = item;
 	}
 }
 
