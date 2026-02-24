@@ -1,23 +1,17 @@
 {
   "useTabs": true,
-  "typescript": {
-    "associations": ["*.svelte"]
-  },
   "markdown": {},
   "malva": {},
   "markup": {
     "scriptIndent": true,
     "styleIndent": true
   },
-  "oxc": {
-    "associations": ["!*.svelte"]
-  },
-  "excludes": ["**/node_modules", "**/*-lock.json", "src/lib/bindings/*"],
+  "typescript": {},
+  "excludes": ["**/node_modules", "**/*-lock.json", "src/lib/bindings/*", "*.svg"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.15.wasm",
     "https://plugins.dprint.dev/markdown-0.21.1.wasm",
     "https://plugins.dprint.dev/g-plane/malva-v0.15.2.wasm",
-    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.26.0.wasm",
-    "https://plugins.dprint.dev/oxc-0.7.0.wasm"
+    "https://plugins.dprint.dev/g-plane/markup_fmt-v0.26.0.wasm"
   ]
 }
