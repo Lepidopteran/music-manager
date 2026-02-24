@@ -93,7 +93,7 @@ export class AppState {
 	#page: PageResponse = $state(null);
 	#path = $derived(this.#page?.path || "/");
 
-	private _worker: Worker = new Worker(
+	#worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
 	);
 
@@ -108,7 +108,7 @@ export class AppState {
 		$inspect(`Organizing artists: ${this.#organizingArtists}`);
 		$inspect(`Organizing albums: ${this.#organizingAlbums}`);
 
-		this._worker.onmessage = (event: MessageEvent<SongWorkerResponse>) => {
+		this.#worker.onmessage = (event: MessageEvent<SongWorkerResponse>) => {
 			const { data } = event;
 
 			match(data)
@@ -223,7 +223,7 @@ export class AppState {
 	}
 
 	#sendMessage(message: SongWorkerRequest) {
-		this._worker.postMessage(message);
+		this.#worker.postMessage(message);
 	}
 
 	#editItem(item: Item) {
