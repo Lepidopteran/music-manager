@@ -1,7 +1,7 @@
-import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -30,7 +30,7 @@ export default defineConfig({
 		projects: [
 			{
 				extends: "./vite.config.ts",
-			}
+			},
 		],
 	},
 });
