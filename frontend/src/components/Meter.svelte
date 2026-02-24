@@ -27,5 +27,6 @@
 		data-high={high <= value || undefined}
 		data-low={low >= value || undefined}
 		data-based={value <= high || value >= low || undefined}
-	></div>
+	>
+	</div>
 </div>

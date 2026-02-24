@@ -1,4 +1,4 @@
-import type { DatabaseSong, Album } from "@lib/models";
+import type { Album, DatabaseSong } from "@lib/models";
 
 export function isSong(input: DatabaseSong | Album): input is DatabaseSong {
 	if (!input) return false;

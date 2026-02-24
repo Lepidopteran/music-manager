@@ -20,8 +20,8 @@
 <div
 	class={separator.length > 0 ? "" : "breadcrumb-box-separator"}
 	style={separator.length > 0
-		? `--breadcrumb-separator: \"${separator}\"`
-		: undefined}
+	? `--breadcrumb-separator: \"${separator}\"`
+	: undefined}
 >
 	<ul {...rest}>
 		{#each crumbs as text, index}

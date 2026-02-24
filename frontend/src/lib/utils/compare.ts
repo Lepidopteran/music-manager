@@ -13,11 +13,11 @@ function compare<T>(
 	}
 
 	if (
-		(typeof x === "function" && typeof y === "function") ||
-		(x instanceof Date && y instanceof Date) ||
-		(x instanceof RegExp && y instanceof RegExp) ||
-		(x instanceof String && y instanceof String) ||
-		(x instanceof Number && y instanceof Number)
+		(typeof x === "function" && typeof y === "function")
+		|| (x instanceof Date && y instanceof Date)
+		|| (x instanceof RegExp && y instanceof RegExp)
+		|| (x instanceof String && y instanceof String)
+		|| (x instanceof Number && y instanceof Number)
 	) {
 		return x.toString() === y.toString();
 	}
@@ -26,8 +26,8 @@ function compare<T>(
 	if (x.isPrototypeOf?.(y) || y.isPrototypeOf?.(x)) return false;
 
 	if (
-		x.constructor !== y.constructor ||
-		(x as any).prototype !== (y as any).prototype
+		x.constructor !== y.constructor
+		|| (x as any).prototype !== (y as any).prototype
 	) {
 		return false;
 	}

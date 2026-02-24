@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ClassValue } from "svelte/elements";
 	import type { TaskEvent } from "@lib/models";
+	import type { ClassValue } from "svelte/elements";
 
 	interface Props {
 		event: TaskEvent;
@@ -9,7 +9,6 @@
 	}
 
 	let { event, class: className, ...rest }: Props = $props();
-
 </script>
 
 <div

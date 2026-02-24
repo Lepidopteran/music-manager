@@ -32,14 +32,13 @@
 					aria-label={group}
 					data-selected={isSelectedItem(group)}
 					data-edited={tracks.some((track) => app.editedTracks.has(track.id.toString()))}
-					onclick={() =>
-						(app.selectedItem = {
-							type: "group",
-							label: group,
-							songs: tracks.map(
-								(song) => app.editedTracks.get(song.id.toString()) || song,
-							),
-						})}
+					onclick={() => (app.selectedItem = {
+						type: "group",
+						label: group,
+						songs: tracks.map(
+							(song) => app.editedTracks.get(song.id.toString()) || song,
+						),
+					})}
 				>
 					{group}
 				</summary>
@@ -51,15 +50,16 @@
 							aria-label={`${track.title} by ${track.artist}`}
 							data-selected={isSelectedItem(track)}
 							data-edited={app.editedTracks.has(track.id.toString())}
-							onclick={() =>
-								(app.selectedItem = {
-									type: "song",
-									song: app.editedTracks.get(trackIdString) || track,
-								})}
+							onclick={() => (app.selectedItem = {
+								type: "song",
+								song: app.editedTracks.get(trackIdString) || track,
+							})}
 						>
-							{app.editedTracks.get(trackIdString)?.title ||
-								track.title ||
-								track.path}
+							{
+								app.editedTracks.get(trackIdString)?.title
+								|| track.title
+								|| track.path
+							}
 						</li>
 					{/each}
 				</ul>

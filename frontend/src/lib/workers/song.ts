@@ -1,8 +1,5 @@
 import type { Song } from "@lib/models";
-import type {
-	SongWorkerRequest,
-	SongWorkerResponse,
-} from "@lib/worker-messages";
+import type { SongWorkerRequest, SongWorkerResponse } from "@lib/worker-messages";
 
 function sendMessage(message: SongWorkerResponse) {
 	postMessage(message);

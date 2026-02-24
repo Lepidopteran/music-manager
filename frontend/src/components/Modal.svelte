@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import Button from "./Button.svelte";
 	import type { ClassValue } from "svelte/elements";
+	import Button from "./Button.svelte";
 
 	let dialog: HTMLDialogElement;
 
@@ -44,11 +44,11 @@
 
 			const { left, right, top, bottom } = node.getBoundingClientRect();
 			if (
-				(event.target === node || !node.contains(event.target as Node)) &&
-				(event.clientX < left ||
-					event.clientX > right ||
-					event.clientY < top ||
-					event.clientY > bottom)
+				(event.target === node || !node.contains(event.target as Node))
+				&& (event.clientX < left
+					|| event.clientX > right
+					|| event.clientY < top
+					|| event.clientY > bottom)
 			) {
 				open = false;
 			}

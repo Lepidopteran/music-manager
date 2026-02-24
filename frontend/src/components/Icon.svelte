@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { icons as mingcute } from "@iconify-json/mingcute";
-	import { iconToSVG, getIconData } from "@iconify/utils";
+	import { getIconData, iconToSVG } from "@iconify/utils";
 
 	import type { Icons } from "@lib/icons";
 	import type { HTMLAttributes } from "svelte/elements";

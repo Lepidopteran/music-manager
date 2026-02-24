@@ -1,18 +1,18 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
-	import Directories from "@pages/Directories.svelte";
-	import Albums from "@pages/Albums.svelte";
-	import Logo from "./components/Logo.svelte";
 	import Icon from "@components/Icon.svelte";
 	import Jobs from "@pages/admin/Jobs.svelte";
+	import Albums from "@pages/Albums.svelte";
+	import Directories from "@pages/Directories.svelte";
+	import Logo from "./components/Logo.svelte";
 
-	import { PaneGroup, Pane, PaneResizer } from "paneforge";
+	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 
-	import { AppState, type Page } from "@lib/state/app.svelte";
 	import Editor from "@components/music/Editor.svelte";
-	import { fade } from "svelte/transition";
-	import { prefersReducedMotion } from "svelte/motion";
+	import { AppState, type Page } from "@lib/state/app.svelte";
 	import { onSmallScreen } from "@lib/state/screen.svelte";
+	import { prefersReducedMotion } from "svelte/motion";
+	import { fade } from "svelte/transition";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
@@ -83,9 +83,7 @@
 
 <svelte:window onpopstate={() => app.changePage(window.location.pathname)} />
 
-<div
-	class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full"
->
+<div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
 		hidden={app.page?.hideHeader}
@@ -111,7 +109,9 @@
 		<div class="flex gap-4"></div>
 	</header>
 	<aside
-		class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
+		class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${
+			menuOpen ? "translate-x-0" : "-translate-x-full"
+		}`}
 	>
 		<nav hidden={app.page?.hideNavigation}>
 			{#each routes.filter((route) => !route.hideNavigation && !route.hidden) as route}
@@ -129,9 +129,7 @@
 			{/each}
 		</nav>
 	</aside>
-	<main
-		class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10"
-	>
+	<main class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10">
 		<PaneGroup
 			direction={onSmallScreen.current ? "vertical" : "horizontal"}
 			autoSaveId="mainPane"
@@ -155,14 +153,19 @@
 								: "-translate-x-full"
 							: "",
 					]}
-				></div>
+				>
+				</div>
 				<div
-					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${editorPane?.isCollapsed() ? "opacity-0" : ""}`}
+					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${
+						editorPane?.isCollapsed() ? "opacity-0" : ""
+					}`}
 				>
 					<Icon
 						name="up-line"
 						size="1.25em"
-						class={`transition transform lg:-rotate-90 ${editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""}`}
+						class={`transition transform lg:-rotate-90 ${
+							editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""
+						}`}
 					/>
 				</div>
 			</PaneResizer>

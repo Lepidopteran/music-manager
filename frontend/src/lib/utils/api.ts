@@ -62,8 +62,8 @@ export async function fetchText(
 	}
 }
 
-type MessageEventData<K extends keyof EventSourceEventMap> =
-	EventSourceEventMap[K] extends MessageEvent<infer T> ? T : never;
+type MessageEventData<K extends keyof EventSourceEventMap> = EventSourceEventMap[K] extends MessageEvent<infer T> ? T
+	: never;
 
 /**
  * Adds an event listener to an EventSource for a specific event type.

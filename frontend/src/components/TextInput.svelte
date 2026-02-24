@@ -34,17 +34,13 @@
 	]}
 >
 	{#if prefixChild}
-		<div
-			class={["user-select-none h-full", prefixDecorative && "pointer-events-none"]}
-		>
+		<div class={["user-select-none h-full", prefixDecorative && "pointer-events-none"]}>
 			{@render prefixChild()}
 		</div>
 	{/if}
 	<input type="text" class="outline-none" {placeholder} bind:value {...rest} />
 	{#if suffixChild}
-		<div
-			class={["user-select-none h-full", suffixDecorative && "pointer-events-none"]}
-		>
+		<div class={["user-select-none h-full", suffixDecorative && "pointer-events-none"]}>
 			{@render suffixChild()}
 		</div>
 	{/if}

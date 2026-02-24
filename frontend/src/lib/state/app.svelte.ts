@@ -1,17 +1,14 @@
-import type { Song } from "@lib/models";
 import type { Icons } from "@lib/icons";
+import type { Song } from "@lib/models";
 import { SvelteMap } from "svelte/reactivity";
 
-import type { Component } from "svelte";
-import type {
-	SongWorkerRequest,
-	SongWorkerResponse,
-} from "@lib/worker-messages";
-import { match } from "ts-pattern";
-import { match as matchPath, type MatchFunction } from "path-to-regexp";
-import type { SongMetadata } from "@bindings/SongMetadata";
-import type { SongFile } from "@bindings/SongFile";
 import { getSongs } from "@api/song";
+import type { SongFile } from "@bindings/SongFile";
+import type { SongMetadata } from "@bindings/SongMetadata";
+import type { SongWorkerRequest, SongWorkerResponse } from "@lib/worker-messages";
+import { match as matchPath, type MatchFunction } from "path-to-regexp";
+import type { Component } from "svelte";
+import { match } from "ts-pattern";
 
 export type Item =
 	| { type: "song"; song: Song; fileInfo?: SongFile }
@@ -241,9 +238,9 @@ export class AppState {
 		const original = this._tracks.get(item.song.id);
 
 		if (
-			original &&
+			original
 			// @ts-expect-error
-			Object.keys(original).every((key: keyof Song) => {
+			&& Object.keys(original).every((key: keyof Song) => {
 				// TODO: compare unknown field
 				if (key === "unknown") {
 					return true;

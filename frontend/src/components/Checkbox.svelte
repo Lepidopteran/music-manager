@@ -35,9 +35,7 @@
 			position: relative;
 			appearance: none;
 			text-align: center;
-			transition:
-				background-color 0.2s,
-				box-shadow 0.2s;
+			transition: background-color 0.2s, box-shadow 0.2s;
 
 			--size: calc(var(--spacing, 0.25rem) * 6);
 			width: var(--size);
@@ -52,11 +50,7 @@
 				rotate: 45deg;
 				background-color: currentColor;
 				opacity: 0;
-				transition:
-					clip-path 0.3s,
-					opacity 0.1s,
-					rotate 0.3s,
-					translate 0.3s;
+				transition: clip-path 0.3s, opacity 0.1s, rotate 0.3s, translate 0.3s;
 				transition-delay: 0.1s;
 				clip-path: polygon(
 					20% 100%,

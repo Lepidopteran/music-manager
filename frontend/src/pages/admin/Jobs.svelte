@@ -1,26 +1,26 @@
 <script lang="ts">
-	import Progress from "@components/Progress.svelte";
-	import { eventSource } from "@lib/state/server-events.svelte";
-	import { addSourceEventListener } from "@lib/utils/api";
-	import { onMount } from "svelte";
-	import Button from "@components/Button.svelte";
-	import Icon from "@components/Icon.svelte";
-	import type { PageComponentProps } from "@lib/state/app.svelte";
-	import type {
-		RegistryJob,
-		JobState,
-		JobExecutionReport,
-	} from "@bindings/bindings";
 	import {
-		getJobs,
-		getJobStates,
-		queueJob,
 		cancelJob,
 		getJobQueueOrder,
 		getJobReports,
+		getJobs,
+		getJobStates,
+		queueJob,
 	} from "@api/jobs";
-	import { match, P } from "ts-pattern";
+	import type {
+		JobExecutionReport,
+		JobState,
+		RegistryJob,
+	} from "@bindings/bindings";
+	import Button from "@components/Button.svelte";
+	import Icon from "@components/Icon.svelte";
+	import Progress from "@components/Progress.svelte";
+	import type { PageComponentProps } from "@lib/state/app.svelte";
+	import { eventSource } from "@lib/state/server-events.svelte";
+	import { addSourceEventListener } from "@lib/utils/api";
+	import { onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
+	import { match, P } from "ts-pattern";
 
 	interface JobUiState extends JobState {
 		current?: bigint;
@@ -36,8 +36,9 @@
 
 	addSourceEventListener(eventSource, "job-event", (event) => {
 		match(event)
-			.with({ kind: "stateAdded" }, (e) =>
-				jobStates.set(e.source, e.state as JobUiState),
+			.with(
+				{ kind: "stateAdded" },
+				(e) => jobStates.set(e.source, e.state as JobUiState),
 			)
 			.with({ kind: "stateUpdated" }, (e) => {
 				const previousState = jobStates.get(e.source);
@@ -85,8 +86,8 @@
 <div class="p-4 max-w-4xl">
 	<ul class="space-y-2">
 		{#each jobs as job}
-			{@const [key, state] =
-				jobStates.entries().find(([_, state]) => state.jobId === job.id) ?? []}
+			{@const [key, state] = jobStates.entries().find(([_, state]) => state.jobId === job.id)
+			?? []}
 			<li>
 				<div
 					data-id={job.id}
@@ -94,18 +95,17 @@
 				>
 					<div class="flex divide-x-2 divide-base-text/25 w-full">
 						{#each Object.entries(job.steps) as [step, description]}
-							{@const max =
-								state && state.currentStep === Number(step)
-									? Number(state.total) || 100
-									: 100}
+							{@const max = state && state.currentStep === Number(step)
+							? Number(state.total) || 100
+							: 100}
 
 							{@const value = state
-								? state.currentStep === Number(step)
-									? Number(state.current) || 0
-									: state.currentStep > Number(step)
-										? 100
-										: 0
-								: 0}
+							? state.currentStep === Number(step)
+								? Number(state.current) || 0
+								: state.currentStep > Number(step)
+								? 100
+								: 0
+							: 0}
 
 							<Progress
 								{max}
@@ -127,8 +127,8 @@
 								variant="primary"
 								onclick={async () => {
 									if (
-										state?.status === "inProgress" ||
-										state?.status === "pending"
+										state?.status === "inProgress"
+										|| state?.status === "pending"
 									) {
 										await cancelJob(key!);
 										return;

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import TextInput from "@components/TextInput.svelte";
 	import Icon from "@components/Icon.svelte";
+	import TextInput from "@components/TextInput.svelte";
 	import Cover from "./Cover.svelte";
 
-	import { isGroup, isSong, type Item } from "@lib/state/app.svelte";
 	import type { Song } from "@lib/models";
+	import { isGroup, isSong, type Item } from "@lib/state/app.svelte";
 
 	const excludedFields: Array<keyof Song> = [
 		"title",
@@ -69,33 +69,30 @@
 				<p
 					aria-hidden={failedToLoad || (!imageHeight && !imageWidth)}
 					aria-label={`Cover art size ${imageWidth} by ${imageHeight}.`}
-					class={`duration-300 ease-in-out text-base-950/50 ${failedToLoad ? "invisible pointer-events-none" : ""}`}
+					class={`duration-300 ease-in-out text-base-950/50 ${
+						failedToLoad ? "invisible pointer-events-none" : ""
+					}`}
 				>
 					{imageHeight} x {imageWidth}
 				</p>
 			{/if}
 		</div>
-		<div
-			class="flex flex-col gap-2 mx-auto justify-center items-center md:w-3/5"
-		>
+		<div class="flex flex-col gap-2 mx-auto justify-center items-center md:w-3/5">
 			<TextInput
 				variant="ghost"
 				class="font-bold text-center text-2xl truncate w-full"
 				placeholder={isSong(selectedItem) ? "Title..." : "Album Title..."}
 				aria-label={isSong(selectedItem) ? "Song title" : "Album title"}
-				bind:value={
-					() =>
-						isSong(selectedItem)
-							? selectedItem.song.title
-							: selectedItem.songs.at(0)?.album,
-					(value) =>
-						isGroup(selectedItem)
-							? (selectedItem.songs = selectedItem.songs.map((song) => ({
-									...song,
-									album: value,
-								})))
-							: (selectedItem.song.title = value)
-				}
+				bind:value={() =>
+				isSong(selectedItem)
+					? selectedItem.song.title
+					: selectedItem.songs.at(0)?.album, (value) =>
+				isGroup(selectedItem)
+					? (selectedItem.songs = selectedItem.songs.map((song) => ({
+						...song,
+						album: value,
+					})))
+					: (selectedItem.song.title = value)}
 				{suffixChild}
 			></TextInput>
 			<TextInput
@@ -103,19 +100,16 @@
 				class="text-center block w-full"
 				placeholder={isSong(selectedItem) ? "Artist..." : "Album Artist..."}
 				aria-label={isSong(selectedItem) ? "Song artist" : "Album artist"}
-				bind:value={
-					() =>
-						isSong(selectedItem)
-							? selectedItem.song.artist
-							: selectedItem.songs[0].albumArtist,
-					(value) =>
-						isGroup(selectedItem)
-							? (selectedItem.songs = selectedItem.songs.map((song) => ({
-									...song,
-									albumArtist: value,
-								})))
-							: (selectedItem.song.artist = value)
-				}
+				bind:value={() =>
+				isSong(selectedItem)
+					? selectedItem.song.artist
+					: selectedItem.songs[0].albumArtist, (value) =>
+				isGroup(selectedItem)
+					? (selectedItem.songs = selectedItem.songs.map((song) => ({
+						...song,
+						albumArtist: value,
+					})))
+					: (selectedItem.song.artist = value)}
 				{suffixChild}
 			></TextInput>
 		</div>
@@ -141,7 +135,10 @@
 				].sort() as Array<keyof Song>}
 
 				{#each keys as key}
-					{#if !excludedFields.includes(key) && selectedItem.songs.some((song) => song[key] !== null && song[key] !== undefined)}
+					{#if !excludedFields.includes(key)
+	&& selectedItem.songs.some((song) =>
+		song[key] !== null && song[key] !== undefined
+	)}
 						<label class="w-full block">
 							<span class="block text-sm text-base-950/50">
 								{renameField(key)}
@@ -149,19 +146,16 @@
 							<TextInput
 								class="w-full"
 								{suffixChild}
-								bind:value={
-									() =>
-										selectedItem.songs.every(
-											(song) => song[key] === selectedItem.songs[0][key],
-										)
-											? selectedItem.songs[0][key]?.toString()
-											: `Different across (${selectedItem.songs.length}) tracks`,
-									(newValue) =>
-										(selectedItem.songs = selectedItem.songs.map((song) => ({
-											...song,
-											[key]: newValue,
-										})))
-								}
+								bind:value={() =>
+								selectedItem.songs.every(
+										(song) => song[key] === selectedItem.songs[0][key],
+									)
+									? selectedItem.songs[0][key]?.toString()
+									: `Different across (${selectedItem.songs.length}) tracks`,
+								(newValue) => (selectedItem.songs = selectedItem.songs.map((song) => ({
+									...song,
+									[key]: newValue,
+								})))}
 							/>
 						</label>
 					{/if}

@@ -5,7 +5,7 @@
 	import Popover from "@components/Popover.svelte";
 	import TextInput from "@components/TextInput.svelte";
 	import { isInViewport } from "@lib/attachments/viewport";
-	import { untrack, type ComponentProps } from "svelte";
+	import { type ComponentProps, untrack } from "svelte";
 	import { match } from "ts-pattern";
 
 	let listBoxRef: ReturnType<typeof ListBox>;
@@ -47,9 +47,9 @@
 				const parts = segment.value.split(regex);
 
 				for (const part of parts) {
-					if (part.toLowerCase() === word)
+					if (part.toLowerCase() === word) {
 						temp.push({ kind: "highlight", value: part });
-					else temp.push({ kind: "text", value: part });
+					} else temp.push({ kind: "text", value: part });
 				}
 			}
 
@@ -164,15 +164,15 @@
 	aria-expanded={explorerOpen}
 	aria-controls={`${id}-listbox`}
 	aria-activedescendant={selectedIndex >= 0 && explorerOpen
-		? `${id}-listbox-option-${selectedIndex}`
-		: null}
+	? `${id}-listbox-option-${selectedIndex}`
+	: null}
 	onfocus={() => (explorerOpen = true)}
 	onblur={(e) => {
 		const relatedTarget = e.relatedTarget as HTMLElement;
 
 		if (
-			!relatedTarget ||
-			!(document.getElementById(`${id}-popover`) as HTMLElement).contains(
+			!relatedTarget
+			|| !(document.getElementById(`${id}-popover`) as HTMLElement).contains(
 				relatedTarget,
 			)
 		) {
@@ -245,8 +245,7 @@
 		busy={fetching}
 		options={level > 0 && !query ? ["..", ...filteredFolders] : filteredFolders}
 		onIndexChange={(index) => (selectedIndex = index)}
-		optionLabel={(folder) =>
-			`Go to ${folder === ".." ? "parent" : folder} directory`}
+		optionLabel={(folder) => `Go to ${folder === ".." ? "parent" : folder} directory`}
 		onOptionActivate={(folder) => {
 			const parts = value.split("/");
 

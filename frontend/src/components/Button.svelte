@@ -161,7 +161,11 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: oklch(from var(--color-success) calc(l * 1.25) c h);
+						background-color: oklch(
+							from var(--color-success)
+							calc(l * 1.25)
+							c h
+						);
 					}
 				}
 
@@ -176,7 +180,11 @@
 
 				@media (hover: hover) {
 					&:hover {
-						background-color: oklch(from var(--color-warning) calc(l * 1.25) c h);
+						background-color: oklch(
+							from var(--color-warning)
+							calc(l * 1.25)
+							c h
+						);
 					}
 				}
 

@@ -2,8 +2,8 @@ import type { Song } from "./models";
 
 export type SongWorkerRequest =
 	| { type: "initialize"; payload: Song[] }
-	| { type: "groupArtists"; }
-	| { type: "groupAlbums"; };
+	| { type: "groupArtists" }
+	| { type: "groupAlbums" };
 
 export type SongWorkerResponse =
 	| { type: "initialize"; payload: Map<string, Song> }

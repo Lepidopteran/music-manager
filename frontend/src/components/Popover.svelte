@@ -1,26 +1,26 @@
 <script lang="ts">
+	import type {
+		Derivable,
+		FlipOptions,
+		FloatingElement,
+		InlineOptions,
+		Middleware,
+		OffsetOptions,
+		Placement,
+		ShiftOptions,
+		SizeOptions,
+	} from "@floating-ui/dom";
 	import type { Snippet } from "svelte";
 	import type { Attachment } from "svelte/attachments";
 	import type { HTMLAttributes } from "svelte/elements";
-	import type {
-		Derivable,
-		Placement,
-		FlipOptions,
-		OffsetOptions,
-		InlineOptions,
-		ShiftOptions,
-		SizeOptions,
-		FloatingElement,
-		Middleware,
-	} from "@floating-ui/dom";
 
 	import {
-		computePosition,
 		autoUpdate,
+		computePosition,
 		flip,
+		inline,
 		offset,
 		shift,
-		inline,
 		size,
 	} from "@floating-ui/dom";
 
@@ -69,11 +69,10 @@
 	}
 
 	const popoverAttachment: Attachment<FloatingElement> = (popover) => {
-		const referenceElement =
-			typeof reference === "string"
-				? document.getElementById(reference) ||
-					document.querySelector(reference)
-				: reference;
+		const referenceElement = typeof reference === "string"
+			? document.getElementById(reference)
+				|| document.querySelector(reference)
+			: reference;
 
 		console.debug("popoverAttachment", referenceElement, reference);
 
