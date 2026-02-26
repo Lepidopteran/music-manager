@@ -1,4 +1,6 @@
-import type { Song } from "./models";
+import type { Song } from "@lib/models";
+
+export const songWorkerUrl = new URL("./song.ts", import.meta.url);
 
 export type SongWorkerRequest =
 	| { type: "initialize"; payload: Song[] }

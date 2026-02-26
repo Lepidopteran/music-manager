@@ -4,7 +4,7 @@ import { SvelteMap } from "svelte/reactivity";
 import { getSongs } from "@api/song";
 import type { SongFile } from "@bindings/SongFile";
 import type { SongMetadata } from "@bindings/SongMetadata";
-import type { SongWorkerRequest, SongWorkerResponse } from "@lib/worker-messages";
+import { type SongWorkerRequest, type SongWorkerResponse, songWorkerUrl } from "@lib/workers";
 import { match } from "ts-pattern";
 
 export type Item =
@@ -21,9 +21,7 @@ export class AppState {
 	#albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	#selectedItem: Item | null = $state(null);
 
-	#worker: Worker = new Worker(
-		new URL("../workers/song.ts", import.meta.url),
-	);
+	#worker: Worker = new Worker(songWorkerUrl);
 
 	autoOrganizeArtists = $state(false);
 	autoOrganizeAlbums = $state(false);
