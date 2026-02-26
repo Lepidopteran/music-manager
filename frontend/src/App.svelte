@@ -9,7 +9,8 @@
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 
 	import Editor from "@components/music/Editor.svelte";
-	import { AppState, type Page } from "@lib/state/app.svelte";
+	import { AppState } from "@lib/state/app.svelte";
+	import { type ResolvedPage, Router } from "@lib/state/router.svelte";
 	import { onSmallScreen } from "@lib/state/screen.svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
@@ -17,14 +18,15 @@
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
-	const routes: Array<Page> = [
+	export const router = new Router([
 		{
 			path: "/",
 			name: "Albums",
+			display: true,
+			displayEditor: true,
 			icon: "album-2-fill",
 			component: Albums,
-			displayEditor: true,
-			callback: (app) => {
+			callback: () => {
 				if (!app.autoOrganizeAlbums) {
 					app.autoOrganizeAlbums = true;
 				}
@@ -32,19 +34,23 @@
 		},
 		{
 			path: "/directories",
+			display: true,
 			name: "Directories",
-			icon: "folder-fill",
 			component: Directories,
+			icon: "folder-fill",
 		},
 		{
 			path: "/jobs",
+			display: true,
 			name: "Jobs",
 			icon: "play-fill",
 			component: Jobs,
 		},
-	];
+	]);
 
-	const app = new AppState(routes);
+	const { pages } = router;
+	let page: ResolvedPage | undefined = $state();
+	const app = new AppState();
 
 	function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
@@ -56,14 +62,25 @@
 		const path = target.getAttribute("href") as string;
 		event.preventDefault();
 
-		window.history.pushState({}, "", path);
-		app.changePage(path);
+		changePage(path);
 	}
 
-	app.changePage(window.location.pathname);
+	export function changePage(path: string, addToHistory = true) {
+		const resolvedPage = router.resolvePage(path);
+		if (resolvedPage) {
+			if (addToHistory) {
+				window.history.pushState({}, "", path);
+			}
+
+			resolvedPage.callback?.();
+			page = resolvedPage;
+		}
+	}
+
+	changePage(window.location.pathname, false);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(app.page?.displayEditor || false);
+	let editorEnabled = $derived(page?.displayEditor || false);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -81,12 +98,12 @@
 	});
 </script>
 
-<svelte:window onpopstate={() => app.changePage(window.location.pathname)} />
+<svelte:window onpopstate={() => changePage(window.location.pathname, false)} />
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={app.page?.hideHeader}
+		hidden={page?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -113,18 +130,18 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={app.page?.hideNavigation}>
-			{#each routes.filter((route) => !route.hideNavigation && !route.hidden) as route}
+		<nav hidden={page?.hideNavigation}>
+			{#each pages.filter((page) => !page.hideNavigation && page.display) as { path, name, icon }}
 				<a
-					href={route.path as string}
+					href={path as string}
 					onclick={handleNavitionClick}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={route.path === app.path || undefined}
+					data-active={path === page?.path || undefined}
 				>
-					{#if route.icon}
-						<Icon name={route.icon} size="1.25em" />
+					{#if icon}
+						<Icon name={icon} size="1.25em" />
 					{/if}
-					{route.name}
+					{name}
 				</a>
 			{/each}
 		</nav>
@@ -135,10 +152,16 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				{#each routes as route}
-					<div class="h-full" hidden={route.path !== app.path}>
-						<route.component {app} visible={route.path === app.path} />
-					</div>
+				{#each pages as { path, component: Component }}
+					{#if Component}
+						<div class="h-full" hidden={path !== page?.path}>
+							<Component
+								{app}
+								visible={path === page?.path}
+								params={page?.params}
+							/>
+						</div>
+					{/if}
 				{/each}
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>

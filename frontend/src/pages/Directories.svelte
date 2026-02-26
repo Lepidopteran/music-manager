@@ -15,7 +15,7 @@
 	} from "@api/directory";
 	import ServerDirectory from "@components/input/ServerDirectory.svelte";
 	import Table from "@components/table/Table.svelte";
-	import type { PageComponentProps } from "@lib/state/app.svelte";
+	import type { PageComponentProps } from "@lib/state/router.svelte";
 
 	import Icon from "@components/Icon.svelte";
 	import { onMediumScreen } from "@lib/state/screen.svelte";

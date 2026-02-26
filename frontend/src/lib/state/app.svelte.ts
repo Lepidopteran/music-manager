@@ -1,4 +1,3 @@
-import type { Icons } from "@lib/icons";
 import type { Song } from "@lib/models";
 import { SvelteMap } from "svelte/reactivity";
 
@@ -6,79 +5,11 @@ import { getSongs } from "@api/song";
 import type { SongFile } from "@bindings/SongFile";
 import type { SongMetadata } from "@bindings/SongMetadata";
 import type { SongWorkerRequest, SongWorkerResponse } from "@lib/worker-messages";
-import { match as matchPath, type MatchFunction } from "path-to-regexp";
-import type { Component } from "svelte";
 import { match } from "ts-pattern";
 
 export type Item =
 	| { type: "song"; song: Song; fileInfo?: SongFile }
 	| { type: "group"; label: string; songs: Song[] };
-
-export interface Page {
-	path: string;
-	name: string;
-	children?: Array<Page>;
-	hidden?: boolean;
-	hideNavigation?: boolean;
-	hideHeader?: boolean;
-	displayEditor?: boolean;
-	props?: Record<string, unknown>;
-	icon?: Icons;
-	callback?: (app: AppState) => void;
-	component?: Component<{
-		app: AppState;
-		visible: boolean;
-		[key: string]: unknown;
-	}>;
-}
-
-interface Route {
-	path: string;
-	name: string;
-	children?: Array<Route>;
-	hidden?: boolean;
-	hideNavigation?: boolean;
-	hideHeader?: boolean;
-	displayEditor?: boolean;
-	props?: Record<string, unknown>;
-	icon?: Icons;
-	callback?: (app: AppState) => void;
-	matcher: MatchFunction<object>;
-	component?: Component<{
-		app: AppState;
-		visible: boolean;
-		[key: string]: unknown;
-	}>;
-}
-
-export type PageResponse = null | {
-	path: string;
-	name: string;
-	params: Record<string, string>;
-	hidden?: boolean;
-	hideHeader?: boolean;
-	hideNavigation?: boolean;
-	displayEditor?: boolean;
-	props?: Record<string, unknown>;
-	child?: PageResponse;
-	icon?: Icons;
-};
-
-export interface PageComponentProps {
-	app: AppState;
-	visible: boolean;
-	[key: string]: unknown;
-}
-
-function mapPageToRoute(page: Page): Route {
-	return {
-		...page,
-		matcher: matchPath(page.path, {
-			end: !(page.children && page.children.length > 0),
-		}),
-		children: page.children?.map(mapPageToRoute),
-	};
-}
 
 export class AppState {
 	#fetchingTracks = $state(false);
@@ -89,9 +20,6 @@ export class AppState {
 	#artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	#albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	#selectedItem: Item | null = $state(null);
-	#routes: Array<Route>;
-	#page: PageResponse = $state(null);
-	#path = $derived(this.#page?.path || "/");
 
 	#worker: Worker = new Worker(
 		new URL("../workers/song.ts", import.meta.url),
@@ -100,8 +28,7 @@ export class AppState {
 	autoOrganizeArtists = $state(false);
 	autoOrganizeAlbums = $state(false);
 
-	constructor(pages: Array<Page>) {
-		this.#routes = pages.map(mapPageToRoute);
+	constructor() {
 		this.#fetchingTracks = true;
 
 		$inspect(`Fetching tracks: ${this.#fetchingTracks}`);
@@ -173,15 +100,6 @@ export class AppState {
 		});
 	}
 
-	changePage(path: string) {
-		this.#page = this.#resolveRoute(path, this.#routes);
-		const callback = this.#routes.find((route) => route.path === path)?.callback;
-
-		if (callback) {
-			callback(this);
-		}
-	}
-
 	scheduleOrganizeArtists() {
 		this.#artists.clear();
 		this.#sendMessage({ type: "groupArtists" });
@@ -192,34 +110,6 @@ export class AppState {
 		this.#albums.clear();
 		this.#sendMessage({ type: "groupAlbums" });
 		this.#organizingAlbums = true;
-	}
-
-	#resolveRoute(path: string, routes: Array<Route>): PageResponse {
-		for (const route of routes) {
-			const match = route.matcher(path);
-
-			if (match) {
-				const params = (match.params || {}) as Record<string, string>;
-
-				return {
-					props: route.props,
-					path: route.path,
-					name: route.name,
-					icon: route.icon,
-					hidden: route.hidden,
-					hideHeader: route.hideHeader,
-					hideNavigation: route.hideNavigation,
-					displayEditor: route.displayEditor,
-					params,
-					child: this.#resolveRoute(
-						path.slice(route.path.length) || "/",
-						route.children || [],
-					),
-				};
-			}
-		}
-
-		return null;
 	}
 
 	#sendMessage(message: SongWorkerRequest) {
@@ -254,14 +144,6 @@ export class AppState {
 		}
 
 		this.#editedTracks.set(item.song.id.toString(), item.song);
-	}
-
-	get page() {
-		return this.#page;
-	}
-
-	get path() {
-		return this.#path;
 	}
 
 	get tracks() {
