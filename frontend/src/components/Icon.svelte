@@ -2,11 +2,11 @@
 	import { icons as mingcute } from "@iconify-json/mingcute";
 	import { getIconData, iconToSVG } from "@iconify/utils";
 
-	import type { Icons } from "@lib/icons";
+	import type { IconKey } from "@lib/icons";
 	import type { HTMLAttributes } from "svelte/elements";
 
 	interface Props extends HTMLAttributes<SVGElement> {
-		name: Icons;
+		name: IconKey;
 		hFlip?: boolean;
 		vFlip?: boolean;
 		size?: number | string;
