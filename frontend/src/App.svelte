@@ -11,7 +11,6 @@
 	import Editor from "@components/music/Editor.svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
-	import { AppState } from "@lib/app.svelte";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
 	import { type ResolvedPage, Router } from "@state/router.svelte";
