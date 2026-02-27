@@ -17,16 +17,44 @@
 		"moduleDetection": "force",
 		"baseUrl": ".",
 		"paths": {
-			"@api/*": ["src/lib/api/*"],
-			"@bindings/*": ["src/lib/bindings/*"],
-			"@actions/*": ["src/lib/actions/*"],
-			"@assets/*": ["src/assets/*"],
-			"@components/*": ["src/components/*"],
-			"@lib/*": ["src/lib/*"],
-			"@pages/*": ["src/pages/*"],
-			"@utils/*": ["src/lib/utils/*"]
+			"@api/*": [
+				"src/lib/api/*"
+			],
+			"@bindings/*": [
+				"src/lib/bindings/*"
+			],
+			"@actions/*": [
+				"src/lib/actions/*"
+			],
+			"@state/*": [
+				"src/state/*"
+			],
+			"@assets/*": [
+				"src/assets/*"
+			],
+			"@components/*": [
+				"src/components/*"
+			],
+			"@lib/*": [
+				"src/lib/*"
+			],
+			"@pages/*": [
+				"src/pages/*"
+			],
+			"@utils/*": [
+				"src/lib/utils/*"
+			]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "src/*.svelte"],
-	"references": [{ "path": "./tsconfig.node.json" }]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.js",
+		"src/**/*.svelte",
+		"src/*.svelte"
+	],
+	"references": [
+		{
+			"path": "./tsconfig.node.json"
+		}
+	]
 }
