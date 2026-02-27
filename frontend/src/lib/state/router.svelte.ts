@@ -1,7 +1,7 @@
 import type { IconKey } from "@lib/icons";
 import type { MatchFunction, ParamData } from "path-to-regexp";
 import type { Component } from "svelte";
-import type { AppState } from "./app.svelte";
+import type { AppState } from "../app.svelte";
 
 import { match } from "path-to-regexp";
 

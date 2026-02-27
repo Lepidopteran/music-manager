@@ -9,11 +9,11 @@
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 
 	import Editor from "@components/music/Editor.svelte";
-	import { AppState } from "@lib/state/app.svelte";
 	import { type ResolvedPage, Router } from "@lib/state/router.svelte";
 	import { onSmallScreen } from "@lib/state/screen.svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
+	import { AppState } from "@lib/app.svelte";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);

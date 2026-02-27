@@ -3,8 +3,8 @@
 	import TextInput from "@components/TextInput.svelte";
 	import Cover from "./Cover.svelte";
 
+	import { isGroup, isSong, type Item } from "@lib/app.svelte";
 	import type { Song } from "@lib/models";
-	import { isGroup, isSong, type Item } from "@lib/state/app.svelte";
 
 	const excludedFields: Array<keyof Song> = [
 		"title",

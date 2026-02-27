@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { isGroup, type Item } from "@lib/state/app.svelte";
+	import { isGroup, type Item } from "@lib/app.svelte";
 	import { untrack } from "svelte";
 	import MissingCover from "./MissingCover.svelte";
 
