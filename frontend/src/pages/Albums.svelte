@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Song } from "@lib/models";
-	import { type PageComponentProps } from "@lib/state/router.svelte";
 	import { isGroup, isSong } from "@state/app.svelte";
+	import { type PageComponentProps } from "@state/router.svelte";
 
 	const { app }: PageComponentProps = $props();
 

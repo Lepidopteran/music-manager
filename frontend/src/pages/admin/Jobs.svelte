@@ -15,8 +15,8 @@
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import Progress from "@components/Progress.svelte";
-	import type { PageComponentProps } from "@lib/state/router.svelte";
 	import { addSourceEventListener } from "@lib/utils/api";
+	import type { PageComponentProps } from "@state/router.svelte";
 	import { onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
 	import { match, P } from "ts-pattern";
