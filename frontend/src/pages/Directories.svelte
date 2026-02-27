@@ -18,7 +18,7 @@
 	import type { PageComponentProps } from "@lib/state/router.svelte";
 
 	import Icon from "@components/Icon.svelte";
-	import { onMediumScreen } from "@lib/state/screen.svelte";
+	import { onMediumScreen } from "@lib/utils/screen";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);

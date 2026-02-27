@@ -10,10 +10,10 @@
 
 	import Editor from "@components/music/Editor.svelte";
 	import { type ResolvedPage, Router } from "@lib/state/router.svelte";
-	import { onSmallScreen } from "@lib/state/screen.svelte";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
 	import { AppState } from "@lib/app.svelte";
+	import { onSmallScreen } from "@lib/utils/screen";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
