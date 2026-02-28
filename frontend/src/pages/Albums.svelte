@@ -1,11 +1,9 @@
 <script lang="ts">
-	import { songGroups } from "@lib/context";
+	import { legacyAppState, songGroups } from "@lib/context";
 	import type { Song } from "@lib/models";
 	import { isGroup, isSong } from "@state/app.svelte";
-	import { type PageComponentProps } from "@state/router.svelte";
 
-	const { app }: PageComponentProps = $props();
-
+	const app = legacyAppState();
 	const groups = songGroups();
 	function isSelectedItem(item: string | Song) {
 		if (!app.selectedItem) {
@@ -31,12 +29,12 @@
 					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[edited=true]:bg-yellow-500/25 data-[selected=true]:bg-primary/25"
 					aria-label={group}
 					data-selected={isSelectedItem(group)}
-					data-edited={tracks.some((track) => app.editedTracks.has(track.id.toString()))}
+					data-edited={tracks.some((track) => app.editedTracks.has(track.id))}
 					onclick={() => (app.selectedItem = {
 						type: "group",
 						label: group,
 						songs: tracks.map(
-							(song) => app.editedTracks.get(song.id.toString()) || song,
+							(song) => app.editedTracks.get(song.id) || song,
 						),
 					})}
 				>
@@ -44,12 +42,12 @@
 				</summary>
 				<ul>
 					{#each tracks as track}
-						{@const trackIdString = track.id.toString()}
+						{@const trackIdString = track.id}
 						<li
 							class="pl-4 py-1 data-[selected=true]:bg-primary/25 data-[edited=true]:bg-yellow-500/10 select-none cursor-pointer hover:bg-primary/5"
 							aria-label={`${track.title} by ${track.artist}`}
 							data-selected={isSelectedItem(track)}
-							data-edited={app.editedTracks.has(track.id.toString())}
+							data-edited={app.editedTracks.has(track.id)}
 							onclick={() => (app.selectedItem = {
 								type: "song",
 								song: app.editedTracks.get(trackIdString) || track,

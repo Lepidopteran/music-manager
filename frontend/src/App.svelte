@@ -7,29 +7,37 @@
 	import { fade } from "svelte/transition";
 	import Logo from "./components/Logo.svelte";
 
-	import { setSongGroups, type SongGroups } from "@lib/context";
-	import type { IconKey } from "@lib/icons";
-	import { type GroupedSongs, GroupManager } from "@lib/state/group";
+	import {
+		type PageInfo,
+		type PageManager,
+		setLegacyAppState,
+		setPageManager,
+		setSongGroups,
+		type SongGroups,
+	} from "@lib/context";
+	import { GroupManager } from "@lib/state/group";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
 
+	import Page from "@components/Page.svelte";
 	import { type ResolvedRoute, type Route, Router } from "@lib/state/router";
 	import type { GroupKey } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
-	import type { ParamData } from "path-to-regexp";
-	import type { Component } from "svelte";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
 	const app = new AppState();
+	setLegacyAppState(app);
 
 	let groupWorkerKeys: Array<GroupKey> = $state([]);
 	let trackedGroups: Array<GroupKey> = $state([]);
 
 	const groups: SongGroups = $state({
+		track: (group: GroupKey) => groupManager.track(group),
+		untrack: (group: GroupKey) => groupManager.untrack(group),
 		get tracked() {
 			return trackedGroups;
 		},
@@ -39,7 +47,6 @@
 		},
 	});
 
-	setSongGroups(groups);
 	const groupManager: GroupManager = new GroupManager({
 		maxActiveWorkers: 3,
 		onTrack: () => trackedGroups = groupManager.tracked,
@@ -52,99 +59,64 @@
 		},
 	});
 
+	setSongGroups(groups);
+
 	$effect(() => {
 		if (app.tracks.size !== 0) {
 			groupManager.songs = Array.from(app.tracks.values());
 		}
 	});
 
-	interface PageComponentProps {
-		app: AppState;
-		visible: boolean;
-		params?: ParamData;
-		[key: string]: unknown;
-	}
+	let routes: Array<Route<PageInfo>> = $state([]);
+	const router = new Router<PageInfo>([], {
+		onRouteAdd(router) {
+			routes = router.routes;
+		},
 
-	interface Page {
-		name?: string;
-		display?: boolean;
-		hideHeader?: boolean;
-		hideNavigation?: boolean;
-		displayEditor?: boolean;
-		icon?: IconKey;
-		callback?: () => void;
-		component: Component<PageComponentProps>;
-	}
-
-	let routes: Array<Route<Page>> = $state([]);
-	const router = new Router<Page>([
-		{
-			path: "/",
-			metadata: {
-				name: "Albums",
-				display: true,
-				displayEditor: true,
-				icon: "album-2-fill",
-				component: Albums,
-				callback: () => {
-					if (!groupManager.tracked.includes("album")) {
-						groupManager.track("album");
-					}
-				},
-			},
+		onRouteRemove(router) {
+			routes = router.routes;
 		},
-		{
-			path: "/directories",
-			metadata: {
-				display: true,
-				name: "Directories",
-				component: Directories,
-				icon: "folder-fill",
-			},
-		},
-		{
-			path: "/jobs",
-			metadata: {
-				display: true,
-				name: "Jobs",
-				icon: "play-fill",
-				component: Jobs,
-			},
-		},
-	], {
-		onRouteAdd: (router) => routes = router.routes,
-		onRouteRemove: (router) => routes = router.routes,
 	});
 
-	let page: ResolvedRoute<Page> | undefined = $state();
-	let metadata = $derived(page?.metadata);
+	let page: ResolvedRoute<PageInfo> | undefined = $state();
 
-	function handleNavitionClick(event: MouseEvent) {
-		const { target } = event;
+	const pageManager: PageManager = $state({
+		goTo,
+		addPage: (page) => {
+			router.addRoute(page);
+		},
+		removePage: (path) => {
+			router.removeRoute(path);
+		},
+		get current() {
+			return page;
+		},
+	});
 
-		if (!(target instanceof HTMLAnchorElement)) {
+	setPageManager(pageManager);
+
+	$effect(() => {
+		const { pathname } = window.location;
+		if (page !== undefined || !router.hasRoute(pathname)) {
 			return;
 		}
 
-		const path = target.getAttribute("href") as string;
-		event.preventDefault();
+		goTo(pathname);
+	});
 
-		changePage(path);
-	}
-
-	export function changePage(path: string, addToHistory = true) {
+	function goTo(path: string, addToHistory = true) {
 		const resolvedPage = router.resolve(path);
-		if (resolvedPage) {
-			if (addToHistory) {
-				window.history.pushState({}, "", path);
-			}
-
-			resolvedPage.metadata?.callback?.();
-			page = resolvedPage;
+		if (!resolvedPage) {
+			return;
 		}
-	}
 
-	changePage(window.location.pathname, false);
+		if (addToHistory) {
+			window.history.pushState({}, "", path);
+		}
+
+		resolvedPage.metadata?.callback?.();
+		page = resolvedPage;
+	}
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
 	let editorEnabled = $derived(page?.metadata?.displayEditor || false);
@@ -165,7 +137,7 @@
 	});
 </script>
 
-<svelte:window onpopstate={() => changePage(window.location.pathname, false)} />
+<svelte:window onpopstate={() => goTo(window.location.pathname, false)} />
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
@@ -197,14 +169,17 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={metadata?.hideNavigation}>
+		<nav hidden={page?.metadata?.hideNavigation}>
 			{#each routes.filter(({ metadata }) =>
-				metadata !== undefined && !metadata.hideNavigation && metadata.display
+				metadata !== undefined && !metadata.hideNavigation
 			) as { path, metadata }}
 				{@const { name, icon } = metadata!}
 				<a
 					href={path as string}
-					onclick={handleNavitionClick}
+					onclick={(event) => {
+						event.preventDefault();
+						goTo((event.target as HTMLAnchorElement).getAttribute("href") as string);
+					}}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
 					data-active={path === page?.path || undefined}
 				>
@@ -222,18 +197,15 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				{#each routes as { path, metadata }}
-					{#if metadata}
-						{@const { component: Component } = metadata}
-						<div class="h-full" hidden={path !== page?.path}>
-							<Component
-								{app}
-								visible={path === page?.path}
-								params={page?.params}
-							/>
-						</div>
-					{/if}
-				{/each}
+				<Page path="/" name="Albums" icon="album-2-fill" displayEditor>
+					<Albums />
+				</Page>
+				<Page path="/directories" name="Directories" icon="folder-fill">
+					<Directories />
+				</Page>
+				<Page path="/jobs" name="Jobs" icon="play-fill">
+					<Jobs />
+				</Page>
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div

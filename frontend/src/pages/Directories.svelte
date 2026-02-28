@@ -15,7 +15,6 @@
 	} from "@api/directory";
 	import ServerDirectory from "@components/input/ServerDirectory.svelte";
 	import Table from "@components/table/Table.svelte";
-	import type { PageComponentProps } from "@state/router.svelte";
 
 	import Icon from "@components/Icon.svelte";
 	import { onMediumScreen } from "@lib/utils/screen";
@@ -69,8 +68,6 @@
 
 	$inspect(rowSelection);
 	$inspect(directories);
-
-	let props: PageComponentProps = $props();
 </script>
 
 <div class="flex flex-col gap-4 p-4">

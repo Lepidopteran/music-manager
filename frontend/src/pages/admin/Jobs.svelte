@@ -16,7 +16,6 @@
 	import Icon from "@components/Icon.svelte";
 	import Progress from "@components/Progress.svelte";
 	import { addSourceEventListener } from "@lib/utils/api";
-	import type { PageComponentProps } from "@state/router.svelte";
 	import { onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
 	import { match, P } from "ts-pattern";
@@ -43,8 +42,6 @@
 		jobQueue = await getJobQueueOrder();
 		jobReports = new SvelteMap(Object.entries(await getJobReports()));
 	});
-
-	let props: PageComponentProps = $props();
 </script>
 
 <svelte:window
