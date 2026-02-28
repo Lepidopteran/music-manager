@@ -74,8 +74,6 @@
 				|| document.querySelector(reference)
 			: reference;
 
-		console.debug("popoverAttachment", referenceElement, reference);
-
 		if (!referenceElement) {
 			return;
 		}
