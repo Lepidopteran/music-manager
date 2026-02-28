@@ -7,16 +7,19 @@
 	import { fade } from "svelte/transition";
 	import Logo from "./components/Logo.svelte";
 
+	import { setSongGroups, type SongGroups } from "@lib/context";
+	import type { IconKey } from "@lib/icons";
 	import { type GroupedSongs, GroupManager } from "@lib/state/group";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
-	import { type ResolvedPage, Router } from "@state/router.svelte";
 
-	import { setSongGroups, type SongGroups } from "@lib/context";
+	import { type ResolvedRoute, type Route, Router } from "@lib/state/router";
 	import type { GroupKey } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
+	import type { ParamData } from "path-to-regexp";
+	import type { Component } from "svelte";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
@@ -55,40 +58,66 @@
 		}
 	});
 
-	const router = new Router([
+	interface PageComponentProps {
+		app: AppState;
+		visible: boolean;
+		params?: ParamData;
+		[key: string]: unknown;
+	}
+
+	interface Page {
+		name?: string;
+		display?: boolean;
+		hideHeader?: boolean;
+		hideNavigation?: boolean;
+		displayEditor?: boolean;
+		icon?: IconKey;
+		callback?: () => void;
+		component: Component<PageComponentProps>;
+	}
+
+	let routes: Array<Route<Page>> = $state([]);
+	const router = new Router<Page>([
 		{
 			path: "/",
-			name: "Albums",
-			display: true,
-			displayEditor: true,
-			icon: "album-2-fill",
-			component: Albums,
-			callback: () => {
-				if (!groupManager.tracked.includes("album")) {
-					groupManager.track("album");
-				}
+			metadata: {
+				name: "Albums",
+				display: true,
+				displayEditor: true,
+				icon: "album-2-fill",
+				component: Albums,
+				callback: () => {
+					if (!groupManager.tracked.includes("album")) {
+						groupManager.track("album");
+					}
+				},
 			},
 		},
 		{
 			path: "/directories",
-			display: true,
-			name: "Directories",
-			component: Directories,
-			icon: "folder-fill",
+			metadata: {
+				display: true,
+				name: "Directories",
+				component: Directories,
+				icon: "folder-fill",
+			},
 		},
 		{
 			path: "/jobs",
-			display: true,
-			name: "Jobs",
-			icon: "play-fill",
-			component: Jobs,
+			metadata: {
+				display: true,
+				name: "Jobs",
+				icon: "play-fill",
+				component: Jobs,
+			},
 		},
-	]);
+	], {
+		onRouteAdd: (router) => routes = router.routes,
+		onRouteRemove: (router) => routes = router.routes,
+	});
 
-	export const { addPages } = router;
-
-	const { pages } = router;
-	let page: ResolvedPage | undefined = $state();
+	let page: ResolvedRoute<Page> | undefined = $state();
+	let metadata = $derived(page?.metadata);
 
 	function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
@@ -104,13 +133,13 @@
 	}
 
 	export function changePage(path: string, addToHistory = true) {
-		const resolvedPage = router.resolvePage(path);
+		const resolvedPage = router.resolve(path);
 		if (resolvedPage) {
 			if (addToHistory) {
 				window.history.pushState({}, "", path);
 			}
 
-			resolvedPage.callback?.();
+			resolvedPage.metadata?.callback?.();
 			page = resolvedPage;
 		}
 	}
@@ -118,7 +147,7 @@
 	changePage(window.location.pathname, false);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(page?.displayEditor || false);
+	let editorEnabled = $derived(page?.metadata?.displayEditor || false);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -141,7 +170,7 @@
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={page?.hideHeader}
+		hidden={page?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -168,8 +197,11 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={page?.hideNavigation}>
-			{#each pages.filter((page) => !page.hideNavigation && page.display) as { path, name, icon }}
+		<nav hidden={metadata?.hideNavigation}>
+			{#each routes.filter(({ metadata }) =>
+				metadata !== undefined && !metadata.hideNavigation && metadata.display
+			) as { path, metadata }}
+				{@const { name, icon } = metadata!}
 				<a
 					href={path as string}
 					onclick={handleNavitionClick}
@@ -190,8 +222,9 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				{#each pages as { path, component: Component }}
-					{#if Component}
+				{#each routes as { path, metadata }}
+					{#if metadata}
+						{@const { component: Component } = metadata}
 						<div class="h-full" hidden={path !== page?.path}>
 							<Component
 								{app}
