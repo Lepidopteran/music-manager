@@ -49,6 +49,10 @@ export class Router<M> implements RouterOptions<M> {
 		}
 	}
 
+	hasRoute(path: string) {
+		return this.#routes.some((route) => route.matcher(path));
+	}
+
 	addRoute(def: RouteDefinition<M>) {
 		const path = def.path;
 		const route = this.#internalRoute(def);
