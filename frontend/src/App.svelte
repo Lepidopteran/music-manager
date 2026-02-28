@@ -1,24 +1,61 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
-	import Jobs from "@pages/admin/Jobs.svelte";
-	import Albums from "@pages/Albums.svelte";
-	import Directories from "@pages/Directories.svelte";
-	import Logo from "./components/Logo.svelte";
-
-	import { Pane, PaneGroup, PaneResizer } from "paneforge";
-
 	import Editor from "@components/music/Editor.svelte";
+	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
+	import Logo from "./components/Logo.svelte";
+
+	import { type GroupedSongs, GroupManager } from "@lib/state/group";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
 	import { type ResolvedPage, Router } from "@state/router.svelte";
 
+	import { setSongGroups, type SongGroups } from "@lib/context";
+	import type { GroupKey } from "@lib/workers";
+	import Jobs from "@pages/admin/Jobs.svelte";
+	import Albums from "@pages/Albums.svelte";
+	import Directories from "@pages/Directories.svelte";
+
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
-	export const router = new Router([
+	const app = new AppState();
+
+	let groupWorkerKeys: Array<GroupKey> = $state([]);
+	let trackedGroups: Array<GroupKey> = $state([]);
+
+	const groups: SongGroups = $state({
+		get tracked() {
+			return trackedGroups;
+		},
+
+		get inProgress() {
+			return Array.from(groupWorkerKeys);
+		},
+	});
+
+	setSongGroups(groups);
+	const groupManager: GroupManager = new GroupManager({
+		maxActiveWorkers: 3,
+		onTrack: () => trackedGroups = groupManager.tracked,
+		onUntrack: () => trackedGroups = groupManager.tracked,
+		onRemove: () => trackedGroups = groupManager.tracked,
+		onWorkerStart: () => groupWorkerKeys = groupManager.workerKeys,
+		onWorkerFinish() {
+			Object.assign(groups, groupManager.groups);
+			groupWorkerKeys = groupManager.workerKeys;
+		},
+	});
+
+	$effect(() => {
+		if (app.tracks.size !== 0) {
+			groupManager.songs = Array.from(app.tracks.values());
+		}
+	});
+
+	const router = new Router([
 		{
 			path: "/",
 			name: "Albums",
@@ -27,8 +64,8 @@
 			icon: "album-2-fill",
 			component: Albums,
 			callback: () => {
-				if (!app.autoOrganizeAlbums) {
-					app.autoOrganizeAlbums = true;
+				if (!groupManager.tracked.includes("album")) {
+					groupManager.track("album");
 				}
 			},
 		},
@@ -48,9 +85,10 @@
 		},
 	]);
 
+	export const { addPages } = router;
+
 	const { pages } = router;
 	let page: ResolvedPage | undefined = $state();
-	const app = new AppState();
 
 	function handleNavitionClick(event: MouseEvent) {
 		const { target } = event;
@@ -179,9 +217,10 @@
 				>
 				</div>
 				<div
-					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${
-						editorPane?.isCollapsed() ? "opacity-0" : ""
-					}`}
+					class={[
+						"max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity",
+						editorPane?.isCollapsed() && "opacity-0",
+					]}
 				>
 					<Icon
 						name="up-line"

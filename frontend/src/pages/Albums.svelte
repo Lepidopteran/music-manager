@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { songGroups } from "@lib/context";
 	import type { Song } from "@lib/models";
 	import { isGroup, isSong } from "@state/app.svelte";
 	import { type PageComponentProps } from "@state/router.svelte";
 
 	const { app }: PageComponentProps = $props();
 
+	const groups = songGroups();
 	function isSelectedItem(item: string | Song) {
 		if (!app.selectedItem) {
 			return false;
@@ -21,8 +23,9 @@
 </script>
 
 <div class="flex flex-col overflow-y-auto h-full">
-	{#if app.albums && app.albums.size > 0}
-		{#each app.albums as [group, tracks]}
+	{#if groups.album && groups.album?.length() > 0}
+		{@const albums = groups.album}
+		{#each albums as [group, tracks]}
 			<details>
 				<summary
 					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[edited=true]:bg-yellow-500/25 data-[selected=true]:bg-primary/25"
@@ -62,7 +65,7 @@
 				</ul>
 			</details>
 		{/each}
-	{:else if app.organizingAlbums}
+	{:else if groups.inProgress.includes("album")}
 		<div class="p-2">Organizing albums...</div>
 	{:else}
 		<div class="p-2">No albums found</div>

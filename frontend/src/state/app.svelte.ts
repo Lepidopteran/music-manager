@@ -4,8 +4,6 @@ import { SvelteMap } from "svelte/reactivity";
 import { getSongs } from "@api/song";
 import type { SongFile } from "@bindings/SongFile";
 import type { SongMetadata } from "@bindings/SongMetadata";
-import { type SongWorkerRequest, type SongWorkerResponse, songWorkerUrl } from "@lib/workers";
-import { match } from "ts-pattern";
 
 export type Item =
 	| { type: "song"; song: Song; fileInfo?: SongFile }
@@ -13,66 +11,17 @@ export type Item =
 
 export class AppState {
 	#fetchingTracks = $state(false);
-	#organizingArtists = $state(false);
-	#organizingAlbums = $state(false);
 	#tracks: SvelteMap<string, Song> = $state(new SvelteMap());
 	#editedTracks: SvelteMap<string, Song> = $state(new SvelteMap());
-	#artists: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
-	#albums: SvelteMap<string, Array<Song>> = $state(new SvelteMap());
 	#selectedItem: Item | null = $state(null);
-
-	#worker: Worker = new Worker(songWorkerUrl);
-
-	autoOrganizeArtists = $state(false);
-	autoOrganizeAlbums = $state(false);
 
 	constructor() {
 		this.#fetchingTracks = true;
-
-		$inspect(`Fetching tracks: ${this.#fetchingTracks}`);
-		$inspect(`Organizing artists: ${this.#organizingArtists}`);
-		$inspect(`Organizing albums: ${this.#organizingAlbums}`);
-
-		this.#worker.onmessage = (event: MessageEvent<SongWorkerResponse>) => {
-			const { data } = event;
-
-			match(data)
-				.with({ type: "initialize" }, (data) => {
-					this.#tracks = new SvelteMap(data.payload);
-				})
-				.with({ type: "groupArtists" }, (data) => {
-					for (const [key, value] of data.payload) {
-						this.#artists.set(key, value);
-					}
-
-					this.#organizingArtists = false;
-				})
-				.with({ type: "groupAlbums" }, (data) => {
-					for (const [key, value] of data.payload) {
-						this.#albums.set(key, value);
-					}
-
-					this.#organizingAlbums = false;
-				})
-				.exhaustive();
-		};
 
 		// TODO: Consider trying an alternative way to update updatedTracks
 		$effect(() => {
 			if (this.#selectedItem) {
 				this.#editItem(this.#selectedItem);
-			}
-		});
-
-		$effect(() => {
-			if (this.#tracks.size > 0) {
-				if (this.autoOrganizeArtists) {
-					this.scheduleOrganizeArtists();
-				}
-
-				if (this.autoOrganizeAlbums) {
-					this.scheduleOrganizeAlbums();
-				}
 			}
 		});
 
@@ -91,27 +40,8 @@ export class AppState {
 	}
 
 	async fetchTracks() {
-		const tracks: Array<Song> = (await getSongs()) as Array<Song>;
-		this.#sendMessage({
-			type: "initialize",
-			payload: tracks,
-		});
-	}
-
-	scheduleOrganizeArtists() {
-		this.#artists.clear();
-		this.#sendMessage({ type: "groupArtists" });
-		this.#organizingArtists = true;
-	}
-
-	scheduleOrganizeAlbums() {
-		this.#albums.clear();
-		this.#sendMessage({ type: "groupAlbums" });
-		this.#organizingAlbums = true;
-	}
-
-	#sendMessage(message: SongWorkerRequest) {
-		this.#worker.postMessage(message);
+		const songs: Array<Song> = (await getSongs()) as Array<Song>;
+		this.#tracks = new SvelteMap(songs.map((song) => [song.id, song]));
 	}
 
 	#editItem(item: Item) {
@@ -148,24 +78,8 @@ export class AppState {
 		return this.#tracks;
 	}
 
-	get artists() {
-		return this.#artists;
-	}
-
-	get albums() {
-		return this.#albums;
-	}
-
 	get editedTracks() {
 		return this.#editedTracks;
-	}
-
-	get organizingArtists() {
-		return this.#organizingArtists;
-	}
-
-	get organizingAlbums() {
-		return this.#organizingAlbums;
 	}
 
 	get fetchingTracks() {
