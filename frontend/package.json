@@ -8,8 +8,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json",
-		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run"
+		"test": "vitest"
 	},
 	"dependencies": {
 		"@floating-ui/core": "^1.7.4",
