@@ -1,6 +1,8 @@
 import type { Song } from "@lib/models";
 import { type GroupKey, GroupWorker } from "@lib/workers";
 
+export type { GroupKey } from "@lib/workers";
+
 /**
  * Callback function for group key events.
  */

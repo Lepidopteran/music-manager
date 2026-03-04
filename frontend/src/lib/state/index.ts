@@ -5,6 +5,9 @@ import type { Icon } from "virtual:icons";
 import type { GroupedSongs } from "./group";
 import type { ResolvedRoute, RouteDefinition } from "./router";
 
+export * from "./group";
+export * from "./router";
+
 export const [legacyAppState, setLegacyAppState] = createContext<AppState>();
 
 export interface SongGroups extends Partial<Record<GroupKey, GroupedSongs>> {

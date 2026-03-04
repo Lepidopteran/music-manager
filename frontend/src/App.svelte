@@ -1,27 +1,33 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
+	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
+	import Page from "@components/Page.svelte";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
-	import Logo from "./components/Logo.svelte";
 
-	import {
-		type PageInfo,
-		type PageManager,
-		setLegacyAppState,
-		setPageManager,
-		setSongGroups,
-		type SongGroups,
-	} from "@lib/state";
-	import { GroupManager } from "@lib/state/group";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
 
-	import Page from "@components/Page.svelte";
-	import { type ResolvedRoute, type Route, Router } from "@lib/state/router";
-	import type { GroupKey } from "@lib/workers";
+	import type {
+		GroupKey,
+		PageInfo,
+		PageManager,
+		ResolvedRoute,
+		Route,
+		SongGroups,
+	} from "@lib/state";
+
+	import {
+		GroupManager,
+		Router,
+		setLegacyAppState,
+		setPageManager,
+		setSongGroups,
+	} from "@lib/state";
+
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
