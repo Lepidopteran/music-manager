@@ -156,7 +156,7 @@
 			onclick={() => (deleteDirectoryModalOpen = true)}
 			disabled={!selectedDirectories.length}
 		>
-			<Icon name="delete-fill" aria-hidden="true" />
+			<Icon name="delete" aria-hidden="true" />
 			Remove
 		</Button>
 	</div>

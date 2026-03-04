@@ -152,11 +152,11 @@
 								}}
 							>
 								{#if state?.status === "inProgress"}
-									<Icon name="square-fill" />
+									<Icon name="square" />
 								{:else if state?.status === "pending"}
-									<Icon name="close-fill" />
+									<Icon name="close" />
 								{:else}
-									<Icon name="play-fill" />
+									<Icon name="play" />
 								{/if}
 							</Button>
 						</div>

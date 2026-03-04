@@ -3,7 +3,7 @@ import type { ResolvedRoute, RouteDefinition } from "@lib/state/router";
 import type { GroupKey } from "@lib/workers";
 import type { AppState } from "@state/app.svelte";
 import { createContext } from "svelte";
-import type { IconKey } from "./icons";
+import type { Icon } from "virtual:icons";
 
 export const [legacyAppState, setLegacyAppState] = createContext<AppState>();
 
@@ -21,7 +21,7 @@ export interface PageInfo {
 	hideHeader?: boolean;
 	hideNavigation?: boolean;
 	displayEditor?: boolean;
-	icon?: IconKey;
+	icon?: Icon;
 	callback?: () => void;
 }
 

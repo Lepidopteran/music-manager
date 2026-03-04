@@ -153,7 +153,7 @@
 				class="group size-10 sm:hidden"
 			>
 				<Icon
-					name="menu-line"
+					name="menu"
 					class="text-2xl group-data-[active=true]:text-primary transition"
 				/>
 			</Button>
@@ -197,13 +197,13 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Page path="/" name="Albums" icon="album-2-fill" displayEditor>
+				<Page path="/" name="Albums" icon="album_2" displayEditor>
 					<Albums />
 				</Page>
-				<Page path="/directories" name="Directories" icon="folder-fill">
+				<Page path="/directories" name="Directories" icon="folder">
 					<Directories />
 				</Page>
-				<Page path="/jobs" name="Jobs" icon="play-fill">
+				<Page path="/jobs" name="Jobs" icon="play">
 					<Jobs />
 				</Page>
 			</Pane>
@@ -228,7 +228,7 @@
 					]}
 				>
 					<Icon
-						name="up-line"
+						name="up"
 						size="1.25em"
 						class={`transition transform lg:-rotate-90 ${
 							editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""

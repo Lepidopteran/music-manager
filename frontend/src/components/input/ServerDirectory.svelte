@@ -266,7 +266,7 @@
 		class="focus:border border-primary w-full"
 	>
 		{#snippet option(folder)}
-			<Icon name="folder-fill" class="inline mr-1" aria-hidden="true" />
+			<Icon name="folder" class="inline mr-1" aria-hidden="true" />
 			{#each highlightWords(folder) as fragment}
 				{@const { kind, value } = fragment}
 				{#if kind === "highlight"}

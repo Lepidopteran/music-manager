@@ -41,7 +41,7 @@
 </script>
 
 {#snippet suffixChild()}
-	<Icon name="edit-3-line" />
+	<Icon name="edit_3" />
 {/snippet}
 
 <div class={`space-y-2 relative h-full overflow-y-auto pt-6`}>
