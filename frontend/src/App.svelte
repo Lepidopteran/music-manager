@@ -1,69 +1,131 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
+	import Logo from "@components/Logo.svelte";
+	import Editor from "@components/music/Editor.svelte";
+	import Page from "@components/Page.svelte";
+	import { Pane, PaneGroup, PaneResizer } from "paneforge";
+	import { prefersReducedMotion } from "svelte/motion";
+	import { fade } from "svelte/transition";
+
+	import { onSmallScreen } from "@lib/utils/screen";
+	import { AppState } from "@state/app.svelte";
+
+	import type {
+		GroupKey,
+		PageInfo,
+		PageManager,
+		ResolvedRoute,
+		Route,
+		SongGroups,
+	} from "@lib/state";
+
+	import {
+		GroupManager,
+		Router,
+		setLegacyAppState,
+		setPageManager,
+		setSongGroups,
+	} from "@lib/state";
+
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
-	import Logo from "./components/Logo.svelte";
-
-	import { Pane, PaneGroup, PaneResizer } from "paneforge";
-
-	import Editor from "@components/music/Editor.svelte";
-	import { AppState, type Page } from "@lib/state/app.svelte";
-	import { onSmallScreen } from "@lib/state/screen.svelte";
-	import { prefersReducedMotion } from "svelte/motion";
-	import { fade } from "svelte/transition";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
-	const routes: Array<Page> = [
-		{
-			path: "/",
-			name: "Albums",
-			icon: "album-2-fill",
-			component: Albums,
-			displayEditor: true,
-			callback: (app) => {
-				if (!app.autoOrganizeAlbums) {
-					app.autoOrganizeAlbums = true;
-				}
-			},
-		},
-		{
-			path: "/directories",
-			name: "Directories",
-			icon: "folder-fill",
-			component: Directories,
-		},
-		{
-			path: "/jobs",
-			name: "Jobs",
-			icon: "play-fill",
-			component: Jobs,
-		},
-	];
+	const app = new AppState();
+	setLegacyAppState(app);
 
-	const app = new AppState(routes);
+	let groupWorkerKeys: Array<GroupKey> = $state([]);
+	let trackedGroups: Array<GroupKey> = $state([]);
 
-	function handleNavitionClick(event: MouseEvent) {
-		const { target } = event;
+	const groups: SongGroups = $state({
+		track: (group: GroupKey) => groupManager.track(group),
+		untrack: (group: GroupKey) => groupManager.untrack(group),
+		get tracked() {
+			return trackedGroups;
+		},
 
-		if (!(target instanceof HTMLAnchorElement)) {
+		get inProgress() {
+			return Array.from(groupWorkerKeys);
+		},
+	});
+
+	const groupManager: GroupManager = new GroupManager({
+		maxActiveWorkers: 3,
+		onTrack: () => trackedGroups = groupManager.tracked,
+		onUntrack: () => trackedGroups = groupManager.tracked,
+		onRemove: () => trackedGroups = groupManager.tracked,
+		onWorkerStart: () => groupWorkerKeys = groupManager.workerKeys,
+		onWorkerFinish() {
+			Object.assign(groups, groupManager.groups);
+			groupWorkerKeys = groupManager.workerKeys;
+		},
+	});
+
+	setSongGroups(groups);
+
+	$effect(() => {
+		if (app.tracks.size !== 0) {
+			groupManager.songs = Array.from(app.tracks.values());
+		}
+	});
+
+	let routes: Array<Route<PageInfo>> = $state([]);
+	const router = new Router<PageInfo>([], {
+		onRouteAdd(router) {
+			routes = router.routes;
+		},
+
+		onRouteRemove(router) {
+			routes = router.routes;
+		},
+	});
+
+	let page: ResolvedRoute<PageInfo> | undefined = $state();
+
+	const pageManager: PageManager = $state({
+		goTo,
+		addPage: (page) => {
+			router.addRoute(page);
+		},
+		removePage: (path) => {
+			router.removeRoute(path);
+		},
+		get current() {
+			return page;
+		},
+	});
+
+	setPageManager(pageManager);
+
+	$effect(() => {
+		const { pathname } = window.location;
+		if (page !== undefined || !router.hasRoute(pathname)) {
 			return;
 		}
 
-		const path = target.getAttribute("href") as string;
-		event.preventDefault();
+		goTo(pathname);
+	});
 
-		window.history.pushState({}, "", path);
-		app.changePage(path);
+	function goTo(path: string, addToHistory = true) {
+		const resolvedPage = router.resolve(path);
+		if (!resolvedPage) {
+			return;
+		}
+
+		if (addToHistory) {
+			window.history.pushState({}, "", path);
+		}
+
+		resolvedPage.metadata?.callback?.();
+		page = resolvedPage;
 	}
 
-	app.changePage(window.location.pathname);
-
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(app.page?.displayEditor || false);
+	let editorEnabled = $derived(page?.metadata?.displayEditor || false);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -81,12 +143,12 @@
 	});
 </script>
 
-<svelte:window onpopstate={() => app.changePage(window.location.pathname)} />
+<svelte:window onpopstate={() => goTo(window.location.pathname, false)} />
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={app.page?.hideHeader}
+		hidden={page?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -97,7 +159,7 @@
 				class="group size-10 sm:hidden"
 			>
 				<Icon
-					name="menu-line"
+					name="menu"
 					class="text-2xl group-data-[active=true]:text-primary transition"
 				/>
 			</Button>
@@ -113,18 +175,24 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={app.page?.hideNavigation}>
-			{#each routes.filter((route) => !route.hideNavigation && !route.hidden) as route}
+		<nav hidden={page?.metadata?.hideNavigation}>
+			{#each routes.filter(({ metadata }) =>
+				metadata !== undefined && !metadata.hideNavigation
+			) as { path, metadata }}
+				{@const { name, icon } = metadata!}
 				<a
-					href={route.path as string}
-					onclick={handleNavitionClick}
+					href={path as string}
+					onclick={(event) => {
+						event.preventDefault();
+						goTo((event.target as HTMLAnchorElement).getAttribute("href") as string);
+					}}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={route.path === app.path || undefined}
+					data-active={path === page?.path || undefined}
 				>
-					{#if route.icon}
-						<Icon name={route.icon} size="1.25em" />
+					{#if icon}
+						<Icon name={icon} size="1.25em" />
 					{/if}
-					{route.name}
+					{name}
 				</a>
 			{/each}
 		</nav>
@@ -135,11 +203,15 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				{#each routes as route}
-					<div class="h-full" hidden={route.path !== app.path}>
-						<route.component {app} visible={route.path === app.path} />
-					</div>
-				{/each}
+				<Page path="/" name="Albums" icon="album_2" displayEditor>
+					<Albums />
+				</Page>
+				<Page path="/directories" name="Directories" icon="folder">
+					<Directories />
+				</Page>
+				<Page path="/jobs" name="Jobs" icon="play">
+					<Jobs />
+				</Page>
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div
@@ -156,12 +228,13 @@
 				>
 				</div>
 				<div
-					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${
-						editorPane?.isCollapsed() ? "opacity-0" : ""
-					}`}
+					class={[
+						"max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity",
+						editorPane?.isCollapsed() && "opacity-0",
+					]}
 				>
 					<Icon
-						name="up-line"
+						name="up"
 						size="1.25em"
 						class={`transition transform lg:-rotate-90 ${
 							editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""

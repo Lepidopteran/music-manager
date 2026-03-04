@@ -1,4 +1,5 @@
 import { MediaQuery } from "svelte/reactivity";
+
 export const onSmallScreen = new MediaQuery("(max-width: 639px)");
 export const onMediumScreen = new MediaQuery("(min-width: 640px)");
 export const onLargeScreen = new MediaQuery("(min-width: 1024px)");

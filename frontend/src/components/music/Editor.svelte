@@ -4,7 +4,7 @@
 	import Cover from "./Cover.svelte";
 
 	import type { Song } from "@lib/models";
-	import { isGroup, isSong, type Item } from "@lib/state/app.svelte";
+	import { isGroup, isSong, type Item } from "@state/app.svelte";
 
 	const excludedFields: Array<keyof Song> = [
 		"title",
@@ -41,7 +41,7 @@
 </script>
 
 {#snippet suffixChild()}
-	<Icon name="edit-3-line" />
+	<Icon name="edit_3" />
 {/snippet}
 
 <div class={`space-y-2 relative h-full overflow-y-auto pt-6`}>

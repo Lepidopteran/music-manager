@@ -15,10 +15,9 @@
 	} from "@api/directory";
 	import ServerDirectory from "@components/input/ServerDirectory.svelte";
 	import Table from "@components/table/Table.svelte";
-	import type { PageComponentProps } from "@lib/state/app.svelte";
 
 	import Icon from "@components/Icon.svelte";
-	import { onMediumScreen } from "@lib/state/screen.svelte";
+	import { onMediumScreen } from "@lib/utils/screen";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -69,8 +68,6 @@
 
 	$inspect(rowSelection);
 	$inspect(directories);
-
-	let props: PageComponentProps = $props();
 </script>
 
 <div class="flex flex-col gap-4 p-4">
@@ -159,7 +156,7 @@
 			onclick={() => (deleteDirectoryModalOpen = true)}
 			disabled={!selectedDirectories.length}
 		>
-			<Icon name="delete-fill" aria-hidden="true" />
+			<Icon name="delete" aria-hidden="true" />
 			Remove
 		</Button>
 	</div>

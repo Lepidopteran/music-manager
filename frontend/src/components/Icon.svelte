@@ -1,12 +1,9 @@
 <script lang="ts">
-	import { icons as mingcute } from "@iconify-json/mingcute";
-	import { getIconData, iconToSVG } from "@iconify/utils";
-
-	import type { Icons } from "@lib/icons";
 	import type { HTMLAttributes } from "svelte/elements";
+	import { type Icon } from "virtual:icons";
 
 	interface Props extends HTMLAttributes<SVGElement> {
-		name: Icons;
+		name: Icon;
 		hFlip?: boolean;
 		vFlip?: boolean;
 		size?: number | string;
@@ -22,27 +19,26 @@
 		class: className,
 		...rest
 	}: Props = $props();
-
-	const iconData = $derived.by(() => {
-		let data = getIconData(mingcute, name);
-		if (!data) {
-			throw new Error(`Icon "${name}" not found`);
-		}
-
-		return data;
-	});
-
-	const renderData = $derived(
-		iconToSVG(iconData, {
-			rotate,
-			hFlip,
-			vFlip,
-			width: size,
-			height: size,
-		}),
-	);
 </script>
 
-<svg {...renderData.attributes} class={[className]} {...rest}>
-	{@html renderData.body}
-</svg>
+{#await import("virtual:icons")}
+	<div
+		class={[className]}
+		style:width={size}
+		style:height={size}
+		style:transform={`rotate(${rotate}deg)`}
+	>
+	</div>
+{:then { icons, iconToSVG }}
+	{@const renderData = iconToSVG(icons[name], {
+		rotate,
+		hFlip,
+		vFlip,
+		width: size,
+		height: size,
+	})}
+
+	<svg {...renderData.attributes} class={[className]} {...rest}>
+		{@html renderData.body}
+	</svg>
+{/await}
