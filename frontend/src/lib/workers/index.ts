@@ -47,7 +47,6 @@ export class WebWorker<I, O> {
 	}
 }
 
-export const songWorkerUrl = new URL("./song.ts", import.meta.url);
 export const groupWorkerUrl = new URL("./group.ts", import.meta.url);
 
 export type { GroupKey, GroupWorkerRequest, GroupWorkerResponse } from "./group";
