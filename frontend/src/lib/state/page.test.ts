@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { Router } from "./router";
+import { Router } from "./page";
 
 const { routes: pages } = new Router([
 	{

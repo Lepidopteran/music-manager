@@ -1,12 +1,29 @@
 import type { MatchFunction, ParamData } from "path-to-regexp";
 
 import { match } from "path-to-regexp";
+import type { Icon } from "virtual:icons";
 
 interface InternalRoute<M> {
 	path: string;
 	matcher: MatchFunction<ParamData>;
 	parentIndex?: number;
 	metadata?: M;
+}
+
+export interface PageInfo {
+	name?: string;
+	hideHeader?: boolean;
+	hideNavigation?: boolean;
+	displayEditor?: boolean;
+	icon?: Icon;
+	callback?: () => void;
+}
+
+export interface PageManager {
+	current?: ResolvedRoute<PageInfo>;
+	goTo: (path: string, addToHistory?: boolean) => void;
+	addPage: (page: RouteDefinition<PageInfo>) => void;
+	removePage: (path: string) => void;
 }
 
 export interface Route<M> {
