@@ -14,7 +14,7 @@
 		setPageManager,
 		setSongGroups,
 		type SongGroups,
-	} from "@lib/context";
+	} from "@lib/state";
 	import { GroupManager } from "@lib/state/group";
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";

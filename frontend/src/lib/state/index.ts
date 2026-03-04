@@ -1,9 +1,9 @@
-import type { GroupedSongs } from "@lib/state/group";
-import type { ResolvedRoute, RouteDefinition } from "@lib/state/router";
 import type { GroupKey } from "@lib/workers";
 import type { AppState } from "@state/app.svelte";
 import { createContext } from "svelte";
 import type { Icon } from "virtual:icons";
+import type { GroupedSongs } from "./group";
+import type { ResolvedRoute, RouteDefinition } from "./router";
 
 export const [legacyAppState, setLegacyAppState] = createContext<AppState>();
 

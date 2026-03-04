@@ -2,7 +2,7 @@
 	import type { Snippet } from "svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";
 
-	import { type PageInfo, pageManager } from "@lib/context";
+	import { type PageInfo, pageManager } from "@lib/state";
 
 	interface Props extends PageInfo, HTMLAttributes<HTMLDivElement> {
 		path: string;

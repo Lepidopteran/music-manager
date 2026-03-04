@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { legacyAppState, songGroups } from "@lib/context";
 	import type { Song } from "@lib/models";
+	import { legacyAppState, songGroups } from "@lib/state";
 	import { isGroup, isSong } from "@state/app.svelte";
 
 	const app = legacyAppState();
