@@ -1,7 +1,37 @@
 import type { Song } from "@lib/models";
 import { type GroupKey, GroupWorker } from "@lib/workers";
 
+/**
+ * Represents the type of a group key used for grouping.
+ */
 export type { GroupKey } from "@lib/workers";
+
+/**
+ * Interface defining the structure for song groups.
+ */
+export interface SongGroups extends Partial<Record<GroupKey, GroupedSongs>> {
+	/**
+	 * Adds a key to keep track of to group songs.
+	 * @param group - The key to track.
+	 */
+	track: (group: GroupKey) => void;
+
+	/**
+	 * Removes a key from being tracked.
+	 * @param group - The key to untrack.
+	 */
+	untrack: (group: GroupKey) => void;
+
+	/**
+	 * Array containing the keys of all groups that currently have songs tracked.
+	 */
+	tracked: GroupKey[];
+
+	/**
+	 * Array containing the keys of all groups that are currently in progress.
+	 */
+	inProgress: GroupKey[];
+}
 
 /**
  * Callback function for group key events.
