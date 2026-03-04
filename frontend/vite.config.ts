@@ -2,7 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
-import icons from "./plugins/icons";
+import bundleIcons from "./plugins/icons";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -29,7 +29,7 @@ export default defineConfig({
 		outDir: "../dist",
 		emptyOutDir: true,
 	},
-	plugins: [icons(), svelte(), tailwindcss()],
+	plugins: [bundleIcons(), svelte(), tailwindcss()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

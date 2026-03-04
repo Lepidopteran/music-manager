@@ -20,7 +20,7 @@ function declaration(keys: Array<string>) {
 `;
 }
 
-export default function icons(): Plugin {
+export default function iconsPlugin(): Plugin {
 	const available: Array<string> = [];
 	const icons: Record<string, IconifyIcon> = {};
 	let config: ResolvedConfig;
@@ -38,28 +38,14 @@ export default function icons(): Plugin {
 			config = resolvedConfig;
 		},
 
-		async buildStart() {
-			const { icons, metadata } = await import("@iconify-json/mingcute");
-			const { categories } = metadata;
+		handleHotUpdate({ server, file, modules }) {
+			if (!file.endsWith(".svelte")) return;
 
-			const { Zodiac: _zodiac, Crypto: _crypto, ...included } = categories as MingcuteCategories;
+			const mod = server.moduleGraph.getModuleById(resolvedVirtualModuleId);
+			if (!mod) return;
+			server.moduleGraph.invalidateModule(mod);
 
-			parseIconSet(icons, (name) => {
-				if (name.endsWith("-line") || Object.values(included).every((category) => !category.includes(name))) {
-					return;
-				}
-
-				available.push(name.replace(/-fill/g, "").replace(/-/g, "_"));
-			});
-
-			const outputDirectory = path.resolve(config.root, ".muusik");
-			const outputFile = path.join(outputDirectory, "icons.d.ts");
-
-			await this.fs.mkdir(outputDirectory, { recursive: true });
-			await this.fs.writeFile(
-				outputFile,
-				declaration(available),
-			);
+			return [...modules, mod];
 		},
 
 		transform(code, id) {
@@ -105,6 +91,30 @@ export default function icons(): Plugin {
 				this.info(`Bundled icons: ${Object.keys(icons).join(", ")}`);
 				return `export const icons = ${JSON.stringify(icons)};\nexport { iconToSVG } from "@iconify/utils";`;
 			}
+		},
+
+		async buildStart() {
+			const { icons, metadata } = await import("@iconify-json/mingcute");
+			const { categories } = metadata;
+
+			const { Zodiac: _zodiac, Crypto: _crypto, ...included } = categories as MingcuteCategories;
+
+			parseIconSet(icons, (name) => {
+				if (name.endsWith("-line") || Object.values(included).every((category) => !category.includes(name))) {
+					return;
+				}
+
+				available.push(name.replace(/-fill/g, "").replace(/-/g, "_"));
+			});
+
+			const outputDirectory = path.resolve(config.root, ".muusik");
+			const outputFile = path.join(outputDirectory, "icons.d.ts");
+
+			await this.fs.mkdir(outputDirectory, { recursive: true });
+			await this.fs.writeFile(
+				outputFile,
+				declaration(available),
+			);
 		},
 	};
 }
