@@ -48,7 +48,7 @@
 		}
 	},
 	"include": [
-		".muusik",
+		".muusik/*.ts",
 		"src/**/*.ts",
 		"src/**/*.js",
 		"src/**/*.svelte",
