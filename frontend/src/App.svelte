@@ -17,7 +17,7 @@
 		PageManager,
 		ResolvedRoute,
 		Route,
-		SongGroups,
+		SongGroups as ISongGroups,
 	} from "@lib/state";
 
 	import {
@@ -38,40 +38,49 @@
 	const app = new AppState();
 	setLegacyAppState(app);
 
-	let groupWorkerKeys: Array<GroupKey> = $state([]);
-	let trackedGroups: Array<GroupKey> = $state([]);
+	class SongGroups implements ISongGroups {
+		#trackedGroups: Array<GroupKey> = $state([]);
+		#groupWorkerKeys: Array<GroupKey> = $state([]);
+		#groupManager: GroupManager = new GroupManager({
+			maxActiveWorkers: 3,
+			onTrack: () => this.#trackedGroups = this.#groupManager.tracked,
+			onUntrack: () => this.#trackedGroups = this.#groupManager.tracked,
+			onRemove: () => this.#trackedGroups = this.#groupManager.tracked,
+			onWorkerStart: () =>
+				this.#groupWorkerKeys = this.#groupManager.workerKeys,
 
-	const groups: SongGroups = $state({
-		track: (group: GroupKey) => groupManager.track(group),
-		untrack: (group: GroupKey) => groupManager.untrack(group),
+			onWorkerFinish: () => {
+				Object.assign(this, this.#groupManager.groups);
+				this.#groupWorkerKeys = this.#groupManager.workerKeys;
+			},
+		});
+
+		constructor() {
+			$effect(() => {
+				if (app.tracks.size !== 0) {
+					this.#groupManager.songs = Array.from(app.tracks.values());
+				}
+			});
+		}
+
+		track(group: GroupKey) {
+			this.#groupManager.track(group);
+		}
+
+		untrack(group: GroupKey) {
+			this.#groupManager.untrack(group);
+		}
+
 		get tracked() {
-			return trackedGroups;
-		},
+			return this.#trackedGroups;
+		}
 
 		get inProgress() {
-			return Array.from(groupWorkerKeys);
-		},
-	});
-
-	const groupManager: GroupManager = new GroupManager({
-		maxActiveWorkers: 3,
-		onTrack: () => trackedGroups = groupManager.tracked,
-		onUntrack: () => trackedGroups = groupManager.tracked,
-		onRemove: () => trackedGroups = groupManager.tracked,
-		onWorkerStart: () => groupWorkerKeys = groupManager.workerKeys,
-		onWorkerFinish() {
-			Object.assign(groups, groupManager.groups);
-			groupWorkerKeys = groupManager.workerKeys;
-		},
-	});
-
-	setSongGroups(groups);
-
-	$effect(() => {
-		if (app.tracks.size !== 0) {
-			groupManager.songs = Array.from(app.tracks.values());
+			return Array.from(this.#groupWorkerKeys);
 		}
-	});
+	}
+
+	setSongGroups(new SongGroups());
 
 	let routes: Array<Route<PageInfo>> = $state([]);
 	const router = new Router<PageInfo>([], {
