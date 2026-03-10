@@ -5,6 +5,11 @@
 
 	const app = legacyAppState();
 	const groups = songGroups();
+
+	if (!groups.tracked.includes("album")) {
+		groups.track("album");
+	}
+
 	function isSelectedItem(item: string | Song) {
 		if (!app.selectedItem) {
 			return false;
