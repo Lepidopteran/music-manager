@@ -11,26 +11,30 @@
 	import { onSmallScreen } from "@lib/utils/screen";
 	import { AppState } from "@state/app.svelte";
 
-	import type {
-		GroupKey,
-		PageInfo,
-		PageManager,
-		ResolvedRoute,
-		Route,
-		SongGroups as ISongGroups,
+	import {
+		GroupedSongs,
+		type GroupKey,
+		type PageInfo,
+		type PageManager,
+		type ResolvedRoute,
+		type Route,
+		type SongGroups as ISongGroups,
 	} from "@lib/state";
 
 	import {
-		GroupManager,
 		Router,
 		setLegacyAppState,
 		setPageManager,
 		setSongGroups,
 	} from "@lib/state";
 
+	import { watch } from "@lib/utils/reactivity/watch.svelte";
+	import { GroupWorker } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
+	import { untrack } from "svelte";
+	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
@@ -39,48 +43,83 @@
 	setLegacyAppState(app);
 
 	class SongGroups implements ISongGroups {
-		#trackedGroups: Array<GroupKey> = $state([]);
-		#groupWorkerKeys: Array<GroupKey> = $state([]);
-		#groupManager: GroupManager = new GroupManager({
-			maxActiveWorkers: 3,
-			onTrack: () => this.#trackedGroups = this.#groupManager.tracked,
-			onUntrack: () => this.#trackedGroups = this.#groupManager.tracked,
-			onRemove: () => this.#trackedGroups = this.#groupManager.tracked,
-			onWorkerStart: () =>
-				this.#groupWorkerKeys = this.#groupManager.workerKeys,
-
-			onWorkerFinish: () => {
-				Object.assign(this, this.#groupManager.groups);
-				this.#groupWorkerKeys = this.#groupManager.workerKeys;
-			},
-		});
+		#maxActiveWorkers: number = 3;
+		#tracked: SvelteSet<GroupKey> = new SvelteSet();
+		#workers: SvelteMap<GroupKey, GroupWorker> = new SvelteMap();
+		#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
 
 		constructor() {
-			$effect(() => {
-				if (app.tracks.size !== 0) {
-					this.#groupManager.songs = Array.from(app.tracks.values());
-				}
-			});
+			watch(() => app.tracks.size, () => this.#update());
 		}
 
-		track(group: GroupKey) {
-			this.#groupManager.track(group);
+		#update() {
+			const trackedKeys = this.#tracked.values();
+
+			let groupKey = trackedKeys.next().value;
+			while (
+				this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined
+			) {
+				const worker = new GroupWorker();
+				worker.onMessage(event => {
+					const { grouped, key } = event.data;
+
+					this.#groups.set(key, new GroupedSongs(grouped));
+					this.#workers.delete(key);
+				});
+
+				worker.postMessage({
+					key: groupKey,
+					songs: $state.snapshot(app.tracks.values().toArray()),
+				});
+
+				this.#workers.set(groupKey, worker);
+
+				groupKey = trackedKeys.next().value;
+			}
 		}
 
-		untrack(group: GroupKey) {
-			this.#groupManager.untrack(group);
+		track(groupKey: GroupKey) {
+			this.#tracked.add(groupKey);
+			this.#update();
+		}
+
+		untrack(groupKey: GroupKey) {
+			this.#tracked.delete(groupKey);
+			this.#update();
+		}
+
+		get album() {
+			return this.#groups.get("album");
+		}
+
+		get artist() {
+			return this.#groups.get("artist");
+		}
+
+		get albumArtist() {
+			return this.#groups.get("albumArtist");
+		}
+
+		get genre() {
+			return this.#groups.get("genre");
+		}
+
+		get mood() {
+			return this.#groups.get("mood");
 		}
 
 		get tracked() {
-			return this.#trackedGroups;
+			return Array.from(this.#tracked.values());
 		}
 
 		get inProgress() {
-			return Array.from(this.#groupWorkerKeys);
+			return Array.from(this.#workers.keys());
 		}
 	}
 
-	setSongGroups(new SongGroups());
+	const songGroups = new SongGroups();
+
+	setSongGroups(songGroups);
 
 	let routes: Array<Route<PageInfo>> = $state([]);
 	const router = new Router<PageInfo>([], {

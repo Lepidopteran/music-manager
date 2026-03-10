@@ -1,5 +1,5 @@
 import type { Song } from "@lib/models";
-import { type GroupKey, GroupWorker } from "@lib/workers";
+import { type GroupKey } from "@lib/workers";
 
 /**
  * Represents the type of a group key used for grouping.
@@ -9,7 +9,7 @@ export type { GroupKey } from "@lib/workers";
 /**
  * Interface defining the structure for song groups.
  */
-export interface SongGroups extends Partial<Record<GroupKey, GroupedSongs>> {
+export interface SongGroups extends Record<GroupKey, GroupedSongs | undefined> {
 	/**
 	 * Adds a key to keep track of to group songs.
 	 * @param group - The key to track.
@@ -127,163 +127,5 @@ export class GroupedSongs implements Iterable<[string, Array<Song>]> {
 
 	[Symbol.iterator](): Iterator<[string, Array<Song>]> {
 		return Object.entries(this._groups)[Symbol.iterator]();
-	}
-}
-
-/**
- * Class to manage grouping of songs using workers.
- */
-export class GroupManager {
-	#songs: Songs = [];
-	#maxActiveWorkers: number;
-	#tracked: Set<GroupKey> = new Set();
-	#workers: Map<GroupKey, GroupWorker> = new Map();
-	#groups: Map<GroupKey, GroupedSongs> = new Map();
-
-	onTrack?: GroupKeyCallback;
-	onUntrack?: GroupKeyCallback;
-	onRemove?: GroupKeyCallback;
-	onWorkerStop?: GroupKeyCallback;
-	onWorkerStart?: GroupKeyCallback;
-	onWorkerError?: WorkerErrorCallback;
-	onWorkerFinish?: GroupKeyCallback;
-
-	/**
-	 * Constructor for the GroupManager class.
-	 * @param songs - Input for the songs to be grouped.
-	 * @param options - Options for configuring the group manager.
-	 */
-	constructor(
-		options?: GroupManagerOptions,
-		songs?: Songs | null,
-	) {
-		const { maxActiveWorkers, ...rest } = options ?? {};
-
-		this.#maxActiveWorkers = maxActiveWorkers ?? 2;
-		this.#songs = songs || [];
-
-		Object.assign(this, rest);
-
-		if (this.#getSongs().length > 0) {
-			this.#update();
-		}
-	}
-
-	/**
-	 * Update method to manage and start workers.
-	 */
-	#update() {
-		if (this.#maxActiveWorkers < 1) {
-			throw new Error("maxActiveWorkers must be greater than 0");
-		}
-
-		const trackedKeys = this.#tracked.values();
-
-		let groupKey = trackedKeys.next().value;
-		while (this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined) {
-			const worker = new GroupWorker();
-			worker.onMessage(event => {
-				const { grouped, key } = event.data;
-
-				this.#groups.set(key, new GroupedSongs(grouped));
-				this.#workers.delete(key);
-				this.onWorkerFinish?.(key);
-			});
-
-			worker.onError((event) => {
-				if (groupKey === undefined) {
-					return;
-				}
-
-				this.onWorkerError?.(groupKey, event);
-			});
-
-			worker.postMessage({ key: groupKey, songs: this.#getSongs() });
-			this.#workers.set(groupKey, worker);
-			this.onWorkerStart?.(groupKey);
-
-			groupKey = trackedKeys.next().value;
-		}
-	}
-
-	/**
-	 * Get the current list of songs.
-	 */
-	#getSongs() {
-		return typeof this.#songs === "function" ? this.#songs() : this.#songs;
-	}
-
-	/**
-	 * Track a group key.
-	 * @param groupKey - The key to track.
-	 */
-	track(groupKey: GroupKey) {
-		this.#tracked.add(groupKey);
-		this.onTrack?.(groupKey);
-		this.#update();
-	}
-
-	/**
-	 * Untrack a group key.
-	 * @param groupKey - The key to untrack.
-	 */
-	untrack(groupKey: GroupKey) {
-		this.#tracked.delete(groupKey);
-		this.onUntrack?.(groupKey);
-		this.#update();
-	}
-
-	/**
-	 * Remove a group key and terminate its worker if it currently running.
-	 * @param groupKey - The key to remove.
-	 */
-	remove(groupKey: GroupKey) {
-		const worker = this.#workers.get(groupKey);
-		if (worker !== undefined) {
-			worker.terminate();
-			this.#workers.delete(groupKey);
-			this.onWorkerStop?.(groupKey);
-		}
-
-		this.untrack(groupKey);
-		this.#groups.delete(groupKey);
-		this.onRemove?.(groupKey);
-	}
-
-	/**
-	 * songs used for grouping.
-	 * @param songs - New songs.
-	 */
-	set songs(songs: Songs) {
-		this.#songs = songs;
-		this.#update();
-	}
-
-	/**
-	 * tracked group keys.
-	 */
-	get tracked() {
-		return Array.from(this.#tracked.values());
-	}
-
-	/**
-	 * Getter for the maximum number of active workers.
-	 */
-	get maxActiveWorkers() {
-		return this.#maxActiveWorkers;
-	}
-
-	/**
-	 * Active group keys that are in workers.
-	 */
-	get workerKeys() {
-		return Array.from(this.#workers.keys());
-	}
-
-	/**
-	 * Grouped songs.
-	 */
-	get groups(): Partial<Record<GroupKey, GroupedSongs>> {
-		return Object.fromEntries(this.#groups.entries());
 	}
 }
