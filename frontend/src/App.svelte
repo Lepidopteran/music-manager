@@ -31,8 +31,8 @@
 	import { watch } from "@lib/utils/reactivity/watch.svelte";
 	import { GroupWorker } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
-	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
+	import Music from "@pages/Music.svelte";
 	import { onMount } from "svelte";
 	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
@@ -270,8 +270,8 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Page path="/" name="Albums" icon="album_2" displayEditor>
-					<Albums />
+				<Page path="/" name="Music" icon="music" displayEditor>
+					<Music />
 				</Page>
 				<Page path="/directories" name="Directories" icon="folder">
 					<Directories />

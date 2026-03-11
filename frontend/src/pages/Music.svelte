@@ -1,11 +1,5 @@
 <script lang="ts">
-	import type { Song } from "@lib/models";
-	import {
-		editedSongs,
-		GroupedSongs,
-		selectedSongs,
-		songGroups,
-	} from "@lib/state";
+	import { editedSongs, selectedSongs, songGroups } from "@lib/state";
 
 	const groups = songGroups();
 	const selected = selectedSongs();
