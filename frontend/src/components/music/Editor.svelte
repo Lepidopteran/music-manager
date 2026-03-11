@@ -13,6 +13,7 @@
 		"path",
 		"unknown",
 		"fileCreatedAt",
+		"directoryId",
 		"updatedAt",
 		"addedAt",
 	];
