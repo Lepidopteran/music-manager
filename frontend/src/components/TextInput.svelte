@@ -1,15 +1,40 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import type { Attachment } from "svelte/attachments";
 	import type { HTMLInputAttributes } from "svelte/elements";
 
 	interface Props extends HTMLInputAttributes {
 		value?: string | null;
 		variant?: "base" | "ghost";
-		prefixChild?: Snippet;
-		suffixChild?: Snippet;
+		prefixChild?: Snippet<[{ focused: boolean }]>;
+		suffixChild?: Snippet<[{ focused: boolean }]>;
 		prefixDecorative?: boolean;
 		suffixDecorative?: boolean;
 	}
+
+	let focused = $state(false);
+
+	const hooksAttachment: Attachment<HTMLInputElement> = (input) => {
+		const handleFocus = (event: FocusEvent) => {
+			if (event.target === input) {
+				focused = true;
+			}
+		};
+
+		const handleBlur = (event: FocusEvent) => {
+			if (event.target === input) {
+				focused = false;
+			}
+		};
+
+		input.addEventListener("focus", handleFocus);
+		input.addEventListener("blur", handleBlur);
+
+		return () => {
+			input.removeEventListener("focus", handleFocus);
+			input.removeEventListener("blur", handleBlur);
+		};
+	};
 
 	let {
 		value = $bindable(""),
@@ -35,13 +60,20 @@
 >
 	{#if prefixChild}
 		<div class={["user-select-none h-full", prefixDecorative && "pointer-events-none"]}>
-			{@render prefixChild()}
+			{@render prefixChild({ focused: focused })}
 		</div>
 	{/if}
-	<input type="text" class="outline-none" {placeholder} bind:value {...rest} />
+	<input
+		type="text"
+		class="outline-none"
+		{placeholder}
+		bind:value
+		{...rest}
+		{@attach hooksAttachment}
+	/>
 	{#if suffixChild}
 		<div class={["user-select-none h-full", suffixDecorative && "pointer-events-none"]}>
-			{@render suffixChild()}
+			{@render suffixChild({ focused: focused })}
 		</div>
 	{/if}
 </div>
