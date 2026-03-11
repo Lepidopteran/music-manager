@@ -9,7 +9,6 @@
 	import { fade } from "svelte/transition";
 
 	import { onSmallScreen } from "@lib/utils/screen";
-	import { AppState } from "@state/app.svelte";
 
 	import {
 		GroupedSongs,
@@ -18,29 +17,39 @@
 		type PageManager,
 		type ResolvedRoute,
 		type Route,
+		Router,
+		setEditedSongs,
+		setPageManager,
+		setSelectedSongs,
+		setSongGroups,
+		setSongs,
 		type SongGroups as ISongGroups,
 	} from "@lib/state";
 
-	import {
-		Router,
-		setLegacyAppState,
-		setPageManager,
-		setSongGroups,
-	} from "@lib/state";
-
+	import { getSongs } from "@api/song";
+	import type { Song } from "@lib/models";
 	import { watch } from "@lib/utils/reactivity/watch.svelte";
 	import { GroupWorker } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Albums from "@pages/Albums.svelte";
 	import Directories from "@pages/Directories.svelte";
-	import { untrack } from "svelte";
+	import { onMount } from "svelte";
 	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
-	const app = new AppState();
-	setLegacyAppState(app);
+	const songs = new SvelteMap<string, Song>();
+	$inspect(songs.size);
+	setSongs(songs);
+
+	const selectedSongs = new SvelteSet<string>();
+	$inspect(selectedSongs.values().toArray());
+	setSelectedSongs(selectedSongs);
+
+	const editedSongs = new SvelteMap<string, Song>();
+	$inspect(editedSongs.values().toArray());
+	setEditedSongs(editedSongs);
 
 	class SongGroups implements ISongGroups {
 		#maxActiveWorkers: number = 3;
@@ -49,7 +58,7 @@
 		#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
 
 		constructor() {
-			watch(() => app.tracks.size, () => this.#update());
+			watch(() => songs.size, () => this.#update());
 		}
 
 		#update() {
@@ -69,7 +78,7 @@
 
 				worker.postMessage({
 					key: groupKey,
-					songs: $state.snapshot(app.tracks.values().toArray()),
+					songs: $state.snapshot(songs.values().toArray()),
 				});
 
 				this.#workers.set(groupKey, worker);
@@ -189,6 +198,16 @@
 			editorPane.expand();
 		}
 	});
+
+	onMount(async () => {
+		for (
+			const [id, song] of (await getSongs()).map(song =>
+				[song.id, song as Song] as const
+			)
+		) {
+			songs.set(id, song);
+		}
+	});
 </script>
 
 <svelte:window onpopstate={() => goTo(window.location.pathname, false)} />
@@ -301,7 +320,7 @@
 						: "",
 				]}
 			>
-				{#if app.selectedItem && editorEnabled}
+				{#if editorEnabled}
 					<div
 						transition:fade={{
 							duration: prefersReducedMotion.current ? 0 : 200,
@@ -311,7 +330,7 @@
 							onSmallScreen.current ? "rounded-t-theme-xl overflow-hidden" : "",
 						]}
 					>
-						<Editor bind:selectedItem={app.selectedItem} />
+						<Editor />
 					</div>
 				{/if}
 			</Pane>

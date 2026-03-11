@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { isGroup, type Item } from "@state/app.svelte";
-	import { untrack } from "svelte";
 	import MissingCover from "./MissingCover.svelte";
 
 	let failedToLoad = $state(false);
@@ -8,7 +6,7 @@
 	let container: HTMLDivElement;
 
 	interface Props {
-		item: Item;
+		songId: string;
 		artType?: "front" | "back";
 		imageWidth?: number | null;
 		imageHeight?: number | null;
@@ -24,7 +22,7 @@
 		alt,
 		artType = "front",
 		imageHeight = $bindable(),
-		item,
+		songId,
 		lazy = true,
 		onError,
 		onLoad,
@@ -72,11 +70,7 @@
 		imageHeight = null;
 		imageWidth = null;
 
-		src = isGroup(item)
-			? `/api/albums/${
-				encodeURIComponent(untrack(() => item.label))
-			}/cover-art/${artType}.jpg`
-			: `/api/songs/${item.song.id}/cover-art/${artType}.jpg`;
+		src = `/api/songs/${songId}/cover-art/${artType}.jpg`;
 
 		if (onLoading) {
 			onLoading();
@@ -93,12 +87,7 @@
 	<img
 		{onload}
 		{onerror}
-		alt={alt
-		|| `Cover art for ${
-			isGroup(item)
-				? item.label
-				: item.song?.title || item.song.path.split("/").pop()
-		}`}
+		{alt}
 		bind:this={image}
 		class="size-full object-cover motion-safe:transition duration-300 ease-in-out"
 		decoding="async"

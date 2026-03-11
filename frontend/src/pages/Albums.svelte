@@ -1,68 +1,77 @@
 <script lang="ts">
 	import type { Song } from "@lib/models";
-	import { legacyAppState, songGroups } from "@lib/state";
-	import { isGroup, isSong } from "@state/app.svelte";
+	import {
+		editedSongs,
+		GroupedSongs,
+		selectedSongs,
+		songGroups,
+	} from "@lib/state";
 
-	const app = legacyAppState();
 	const groups = songGroups();
+	const selected = selectedSongs();
+	const edited = editedSongs();
 
 	if (!groups.tracked.includes("album")) {
 		groups.track("album");
-	}
-
-	function isSelectedItem(item: string | Song) {
-		if (!app.selectedItem) {
-			return false;
-		}
-
-		if (isGroup(app.selectedItem) && typeof item === "string") {
-			return app.selectedItem.label === item;
-		} else if (isSong(app.selectedItem) && typeof item === "object") {
-			return app.selectedItem.song.id === item.id;
-		}
-
-		return false;
 	}
 </script>
 
 <div class="flex flex-col overflow-y-auto h-full">
 	{#if groups.album && groups.album?.length() > 0}
 		{@const albums = groups.album}
-		{#each albums as [group, tracks]}
+		{#each albums.entries()
+			.sort((
+				[groupA],
+				[groupB],
+			) => groupA.localeCompare(groupB)) as [group, songs]}
 			<details>
 				<summary
-					class="cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1 data-[edited=true]:bg-yellow-500/25 data-[selected=true]:bg-primary/25"
+					class={[
+						"cursor-pointer hover:bg-primary/5 select-none bg-base-100 px-2 py-1",
+						songs.every((song) => selected.has(song.id)) && "bg-primary/25"
+						|| songs.every((song) =>
+								edited.has(song.id) && edited.get(song.id)?.album !== group
+							) && "bg-error/25"
+						|| songs.some((track) => edited.has(track.id)) && "bg-yellow-500/25",
+					]}
 					aria-label={group}
-					data-selected={isSelectedItem(group)}
-					data-edited={tracks.some((track) => app.editedTracks.has(track.id))}
-					onclick={() => (app.selectedItem = {
-						type: "group",
-						label: group,
-						songs: tracks.map(
-							(song) => app.editedTracks.get(song.id) || song,
-						),
-					})}
+					onclick={() => {
+						selected.clear();
+						for (const song of songs) {
+							selected.add(song.id);
+						}
+					}}
 				>
-					{group}
+					{#if songs.every((song) => edited.has(song.id))}
+						{edited.get(songs[0].id)?.album}
+					{:else}
+						{group}
+					{/if}
 				</summary>
 				<ul>
-					{#each tracks as track}
-						{@const trackIdString = track.id}
+					{#each songs as song}
+						{@const editedSong = edited.get(song.id)}
 						<li
-							class="pl-4 py-1 data-[selected=true]:bg-primary/25 data-[edited=true]:bg-yellow-500/10 select-none cursor-pointer hover:bg-primary/5"
-							aria-label={`${track.title} by ${track.artist}`}
-							data-selected={isSelectedItem(track)}
-							data-edited={app.editedTracks.has(track.id)}
-							onclick={() => (app.selectedItem = {
-								type: "song",
-								song: app.editedTracks.get(trackIdString) || track,
-							})}
+							class={[
+								"pl-4 py-1 select-none cursor-pointer hover:bg-primary/5",
+								selected.has(song.id) && "bg-primary/25"
+								|| editedSong && "bg-yellow-500/25",
+							]}
+							aria-label={`${song.title} by ${song.artist}`}
 						>
-							{
-								app.editedTracks.get(trackIdString)?.title
-								|| track.title
-								|| track.path
-							}
+							<button
+								class="size-full text-left cursor-pointer"
+								onclick={() => {
+									selected.clear();
+									selected.add(song.id);
+								}}
+							>
+								{
+									edited.get(song.id)?.title
+									|| song.title
+									|| song.path
+								}
+							</button>
 						</li>
 					{/each}
 				</ul>

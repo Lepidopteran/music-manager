@@ -89,7 +89,7 @@ type Songs = (() => Array<Song>) | Array<Song>;
 /**
  * Represents a collection of grouped songs.
  */
-export class GroupedSongs implements Iterable<[string, Array<Song>]> {
+export class GroupedSongs {
 	// NOTE: Can't use actual private field here because Object can't interact with it
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_elements
 	private _groups: Record<string, Array<Song>>;
@@ -125,7 +125,15 @@ export class GroupedSongs implements Iterable<[string, Array<Song>]> {
 		return key in this._groups;
 	}
 
-	[Symbol.iterator](): Iterator<[string, Array<Song>]> {
-		return Object.entries(this._groups)[Symbol.iterator]();
+	entries() {
+		return Object.entries(this._groups);
+	}
+
+	keys() {
+		return Object.keys(this._groups);
+	}
+
+	values() {
+		return Object.values(this._groups);
 	}
 }
