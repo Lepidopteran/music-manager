@@ -26,13 +26,13 @@
 
 	const uuid = $props.id();
 
-	interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "popover"> {
+	interface Props extends HTMLAttributes<HTMLDivElement> {
 		open?: boolean;
 		children?: Snippet;
 		placement?: Placement;
 		offset?: OffsetOptions;
-		popoverMode?: "hint" | "manual";
 		reference?: Element | string;
+		mode?: "manual" | "hint" | "auto";
 		size?: SizeOptions | Derivable<SizeOptions>;
 		flip?: boolean | FlipOptions | Derivable<FlipOptions>;
 		shift?: boolean | ShiftOptions | Derivable<ShiftOptions>;
@@ -42,12 +42,12 @@
 	let {
 		id = `popover-${uuid}`,
 		open = $bindable(false),
-		popoverMode: popover = "manual",
 		offset: offsetOptions,
 		flip: flipOptions,
 		shift: shiftOptions,
 		size: sizeOptions,
 		inline: inlineOptions,
+		mode = "auto",
 		placement = "bottom",
 		reference,
 		children,
@@ -133,7 +133,7 @@
 
 <div
 	{id}
-	{popover}
+	popover={mode}
 	bind:this={popoverRef}
 	{@attach popoverAttachment}
 	{...rest}

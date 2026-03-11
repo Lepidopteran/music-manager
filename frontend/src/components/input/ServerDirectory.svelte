@@ -224,6 +224,7 @@
 	id={`${id}-popover`}
 	reference={id}
 	tabindex={-1}
+	mode="manual"
 	class="bg-base-200 backdrop-blur-sm shadow-lg rounded-theme border border-base-300/50"
 	bind:this={popoverRef}
 	bind:open={explorerOpen}
