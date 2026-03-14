@@ -3,7 +3,7 @@
 	import Icon from "@components/Icon.svelte";
 	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
-	import Page from "@components/Page.svelte";
+	import Page from "@components/page/Page.svelte";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
@@ -27,6 +27,7 @@
 	} from "@lib/state";
 
 	import { getSongs } from "@api/song";
+	import PageAlias from "@components/page/PageAlias.svelte";
 	import type { Song } from "@lib/models";
 	import { watch } from "@lib/utils/reactivity/watch.svelte";
 	import { GroupWorker } from "@lib/workers";
@@ -40,15 +41,12 @@
 	let menuOpen = $state(true);
 
 	const songs = new SvelteMap<string, Song>();
-	$inspect(songs.size);
 	setSongs(songs);
 
 	const selectedSongs = new SvelteSet<string>();
-	$inspect(selectedSongs.values().toArray());
 	setSelectedSongs(selectedSongs);
 
 	const editedSongs = new SvelteMap<string, Song>();
-	$inspect(editedSongs.values().toArray());
 	setEditedSongs(editedSongs);
 
 	class SongGroups implements ISongGroups {
@@ -130,59 +128,53 @@
 
 	setSongGroups(songGroups);
 
-	let routes: Array<Route<PageInfo>> = $state([]);
-	const router = new Router<PageInfo>([], {
-		onRouteAdd(router) {
-			routes = router.routes;
-		},
+	class PageState implements PageManager {
+		#pages: Array<Route<PageInfo>> = $state([]);
+		#current: ResolvedRoute<PageInfo> | undefined = $state();
+		router = new Router<PageInfo>([], {
+			onRoutesUpdated: (router) => this.#pages = router.routes,
+		});
+		constructor() {
+			$effect(() => {
+				const { pathname } = window.location;
+				if (this.#current !== undefined || !this.router.hasRoute(pathname)) {
+					return;
+				}
 
-		onRouteRemove(router) {
-			routes = router.routes;
-		},
-	});
+				this.goTo(pathname);
+			});
+		}
 
-	let page: ResolvedRoute<PageInfo> | undefined = $state();
+		goTo(path: string, addToHistory?: boolean) {
+			const resolvedPage = this.router.resolve(path);
+			if (!resolvedPage) {
+				return;
+			}
 
-	const pageManager: PageManager = $state({
-		goTo,
-		addPage: (page) => {
-			router.addRoute(page);
-		},
-		removePage: (path) => {
-			router.removeRoute(path);
-		},
+			if (addToHistory) {
+				window.history.pushState({}, "", path);
+			}
+
+			this.#current = resolvedPage;
+		}
+
 		get current() {
-			return page;
-		},
-	});
-
-	setPageManager(pageManager);
-
-	$effect(() => {
-		const { pathname } = window.location;
-		if (page !== undefined || !router.hasRoute(pathname)) {
-			return;
+			return this.#current;
 		}
 
-		goTo(pathname);
-	});
-
-	function goTo(path: string, addToHistory = true) {
-		const resolvedPage = router.resolve(path);
-		if (!resolvedPage) {
-			return;
+		get pages() {
+			return this.#pages;
 		}
-
-		if (addToHistory) {
-			window.history.pushState({}, "", path);
-		}
-
-		resolvedPage.metadata?.callback?.();
-		page = resolvedPage;
 	}
 
+	const pageState = new PageState();
+	const { current: currentPage, pages } = $derived(pageState);
+	setPageManager(pageState);
+
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(page?.metadata?.displayEditor || false);
+	let editorEnabled = $derived(
+		pageState.current?.metadata?.displayEditor || false,
+	);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -210,12 +202,14 @@
 	});
 </script>
 
-<svelte:window onpopstate={() => goTo(window.location.pathname, false)} />
+<svelte:window
+	onpopstate={() => pageState.goTo(window.location.pathname, false)}
+/>
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={page?.metadata?.hideHeader}
+		hidden={currentPage?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -242,8 +236,8 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={page?.metadata?.hideNavigation}>
-			{#each routes.filter(({ metadata }) =>
+		<nav hidden={currentPage?.metadata?.hideNavigation}>
+			{#each pages.filter(({ metadata }) =>
 				metadata !== undefined && !metadata.hideNavigation
 			) as { path, metadata }}
 				{@const { name, icon } = metadata!}
@@ -251,10 +245,12 @@
 					href={path as string}
 					onclick={(event) => {
 						event.preventDefault();
-						goTo((event.target as HTMLAnchorElement).getAttribute("href") as string);
+						pageState.goTo(
+							(event.target as HTMLAnchorElement).getAttribute("href") as string,
+						);
 					}}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={path === page?.path || undefined}
+					data-active={path === currentPage?.path || undefined}
 				>
 					{#if icon}
 						<Icon name={icon} size="1.25em" />

@@ -20,10 +20,10 @@ export interface PageInfo {
 }
 
 export interface PageManager {
+	router: Router<PageInfo>;
+	pages: Array<Route<PageInfo>>;
 	current?: ResolvedRoute<PageInfo>;
 	goTo: (path: string, addToHistory?: boolean) => void;
-	addPage: (page: RouteDefinition<PageInfo>) => void;
-	removePage: (path: string) => void;
 }
 
 export interface Route<M> {
@@ -44,17 +44,18 @@ export interface RouteDefinition<M> {
 	metadata?: M;
 }
 
-type RouterCallback<M> = (router: Router<M>, path: string, index: number) => void;
+type RoutesUpdatedCallback<M> = (router: Router<M>) => void;
 
 export interface RouterOptions<M> {
-	onRouteAdd?: RouterCallback<M>;
-	onRouteRemove?: RouterCallback<M>;
+	/**
+	 * Callback when a route has been added or deleted in the router.
+	 */
+	onRoutesUpdated?: RoutesUpdatedCallback<M>;
 }
 
 export class Router<M> implements RouterOptions<M> {
 	#routes: Array<InternalRoute<M>> = [];
-	onRouteAdd?: RouterCallback<M>;
-	onRouteRemove?: RouterCallback<M>;
+	onRoutesUpdated?: RoutesUpdatedCallback<M>;
 
 	constructor(
 		routes: Array<RouteDefinition<M>>,
@@ -70,19 +71,29 @@ export class Router<M> implements RouterOptions<M> {
 		return this.#routes.some((route) => route.matcher(path));
 	}
 
-	addRoute(def: RouteDefinition<M>) {
-		const path = def.path;
-		const route = this.#internalRoute(def);
+	getRouteIndex(path: string): number | null {
+		const index = this.#routes.findIndex((route) => route.path === path);
+		return index === -1 ? null : index;
+	}
 
-		this.#routes.push(route);
-		this.onRouteAdd?.(this, path, this.#routes.length - 1);
+	addRouteWithParentPath(parentPath: string, def: RouteDefinition<M>) {
+		const index = this.#routes.findIndex((route) => route.path === parentPath || route.matcher(parentPath));
 
-		const parentIndex = this.#routes.length - 1;
+		if (index === -1) {
+			throw new Error(`Parent route not found: ${parentPath}`);
+		}
+
+		this.addRoute(def, index);
+	}
+
+	addRoute(def: RouteDefinition<M>, parentIndex?: number) {
+		this.#routes.push(this.#internalRoute(def, parentIndex));
+		this.onRoutesUpdated?.(this);
+
+		const currentIndex = this.#routes.length - 1;
 		if (def.children?.length) {
 			for (const child of def.children) {
-				const { path } = child;
-				this.#routes.push(this.#internalRoute(child, parentIndex));
-				this.onRouteAdd?.(this, path, this.#routes.length - 1);
+				this.addRoute(child, currentIndex);
 			}
 		}
 	}
@@ -94,18 +105,16 @@ export class Router<M> implements RouterOptions<M> {
 
 	removeRouteWithIndex(index: number) {
 		for (
-			const [childIndex, childPath] of this
+			const childIndex of this
 				.#routes
-				.filter((route) => route.parentIndex === index)
-				.map(({ path }, index) => [index, path] as const)
+				.filter((route) => route.parentIndex === index).map((_, index) => index)
 		) {
-			this.removeRouteWithIndex(childIndex);
-			this.onRouteRemove?.(this, childPath, childIndex);
+			this.#routes.splice(childIndex, 1);
+			this.onRoutesUpdated?.(this);
 		}
 
-		const { path } = this.#routes[index];
 		this.#routes.splice(index, 1);
-		this.onRouteRemove?.(this, path, index);
+		this.onRoutesUpdated?.(this);
 	}
 
 	resolve(path: string): ResolvedRoute<M> | undefined {
@@ -123,7 +132,7 @@ export class Router<M> implements RouterOptions<M> {
 				children: () => {
 					return this.#routes
 						.filter((route) => route.parentIndex === index)
-						.map((route) => this.#route(route, index));
+						.map((route, index) => this.#route(route, index));
 				},
 				parent: () => {
 					if (index === 0 || !parentIndex) {
@@ -137,18 +146,19 @@ export class Router<M> implements RouterOptions<M> {
 	}
 
 	#internalRoute(route: RouteDefinition<M>, parentIndex?: number): InternalRoute<M> {
-		const { children, ...props } = route;
+		const { children, path, ...props } = route;
+
+		const combinedPath = parentIndex !== undefined
+			? buildPath([...this.#routes[parentIndex].path.split("/"), ...path.split("/")])
+			: buildPath(path.split("/"));
+
 		return {
-			matcher: match(
-				parentIndex
-					? `${this.#routes[parentIndex].path.replace(/\/$/, "")}/${props.path.replace(/^\//, "")}`
-					: props.path,
-				{
-					end: !(children?.length && children.length > 0),
-				},
-			),
 			...props,
 			parentIndex,
+			path: combinedPath,
+			matcher: match(combinedPath, {
+				end: !(children && children?.length > 0),
+			}),
 		};
 	}
 
@@ -174,4 +184,8 @@ export class Router<M> implements RouterOptions<M> {
 	get routes() {
 		return this.#routes.map((route, index) => this.#route(route, index));
 	}
+}
+
+export function buildPath(parts: Array<string>, absolute = true): string {
+	return `${absolute ? "/" : ""}${parts.filter((part) => part !== "").join("/")}`;
 }
