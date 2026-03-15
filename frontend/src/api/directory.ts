@@ -1,5 +1,5 @@
-import type { Directory } from "@bindings/Directory";
-import type { NewDirectory } from "@bindings/NewDirectory";
+import type { Directory } from "@lib/bindings/Directory";
+import type { NewDirectory } from "@lib/bindings/NewDirectory";
 import { fetchJson, fetchText } from "@utils/api";
 
 /**

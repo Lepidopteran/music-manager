@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getServerDirectoryFolders } from "@api/directory";
+	import { isInViewport } from "@attachments/viewport";
 	import Icon from "@components/Icon.svelte";
 	import ListBox from "@components/ListBox.svelte";
 	import Popover from "@components/Popover.svelte";
 	import TextInput from "@components/TextInput.svelte";
-	import { isInViewport } from "@lib/attachments/viewport";
 	import { type ComponentProps, untrack } from "svelte";
 	import { match } from "ts-pattern";
 
@@ -224,6 +224,7 @@
 	id={`${id}-popover`}
 	reference={id}
 	tabindex={-1}
+	mode="manual"
 	class="bg-base-200 backdrop-blur-sm shadow-lg rounded-theme border border-base-300/50"
 	bind:this={popoverRef}
 	bind:open={explorerOpen}
@@ -266,7 +267,7 @@
 		class="focus:border border-primary w-full"
 	>
 		{#snippet option(folder)}
-			<Icon name="folder-fill" class="inline mr-1" aria-hidden="true" />
+			<Icon name="folder" class="inline mr-1" aria-hidden="true" />
 			{#each highlightWords(folder) as fragment}
 				{@const { kind, value } = fragment}
 				{#if kind === "highlight"}
