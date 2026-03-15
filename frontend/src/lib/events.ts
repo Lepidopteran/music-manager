@@ -1,4 +1,4 @@
-import type { JobManagerEvent } from "src/bindings/bindings";
+import type { JobManagerEvent } from "@lib/bindings/bindings";
 
 declare global {
 	interface EventSourceEventMap {
