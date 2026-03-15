@@ -1,25 +1,13 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
+import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 import bundleIcons from "./plugins/icons";
 
 // https://vite.dev/config/
 export default defineConfig({
 	root: ".",
-	resolve: {
-		alias: {
-			"@api": resolve(__dirname, "src/lib/api"),
-			"@bindings": resolve(__dirname, "src/lib/bindings"),
-			"@actions": resolve(__dirname, "src/lib/actions"),
-			"@assets": resolve(__dirname, "src/assets"),
-			"@components": resolve(__dirname, "src/components"),
-			"@state": resolve(__dirname, "src/state"),
-			"@lib": resolve(__dirname, "src/lib"),
-			"@pages": resolve(__dirname, "src/pages"),
-			"@utils": resolve(__dirname, "src/lib/utils"),
-		},
-	},
 	server: {
 		proxy: {
 			"/api": { target: "http://localhost:3000", changeOrigin: true },
@@ -29,7 +17,7 @@ export default defineConfig({
 		outDir: "../dist",
 		emptyOutDir: true,
 	},
-	plugins: [bundleIcons(), svelte(), tailwindcss()],
+	plugins: [bundleIcons(), tsconfigPaths(), svelte(), tailwindcss()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

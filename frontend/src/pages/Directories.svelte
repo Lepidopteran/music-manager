@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Directory } from "@bindings/Directory";
-	import type { NewDirectory } from "@bindings/NewDirectory";
+	import type { Directory } from "@lib/bindings/Directory";
+	import type { NewDirectory } from "@lib/bindings/NewDirectory";
 
 	import Button from "@components/Button.svelte";
 	import Modal from "@components/Modal.svelte";
@@ -17,7 +17,7 @@
 	import Table from "@components/table/Table.svelte";
 
 	import Icon from "@components/Icon.svelte";
-	import { onMediumScreen } from "@lib/utils/screen";
+	import { onMediumScreen } from "@utils/screen";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);

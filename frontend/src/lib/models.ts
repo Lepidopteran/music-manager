@@ -1,4 +1,4 @@
-import type { DatabaseSong } from "@bindings/DatabaseSong";
-import type { SongMetadata } from "@bindings/SongMetadata";
+import type { DatabaseSong } from "src/bindings/DatabaseSong";
+import type { SongMetadata } from "src/bindings/SongMetadata";
 
 export type Song = DatabaseSong & SongMetadata;

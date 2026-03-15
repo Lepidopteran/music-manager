@@ -6,7 +6,7 @@
 	import Stack from "@components/stack/Stack.svelte";
 	import StackItem from "@components/stack/StackItem.svelte";
 	import type { Song } from "@lib/models";
-	import { editedSongs, selectedSongs, songs } from "@lib/state";
+	import { editedSongs, selectedSongs, songs } from "@state";
 
 	const excludedFields: Array<keyof Song> = [
 		"id",

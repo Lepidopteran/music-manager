@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { Router } from "./page";
+import { Router } from "./router";
 
 describe("Router", () => {
 	test("Child can get parent", () => {
@@ -55,7 +55,7 @@ describe("Router", () => {
 			},
 		]);
 
-		router.addChildRoute("/about/:id", {
+		router.addRouteWithParentPath("/about/:id", {
 			path: ":name",
 		});
 
@@ -64,7 +64,7 @@ describe("Router", () => {
 		expect(route?.path).toEqual("/about/:id/:name");
 		expect(route?.children().length).toEqual(0);
 
-		router.addChildRoute(route!.path, {
+		router.addRouteWithParentPath(route!.path, {
 			path: ":birthday",
 		});
 

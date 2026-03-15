@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { buildPath, type PageInfo, pageManager } from "@lib/state";
+	import { buildPath } from "@lib/router";
+	import { type PageInfo, pageManager } from "@state";
 	import { pageContext } from "./Page.svelte";
 
 	interface Props extends PageInfo {

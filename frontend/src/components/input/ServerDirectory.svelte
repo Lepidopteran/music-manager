@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getServerDirectoryFolders } from "@api/directory";
+	import { isInViewport } from "@attachments/viewport";
 	import Icon from "@components/Icon.svelte";
 	import ListBox from "@components/ListBox.svelte";
 	import Popover from "@components/Popover.svelte";
 	import TextInput from "@components/TextInput.svelte";
-	import { isInViewport } from "@lib/attachments/viewport";
 	import { type ComponentProps, untrack } from "svelte";
 	import { match } from "ts-pattern";
 

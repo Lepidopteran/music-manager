@@ -1,14 +1,10 @@
 <script lang="ts">
-	import {
-		buildPath,
-		createSafeContext,
-		type PageInfo,
-		pageManager,
-		type RouteDefinition,
-	} from "@lib/state";
+	import { buildPath, type RouteDefinition } from "@lib/router";
+	import { type PageInfo, pageManager } from "@state";
+	import { createSafeContext } from "@utils/context";
 	import { type Snippet } from "svelte";
 	import type { ClassValue } from "svelte/elements";
-	import { SvelteMap, SvelteSet } from "svelte/reactivity";
+	import { SvelteSet } from "svelte/reactivity";
 
 	interface Props extends PageInfo {
 		path: string;

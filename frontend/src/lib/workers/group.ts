@@ -1,8 +1,10 @@
-import type { DatabaseSong } from "@bindings/DatabaseSong";
+import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
 import type { Song } from "@lib/models";
 import { sendMessage } from "./utils";
 
+type GroupKey = keyof DatabaseSong;
 type GroupedSongs = Record<string, Array<Song>>;
+
 function groupSongs(groupKey: GroupKey, songs: Array<Song>): GroupedSongs {
 	return Object.fromEntries(
 		songs.reduce((map, song) => {
@@ -27,8 +29,6 @@ onmessage = (event: MessageEvent<GroupWorkerRequest>) => {
 		grouped: groupSongs(key, songs),
 	});
 };
-
-export type GroupKey = keyof Pick<DatabaseSong, "artist" | "album" | "genre" | "mood" | "albumArtist">;
 
 export type GroupWorkerRequest = {
 	key: GroupKey;

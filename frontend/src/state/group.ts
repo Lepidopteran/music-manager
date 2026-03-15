@@ -1,15 +1,17 @@
+import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
 import type { Song } from "@lib/models";
-import { type GroupKey } from "@lib/workers";
 
 /**
- * Represents the type of a group key used for grouping.
+ * Type for song group keys.
  */
-export type { GroupKey } from "@lib/workers";
+export type GroupKey = keyof DatabaseSong;
 
 /**
  * Interface defining the structure for song groups.
  */
-export interface SongGroups extends Record<GroupKey, GroupedSongs | undefined> {
+export interface GroupManager {
+	groups: Map<GroupKey, GroupedSongs>;
+
 	/**
 	 * Adds a key to keep track of to group songs.
 	 * @param group - The key to track.
@@ -32,59 +34,6 @@ export interface SongGroups extends Record<GroupKey, GroupedSongs | undefined> {
 	 */
 	inProgress: GroupKey[];
 }
-
-/**
- * Callback function for group key events.
- */
-type GroupKeyCallback = (key: GroupKey) => void;
-
-/**
- * Callback function for worker error events.
- */
-type WorkerErrorCallback = (key: GroupKey, error: ErrorEvent) => void;
-
-/**
- * Options for the GroupManager class.
- */
-export interface GroupManagerOptions {
-	/**
-	 * Maximum number of active workers.
-	 */
-	maxActiveWorkers: number;
-	/**
-	 * Callback function when a group key is tracked.
-	 */
-	onTrack?: GroupKeyCallback;
-	/**
-	 * Callback function when a group key is untracked.
-	 */
-	onUntrack?: GroupKeyCallback;
-	/**
-	 * Callback function when a group key is removed.
-	 */
-	onRemove?: GroupKeyCallback;
-	/**
-	 * Callback function when a worker stops.
-	 */
-	onWorkerStop?: GroupKeyCallback;
-	/**
-	 * Callback function when a worker starts.
-	 */
-	onWorkerStart?: GroupKeyCallback;
-	/**
-	 * Callback function when a worker encounters an error.
-	 */
-	onWorkerError?: WorkerErrorCallback;
-	/**
-	 * Callback function when a worker finishes.
-	 */
-	onWorkerFinish?: GroupKeyCallback;
-}
-
-/**
- * Type for song input which can be a function returning songs or an array of songs.
- */
-type Songs = (() => Array<Song>) | Array<Song>;
 
 /**
  * Represents a collection of grouped songs.

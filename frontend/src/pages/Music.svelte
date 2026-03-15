@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { editedSongs, selectedSongs, songGroups } from "@lib/state";
+	import { editedSongs, groupManager, selectedSongs } from "@state";
 
-	const groups = songGroups();
+	const groupState = groupManager();
 	const selected = selectedSongs();
 	const edited = editedSongs();
 
-	if (!groups.tracked.includes("album")) {
-		groups.track("album");
+	if (!groupState.tracked.includes("album")) {
+		groupState.track("album");
 	}
 </script>
 
 <div class="flex flex-col overflow-y-auto h-full">
-	{#if groups.album && groups.album?.length() > 0}
-		{@const albums = groups.album}
+	{#if groupState.groups.has("album") && groupState.groups.get("album")!.length() > 0}
+		{@const albums = groupState.groups.get("album")!}
 		{#each albums.entries()
 			.sort((
 				[groupA],
@@ -71,7 +71,7 @@
 				</ul>
 			</details>
 		{/each}
-	{:else if groups.inProgress.includes("album")}
+	{:else if groupState.inProgress.includes("album")}
 		<div class="p-2">Organizing albums...</div>
 	{:else}
 		<div class="p-2">No albums found</div>

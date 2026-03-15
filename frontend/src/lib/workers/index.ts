@@ -1,4 +1,3 @@
-import type { Song } from "@lib/models";
 import type { GroupWorkerRequest, GroupWorkerResponse } from "./group";
 
 /**
@@ -49,19 +48,9 @@ export class WebWorker<I, O> {
 
 export const groupWorkerUrl = new URL("./group.ts", import.meta.url);
 
-export type { GroupKey, GroupWorkerRequest, GroupWorkerResponse } from "./group";
+export type { GroupWorkerRequest, GroupWorkerResponse } from "./group";
 export class GroupWorker extends WebWorker<GroupWorkerRequest, GroupWorkerResponse> {
 	constructor() {
 		super(groupWorkerUrl);
 	}
 }
-
-export type SongWorkerRequest =
-	| { type: "initialize"; payload: Song[] }
-	| { type: "groupArtists" }
-	| { type: "groupAlbums" };
-
-export type SongWorkerResponse =
-	| { type: "initialize"; payload: Map<string, Song> }
-	| { type: "groupArtists"; payload: Map<string, Array<Song>> }
-	| { type: "groupAlbums"; payload: Map<string, Array<Song>> };

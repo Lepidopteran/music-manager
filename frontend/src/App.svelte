@@ -8,32 +8,30 @@
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
 
-	import { onSmallScreen } from "@lib/utils/screen";
+	import { onSmallScreen } from "@utils/screen";
 
 	import {
 		GroupedSongs,
 		type GroupKey,
+		type GroupManager,
 		type PageInfo,
 		type PageManager,
-		type ResolvedRoute,
-		type Route,
-		Router,
 		setEditedSongs,
+		setGroupManager,
 		setPageManager,
 		setSelectedSongs,
-		setSongGroups,
 		setSongs,
-		type SongGroups as ISongGroups,
-	} from "@lib/state";
+	} from "@state";
 
 	import { getSongs } from "@api/song";
 	import PageAlias from "@components/page/PageAlias.svelte";
 	import type { Song } from "@lib/models";
-	import { watch } from "@lib/utils/reactivity/watch.svelte";
+	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
 	import Jobs from "@pages/admin/Jobs.svelte";
 	import Directories from "@pages/Directories.svelte";
 	import Music from "@pages/Music.svelte";
+	import { watch } from "@utils/reactivity/watch.svelte";
 	import { onMount } from "svelte";
 	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
@@ -49,7 +47,7 @@
 	const editedSongs = new SvelteMap<string, Song>();
 	setEditedSongs(editedSongs);
 
-	class SongGroups implements ISongGroups {
+	class SongGroupManager implements GroupManager {
 		#maxActiveWorkers: number = 3;
 		#tracked: SvelteSet<GroupKey> = new SvelteSet();
 		#workers: SvelteMap<GroupKey, GroupWorker> = new SvelteMap();
@@ -95,38 +93,22 @@
 			this.#update();
 		}
 
-		get album() {
-			return this.#groups.get("album");
-		}
-
-		get artist() {
-			return this.#groups.get("artist");
-		}
-
-		get albumArtist() {
-			return this.#groups.get("albumArtist");
-		}
-
-		get genre() {
-			return this.#groups.get("genre");
-		}
-
-		get mood() {
-			return this.#groups.get("mood");
+		get groups() {
+			return this.#groups;
 		}
 
 		get tracked() {
-			return Array.from(this.#tracked.values());
+			return this.#tracked.values().toArray();
 		}
 
 		get inProgress() {
-			return Array.from(this.#workers.keys());
+			return this.#workers.keys().toArray();
 		}
 	}
 
-	const songGroups = new SongGroups();
+	const groupManager = new SongGroupManager();
 
-	setSongGroups(songGroups);
+	setGroupManager(groupManager);
 
 	class PageState implements PageManager {
 		#pages: Array<Route<PageInfo>> = $state([]);

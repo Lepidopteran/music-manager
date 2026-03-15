@@ -19,16 +19,13 @@
 		"baseUrl": ".",
 		"paths": {
 			"@api/*": [
-				"src/lib/api/*"
+				"src/api/*"
 			],
-			"@bindings/*": [
-				"src/lib/bindings/*"
+			"@state": [
+				"src/state.ts"
 			],
-			"@actions/*": [
-				"src/lib/actions/*"
-			],
-			"@state/*": [
-				"src/state/*"
+			"@attachments/*": [
+				"src/attachments/*"
 			],
 			"@assets/*": [
 				"src/assets/*"
@@ -43,7 +40,7 @@
 				"src/pages/*"
 			],
 			"@utils/*": [
-				"src/lib/utils/*"
+				"src/utils/*"
 			]
 		}
 	},
