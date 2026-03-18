@@ -12,7 +12,7 @@ export const [songs, setSongs] = createContext<Songs>();
 export const [editedSongs, setEditedSongs] = createContext<Songs>();
 export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
 
-export interface RouteMetadata {
+export interface PageMetadata {
 	name?: string;
 	hideHeader?: boolean;
 	hideNavigation?: boolean;
@@ -21,9 +21,15 @@ export interface RouteMetadata {
 	callback?: () => void;
 }
 
+export interface RedirectMetadata {
+	redirectTo: string;
+}
+
+export type RouteMetadata = { kind: "page" } & PageMetadata | { kind: "redirect" } & RedirectMetadata;
+
 export interface RouteManager {
 	router: Router<RouteMetadata>;
-	pages: Array<Route<RouteMetadata>>;
+	routes: Array<Route<RouteMetadata>>;
 	current?: ResolvedRoute<RouteMetadata>;
 	goTo: (path: string, addToHistory?: boolean) => void;
 }

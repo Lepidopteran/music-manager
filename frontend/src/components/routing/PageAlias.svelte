@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { buildPath } from "@lib/router";
-	import { type PageInfo, pageManager } from "@state";
+	import { type PageMetadata, routeManager } from "@state";
 	import { pageContext } from "./Page.svelte";
 
-	interface Props extends PageInfo {
+	interface Props extends PageMetadata {
 		path: string;
 	}
 
@@ -14,7 +14,7 @@
 
 	let previousPath: string | null = null;
 
-	const manager = pageManager();
+	const manager = routeManager();
 	const parentContext = pageContext();
 
 	if (!parentContext) {
@@ -37,8 +37,8 @@
 		parentContext?.childPages.set(
 			normalizedPath,
 			parentContext
-				? { ...parentContext.metadata, ...metadata }
-				: metadata,
+				? { ...parentContext.metadata, ...metadata, kind: "page" }
+				: { ...metadata, kind: "page" },
 		);
 
 		previousPath = normalizedPath;

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { buildPath, type RouteDefinition } from "@lib/router";
-	import { routeManager, type RouteMetadata } from "@state";
+	import { type PageMetadata, routeManager, type RouteMetadata } from "@state";
 	import { createSafeContext } from "@utils/context";
 	import { type Snippet } from "svelte";
 	import type { ClassValue } from "svelte/elements";
 	import { SvelteSet } from "svelte/reactivity";
 
-	interface Props extends RouteMetadata {
+	interface Props extends PageMetadata {
 		path: string;
 		class?: ClassValue;
 		children: Snippet;
@@ -25,6 +25,7 @@
 	}: Props = $props();
 
 	const metadata: RouteMetadata = $derived({
+		kind: "page",
 		hideNavigation,
 		hideHeader,
 		name,

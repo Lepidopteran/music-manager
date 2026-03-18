@@ -3,7 +3,7 @@
 	import Icon from "@components/Icon.svelte";
 	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
-	import Page from "@components/page/Page.svelte";
+	import Page from "@components/routing/Page.svelte";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
@@ -14,6 +14,7 @@
 		GroupedSongs,
 		type GroupKey,
 		type GroupManager,
+		type PageMetadata,
 		type RouteManager,
 		type RouteMetadata,
 		setEditedSongs,
@@ -24,7 +25,7 @@
 	} from "@state";
 
 	import { getSongs } from "@api/song";
-	import PageAlias from "@components/page/PageAlias.svelte";
+	import Redirect from "@components/routing/Redirect.svelte";
 	import type { Song } from "@lib/models";
 	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
@@ -110,11 +111,11 @@
 
 	setGroupManager(groupManager);
 
-	class PageState implements RouteManager {
-		#pages: Array<Route<RouteMetadata>> = $state([]);
+	class RouteState implements RouteManager {
+		#routes: Array<Route<RouteMetadata>> = $state([]);
 		#current: ResolvedRoute<RouteMetadata> | undefined = $state();
 		router = new Router<RouteMetadata>([], {
-			onRoutesUpdated: (router) => this.#pages = router.routes,
+			onRoutesUpdated: (router) => this.#routes = router.routes,
 		});
 		constructor() {
 			$effect(() => {
@@ -127,35 +128,46 @@
 			});
 		}
 
-		goTo(path: string, addToHistory?: boolean) {
-			const resolvedPage = this.router.resolve(path);
-			if (!resolvedPage) {
+		goTo(path: string, addToHistory?: boolean): void {
+			const resolvedRoute = this.router.resolve(path);
+			if (!resolvedRoute || resolvedRoute.path === this.#current?.path) {
 				return;
 			}
 
-			if (addToHistory) {
-				window.history.pushState({}, "", path);
+			this.#current = resolvedRoute;
+
+			if (resolvedRoute.metadata?.kind === "redirect") {
+				return this.goTo(
+					resolvedRoute.metadata.redirectTo,
+					addToHistory,
+				);
 			}
 
-			this.#current = resolvedPage;
+			if (addToHistory && resolvedRoute.metadata?.kind === "page") {
+				window.history.pushState({}, "", path);
+			} else {
+				window.history.replaceState({}, "", path);
+			}
 		}
 
 		get current() {
 			return this.#current;
 		}
 
-		get pages() {
-			return this.#pages;
+		get routes() {
+			return this.#routes;
 		}
 	}
 
-	const pageState = new PageState();
-	const { current: currentPage, pages } = $derived(pageState);
-	setRouteManager(pageState);
+	const routeState = new RouteState();
+	const { current: currentRoute, routes } = $derived(routeState);
+	setRouteManager(routeState);
+	$inspect(currentRoute);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
 	let editorEnabled = $derived(
-		pageState.current?.metadata?.displayEditor || false,
+		routeState.current?.metadata?.kind === "page"
+				&& routeState.current?.metadata?.displayEditor || false,
 	);
 
 	$effect(() => {
@@ -185,13 +197,13 @@
 </script>
 
 <svelte:window
-	onpopstate={() => pageState.goTo(window.location.pathname, false)}
+	onpopstate={() => routeState.goTo(window.location.pathname, false)}
 />
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={currentPage?.metadata?.hideHeader}
+		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -218,21 +230,24 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={currentPage?.metadata?.hideNavigation}>
-			{#each pages.filter(({ metadata }) =>
-				metadata !== undefined && !metadata.hideNavigation
+		<nav
+			hidden={currentRoute?.metadata?.kind === "page"
+			&& currentRoute?.metadata?.hideNavigation}
+		>
+			{#each routes.filter(({ metadata }) =>
+				metadata !== undefined && metadata.kind === "page" && !metadata.hideNavigation
 			) as { path, metadata }}
-				{@const { name, icon } = metadata!}
+				{@const { name, icon } = metadata! as PageMetadata}
 				<a
 					href={path as string}
 					onclick={(event) => {
 						event.preventDefault();
-						pageState.goTo(
+						routeState.goTo(
 							(event.target as HTMLAnchorElement).getAttribute("href") as string,
 						);
 					}}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={path === currentPage?.path || undefined}
+					data-active={path === currentRoute?.path || undefined}
 				>
 					{#if icon}
 						<Icon name={icon} size="1.25em" />
@@ -248,8 +263,9 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Page path="/" name="Music" icon="music" displayEditor>
+				<Page path="/music" name="Music" icon="music" displayEditor>
 					<Music />
+					<Redirect path="/" />
 				</Page>
 				<Page path="/directories" name="Directories" icon="folder">
 					<Directories />
