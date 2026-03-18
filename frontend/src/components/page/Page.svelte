@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { buildPath, type RouteDefinition } from "@lib/router";
-	import { type PageInfo, pageManager } from "@state";
+	import { routeManager, type RouteMetadata } from "@state";
 	import { createSafeContext } from "@utils/context";
 	import { type Snippet } from "svelte";
 	import type { ClassValue } from "svelte/elements";
 	import { SvelteSet } from "svelte/reactivity";
 
-	interface Props extends PageInfo {
+	interface Props extends RouteMetadata {
 		path: string;
 		class?: ClassValue;
 		children: Snippet;
@@ -24,7 +24,7 @@
 		name,
 	}: Props = $props();
 
-	const metadata: PageInfo = $derived({
+	const metadata: RouteMetadata = $derived({
 		hideNavigation,
 		hideHeader,
 		name,
@@ -35,11 +35,11 @@
 
 	let previousPath: string | null = null;
 
-	const manager = pageManager();
+	const manager = routeManager();
 	const parentContext = pageContext();
 
 	const aliases = new SvelteSet<string>();
-	const childPages = new Map<string, PageInfo>();
+	const childPages = new Map<string, RouteMetadata>();
 	const combinedPath = $derived(
 		parentContext
 			? buildPath(
@@ -69,7 +69,7 @@
 			parentContext?.aliases.delete(previousPath);
 		}
 
-		const def: RouteDefinition<PageInfo> = {
+		const def: RouteDefinition<RouteMetadata> = {
 			path: combinedPath,
 			metadata: parentContext
 				? { ...parentContext.metadata, ...metadata }
@@ -100,9 +100,9 @@
 <script lang="ts" module>
 	export interface PageContext {
 		aliases: Set<string>;
-		childPages: Map<string, PageInfo>;
+		childPages: Map<string, RouteMetadata>;
 		parentPath: string;
-		metadata: PageInfo;
+		metadata: RouteMetadata;
 	}
 
 	export const [pageContext, setPageContext] = createSafeContext<PageContext>();

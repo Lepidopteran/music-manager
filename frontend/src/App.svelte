@@ -14,11 +14,11 @@
 		GroupedSongs,
 		type GroupKey,
 		type GroupManager,
-		type PageInfo,
-		type PageManager,
+		type RouteManager,
+		type RouteMetadata,
 		setEditedSongs,
 		setGroupManager,
-		setPageManager,
+		setRouteManager,
 		setSelectedSongs,
 		setSongs,
 	} from "@state";
@@ -110,10 +110,10 @@
 
 	setGroupManager(groupManager);
 
-	class PageState implements PageManager {
-		#pages: Array<Route<PageInfo>> = $state([]);
-		#current: ResolvedRoute<PageInfo> | undefined = $state();
-		router = new Router<PageInfo>([], {
+	class PageState implements RouteManager {
+		#pages: Array<Route<RouteMetadata>> = $state([]);
+		#current: ResolvedRoute<RouteMetadata> | undefined = $state();
+		router = new Router<RouteMetadata>([], {
 			onRoutesUpdated: (router) => this.#pages = router.routes,
 		});
 		constructor() {
@@ -151,7 +151,7 @@
 
 	const pageState = new PageState();
 	const { current: currentPage, pages } = $derived(pageState);
-	setPageManager(pageState);
+	setRouteManager(pageState);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
 	let editorEnabled = $derived(

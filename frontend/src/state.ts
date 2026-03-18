@@ -7,12 +7,12 @@ import type { Icon } from "virtual:icons";
 type Songs = Map<string, Song>;
 
 export const [groupManager, setGroupManager] = createContext<GroupManager>();
-export const [pageManager, setPageManager] = createContext<PageManager>();
+export const [routeManager, setRouteManager] = createContext<RouteManager>();
 export const [songs, setSongs] = createContext<Songs>();
 export const [editedSongs, setEditedSongs] = createContext<Songs>();
 export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
 
-export interface PageInfo {
+export interface RouteMetadata {
 	name?: string;
 	hideHeader?: boolean;
 	hideNavigation?: boolean;
@@ -21,10 +21,10 @@ export interface PageInfo {
 	callback?: () => void;
 }
 
-export interface PageManager {
-	router: Router<PageInfo>;
-	pages: Array<Route<PageInfo>>;
-	current?: ResolvedRoute<PageInfo>;
+export interface RouteManager {
+	router: Router<RouteMetadata>;
+	pages: Array<Route<RouteMetadata>>;
+	current?: ResolvedRoute<RouteMetadata>;
 	goTo: (path: string, addToHistory?: boolean) => void;
 }
 
