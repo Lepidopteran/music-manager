@@ -5,7 +5,7 @@
 		aspect-ratio: 1 / 1;
 		background-image: url("../../assets/missing-album.svg");
 		background-position: center;
-		background-size: 100%;
+		background-size: 125%;
 		background-color: var(--color-primary-500);
 		background-blend-mode: multiply;
 	}
