@@ -43,7 +43,17 @@
 					{/if}
 				</summary>
 				<ul>
-					{#each songs as song}
+					{#each songs.sort((songA, songB) => {
+						if (songA.trackNumber && songB.trackNumber) {
+							return Number(songA.trackNumber) > Number(songB.trackNumber);
+						}
+
+						if (songA.title && songB.title) {
+							return songA.title.localeCompare(songB.title);
+						}
+
+						return false;
+					}) as song}
 						{@const editedSong = edited.get(song.id)}
 						<li
 							class={[
