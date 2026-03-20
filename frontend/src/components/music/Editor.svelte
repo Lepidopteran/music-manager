@@ -1,12 +1,14 @@
 <script lang="ts">
 	import Icon from "@components/Icon.svelte";
+	import Image from "@components/Image.svelte";
 	import TextInput from "@components/TextInput.svelte";
-	import Cover from "./Cover.svelte";
 
 	import Stack from "@components/stack/Stack.svelte";
 	import StackItem from "@components/stack/StackItem.svelte";
 	import type { Song } from "@lib/models";
 	import { editedSongs, selectedSongs, songs } from "@state";
+	import { SvelteSet } from "svelte/reactivity";
+	import MissingCover from "./MissingCover.svelte";
 
 	const excludedFields: Array<keyof Song> = [
 		"id",
@@ -28,13 +30,11 @@
 			.replace(/^./, (str) => str.toUpperCase());
 	}
 
-	let imageHeight: number | null | undefined = $state();
-	let imageWidth: number | null | undefined = $state();
-
 	const all = songs();
 	const edited = editedSongs();
 	const selected = selectedSongs();
 
+	const songsWithNoCover: Set<string> = new SvelteSet();
 	const songsInSelection: Array<Song> = $derived(
 		selected.values().map(id => all.get(id) as Song)
 			.toArray(),
@@ -50,27 +50,30 @@
 
 		<div class="text-center text-sm">
 			{#if songsInSelection.length === 1}
-				<Cover
-					lazy={false}
-					bind:imageHeight
-					bind:imageWidth
-					songId={songsInSelection[0].id}
-					class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25"
-				/>
+				{#if songsWithNoCover.has(songsInSelection[0].id)}
+					<MissingCover
+						class="size-64 rounded-theme shadow-lg shadow-black/25 mx-auto mb-1"
+					/>
+				{:else}
+					<Image
+						src="/api/songs/{songsInSelection[0].id}/cover-art/front.jpg"
+						class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25 size-64"
+					/>
+				{/if}
 			{:else}
 				<Stack
 					class="drop-shadow-xl drop-shadow-black/25"
 					style={`height: calc(auto + ${selected.size * 3})px`}
-					offset="3px"
+					offset="4px"
 				>
-					{#each songsInSelection as song, index (song.id)}
+					{#each songsInSelection.filter((song) => !songsWithNoCover.has(song.id)) as song, index (song.id)}
 						<StackItem index={index}>
-							<Cover
-								lazy={false}
-								bind:imageHeight
-								bind:imageWidth
-								songId={song.id}
-								class="mb-1 mx-auto rounded-theme"
+							<Image
+								src="/api/songs/{song.id}/cover-art/front.jpg"
+								class="mb-1 mx-auto rounded-theme size-64 object-contain object-top"
+								onError={() => {
+									songsWithNoCover.add(song.id);
+								}}
 							/>
 						</StackItem>
 					{/each}
