@@ -70,7 +70,7 @@
 <table
 	class={[
 		className,
-		"w-full border border-base-600/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
+		"w-full border border-base-content/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
 	]}
 	onpointerup={() => endScrubbing()}
 	onpointerdown={(event) => {
@@ -95,7 +95,7 @@
 
 	<thead class="bg-base-300 border-inherit">
 		{#each headerGroups as { headers }}
-			<tr class="border-inherit text-sm text-primary-800 shadow-md">
+			<tr class="border-inherit text-sm shadow-md">
 				{#if tableOptions.enableRowSelection}
 					<th class="p-cell first:rounded-tl-theme last:rounded-tr-theme text-center">
 						<Checkbox
@@ -128,13 +128,13 @@
 			</tr>
 		{/each}
 	</thead>
-	<tbody class="divide-y divide-primary-600/15 border-inherit inset-shadow-xs inset-shadow-highlight/25">
+	<tbody class="divide-y divide-primary/15 border-inherit inset-shadow-xs inset-shadow-highlight/25">
 		{#each rows as row}
 			<tr
 				class={[
 					"border-inherit first:border-transparent",
 					row.getCanExpand() && "cursor-pointer",
-					row.getIsSelected() && "bg-primary-500/10",
+					row.getIsSelected() && "bg-primary/10",
 				]}
 			>
 				{#if tableOptions.enableRowSelection}

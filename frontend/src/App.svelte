@@ -202,7 +202,7 @@
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
-		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
+		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg bg-base z-10"
 		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
@@ -226,7 +226,7 @@
 		<div class="flex gap-4"></div>
 	</header>
 	<aside
-		class={`col-start-1 row-start-2 row-end-3 bg-base-200 transition-all duration-300 shadow-lg z-10 ${
+		class={`col-start-1 row-start-2 row-end-3 bg-base transition-all duration-300 shadow-lg z-10 ${
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
@@ -246,7 +246,7 @@
 							(event.target as HTMLAnchorElement).getAttribute("href") as string,
 						);
 					}}
-					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
+					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-primary/10 hover:text-primary data-active:text-primary data-active:bg-primary/20"
 					data-active={path === currentRoute?.path || undefined}
 				>
 					{#if icon}
@@ -308,7 +308,7 @@
 				minSize={30}
 				bind:this={editorPane}
 				class={[
-					"shadow-lg shadow-black/25",
+					"shadow-lg shadow-black/25 bg-base",
 					!editorEnabled
 						? "opacity-0 duration-500 transition-all pointer-events-none"
 						: "",

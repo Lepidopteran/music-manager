@@ -6,14 +6,14 @@
 	let { class: className, ...props }: Props = $props();
 </script>
 
-<div class={["bg-primary-500 bg-blend-multiply", className]} {...props}></div>
+<div class={className} {...props}></div>
 
 <style>
 	div {
 		aspect-ratio: 1 / 1;
 		background-position: center;
 		background-size: 125%;
-		background-color: var(--color-primary-500);
+		background-color: var(--color-secondary);
 		background-blend-mode: multiply;
 		background-image: url("../../assets/missing-album.svg");
 	}

@@ -21,7 +21,7 @@
 	{value}
 	{...rest}
 	class={[
-		"h-2 rounded-theme-sm bg-base-400 overflow-hidden",
+		"h-2 rounded-theme-sm bg-base-300 overflow-hidden",
 		className,
 		variant && `text-${variant}`,
 	]}
@@ -32,6 +32,7 @@
 <style>
 	@layer components {
 		progress {
+			color: var(--color-base-content);
 			&:indeterminate {
 				background-image: repeating-linear-gradient(
 					90deg,

@@ -57,7 +57,7 @@
 	}}
 	class={[
 		"motion-safe:transition duration-300 ease-in-out",
-		isLoading && "motion-safe:animate-pulse bg-base-950/25",
+		isLoading && "motion-safe:animate-pulse bg-base-content/25",
 		className,
 	]}
 	bind:naturalWidth={imageWidth}

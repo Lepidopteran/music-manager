@@ -87,7 +87,7 @@
 		song[key] !== null && song[key] !== undefined
 	)}
 					<label class="w-full block">
-						<span class="block text-sm text-base-950/50">
+						<span class="block text-sm text-base-content/50">
 							{renameField(key)}
 						</span>
 						<TextInput

@@ -97,9 +97,9 @@
 			<li>
 				<div
 					data-id={job.id}
-					class={["bg-base-100 overflow-hidden rounded-theme shadow-md"]}
+					class={["bg-base overflow-hidden rounded-theme shadow-md"]}
 				>
-					<div class="flex divide-x-2 divide-base-text/25 w-full">
+					<div class="flex divide-x-2 divide-base-content/25 w-full">
 						{#each Object.entries(job.steps) as [step, description]}
 							{@const max = state && state.currentStep === Number(step)
 							? Number(state.total) || 100

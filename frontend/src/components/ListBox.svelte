@@ -130,7 +130,7 @@
 
 <ul {id} role="listbox" aria-busy={busy} tabindex="0" {...rest}>
 	{#each options as item, index}
-		<li class="inset-shadow-xs inset-shadow-base-950/25">
+		<li class="inset-shadow-xs inset-shadow-base-content/25">
 			<button
 				role="option"
 				id={`${id}-option-${index}`}

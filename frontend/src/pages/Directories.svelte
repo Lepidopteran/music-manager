@@ -165,11 +165,11 @@
 <Modal title="Add Directory" bind:open={newDirectoryModalOpen}>
 	<div class="flex flex-col gap-4">
 		<label class="block">
-			<span class="block text-sm text-base-950/75">Display Name</span>
+			<span class="block text-sm text-base-content/75">Display Name</span>
 			<TextInput placeholder="Music..." bind:value={newDirectory.displayName} />
 		</label>
 		<label class="block">
-			<span class="block text-sm text-base-950/75">Path</span>
+			<span class="block text-sm text-base-content/75">Path</span>
 			<ServerDirectory bind:value={newDirectory.path} />
 		</label>
 		<Button variant="primary" onclick={handleNewDirectory}>Add</Button>

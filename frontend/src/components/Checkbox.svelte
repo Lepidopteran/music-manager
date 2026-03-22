@@ -29,7 +29,7 @@
 			padding: var(--spacing);
 			flex-shrink: 0;
 			cursor: pointer;
-			color: var(--color-base-text);
+			color: var(--color-base-content);
 			border-radius: var(--radius-theme);
 			display: inline-block;
 			position: relative;
@@ -133,32 +133,32 @@
 
 			&.checkbox-primary {
 				--input-color: var(--color-primary);
-				color: var(--color-primary-text);
+				color: var(--color-primary-content);
 			}
 
 			&.checkbox-secondary {
 				--input-color: var(--color-secondary);
-				color: var(--color-secondary-text);
+				color: var(--color-secondary-content);
 			}
 
 			&.checkbox-success {
 				--input-color: var(--color-success);
-				color: var(--color-success-text);
+				color: var(--color-success-content);
 			}
 
 			&.checkbox-warning {
 				--input-color: var(--color-warning);
-				color: var(--color-warning-text);
+				color: var(--color-warning-content);
 			}
 
 			&.checkbox-error {
 				--input-color: var(--color-error);
-				color: var(--color-error-text);
+				color: var(--color-error-content);
 			}
 
 			&.checkbox-info {
 				--input-color: var(--color-info);
-				color: var(--color-info-text);
+				color: var(--color-info-content);
 			}
 		}
 	}

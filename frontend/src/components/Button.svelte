@@ -67,9 +67,9 @@
 <style>
 	@layer components {
 		.btn {
-			color: var(--base-950);
+			color: var(--color-base-content);
 			padding: 0.5rem;
-			background-color: var(--base-400);
+			background-color: oklch(from var(--color-base) calc(l * 1.1) c h);
 			justify-content: center;
 			align-items: center;
 			gap: 0.5rem;
@@ -84,12 +84,12 @@
 
 			@media (hover: hover) {
 				&:hover {
-					background-color: var(--base-500);
+					background-color: oklch(from var(--color-base) calc(l * 1.25) c h);
 				}
 			}
 
 			&.btn-active {
-				background-color: var(--base-500);
+				background-color: oklch(from var(--color-base) calc(l * 1.25) c h);
 			}
 
 			@media (prefers-reduced-motion: no-preference) {
@@ -115,33 +115,37 @@
 			}
 
 			&.btn-ghost {
-				color: var(--base-950);
+				color: var(--color-base-content);
 				background-color: transparent;
 				@media (hover: hover) {
 					&:hover {
-						background-color: var(--base-400);
+						background-color: oklch(from var(--color-base) calc(l * 1.25) c h);
 					}
 				}
 				&.btn-active {
-					background-color: var(--base-400);
+					background-color: oklch(from var(--color-base) calc(l * 1.25) c h);
 				}
 			}
 
 			&.btn-primary {
-				color: var(--primary-950);
-				background-color: var(--primary-400);
+				color: var(--color-primary-content);
+				background-color: var(--primary);
 				@media (hover: hover) {
 					&:hover {
-						background-color: var(--primary-500);
+						background-color: oklch(
+							from var(--color-primary)
+							calc(l * 1.25)
+							c h
+						);
 					}
 				}
 				&.btn-active {
-					background-color: var(--primary-500);
+					background-color: oklch(from var(--color-primary) calc(l * 1.25) c h);
 				}
 			}
 
 			&.btn-info {
-				color: var(--color-info-text);
+				color: var(--color-info-content);
 				background-color: var(--color-info);
 
 				@media (hover: hover) {
@@ -156,7 +160,7 @@
 			}
 
 			&.btn-success {
-				color: var(--color-success-text);
+				color: var(--color-success-content);
 				background-color: var(--color-success);
 
 				@media (hover: hover) {
@@ -175,7 +179,7 @@
 			}
 
 			&.btn-warning {
-				color: var(--color-warning-text);
+				color: var(--color-warning-content);
 				background-color: var(--color-warning);
 
 				@media (hover: hover) {
@@ -194,7 +198,7 @@
 			}
 
 			&.btn-error {
-				color: var(--color-error-text);
+				color: var(--color-error-content);
 				background-color: var(--color-error);
 
 				@media (hover: hover) {

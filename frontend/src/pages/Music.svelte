@@ -57,7 +57,7 @@
 						{@const editedSong = edited.get(song.id)}
 						<li
 							class={[
-								"pl-4 py-1 select-none cursor-pointer hover:bg-primary/5",
+								"pl-4 py-1 select-none cursor-pointer hover:bg-primary/15",
 								selected.has(song.id) && "bg-primary/25"
 								|| editedSong && "bg-yellow-500/25",
 							]}

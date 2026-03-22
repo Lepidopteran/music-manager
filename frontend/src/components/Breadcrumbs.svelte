@@ -38,7 +38,7 @@
 
 <style>
 	:root {
-		--breadcrumb-color: rgb(from var(--color-base-text) r g b / 0.5);
+		--breadcrumb-color: rgb(from var(--color-base-content) r g b / 0.5);
 	}
 
 	ul {
