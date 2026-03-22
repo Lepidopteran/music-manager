@@ -1,69 +1,174 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
-	import Jobs from "@pages/admin/Jobs.svelte";
-	import Albums from "@pages/Albums.svelte";
-	import Directories from "@pages/Directories.svelte";
-	import Logo from "./components/Logo.svelte";
-
-	import { Pane, PaneGroup, PaneResizer } from "paneforge";
-
+	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
-	import { AppState, type Page } from "@lib/state/app.svelte";
-	import { onSmallScreen } from "@lib/state/screen.svelte";
+	import Page from "@components/routing/Page.svelte";
+	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
+
+	import { onSmallScreen } from "@utils/screen";
+
+	import {
+		GroupedSongs,
+		type GroupKey,
+		type GroupManager,
+		type PageMetadata,
+		type RouteManager,
+		type RouteMetadata,
+		setEditedSongs,
+		setGroupManager,
+		setRouteManager,
+		setSelectedSongs,
+		setSongs,
+	} from "@state";
+
+	import { getSongs } from "@api/song";
+	import Redirect from "@components/routing/Redirect.svelte";
+	import type { Song } from "@lib/models";
+	import { type ResolvedRoute, type Route, Router } from "@lib/router";
+	import { GroupWorker } from "@lib/workers";
+	import Jobs from "@pages/admin/Jobs.svelte";
+	import Directories from "@pages/Directories.svelte";
+	import Music from "@pages/Music.svelte";
+	import { watch } from "@utils/reactivity/watch.svelte";
+	import { onMount } from "svelte";
+	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
 
-	const routes: Array<Page> = [
-		{
-			path: "/",
-			name: "Albums",
-			icon: "album-2-fill",
-			component: Albums,
-			displayEditor: true,
-			callback: (app) => {
-				if (!app.autoOrganizeAlbums) {
-					app.autoOrganizeAlbums = true;
-				}
-			},
-		},
-		{
-			path: "/directories",
-			name: "Directories",
-			icon: "folder-fill",
-			component: Directories,
-		},
-		{
-			path: "/jobs",
-			name: "Jobs",
-			icon: "play-fill",
-			component: Jobs,
-		},
-	];
+	const songs = new SvelteMap<string, Song>();
+	setSongs(songs);
 
-	const app = new AppState(routes);
+	const selectedSongs = new SvelteSet<string>();
+	setSelectedSongs(selectedSongs);
 
-	function handleNavitionClick(event: MouseEvent) {
-		const { target } = event;
+	const editedSongs = new SvelteMap<string, Song>();
+	setEditedSongs(editedSongs);
 
-		if (!(target instanceof HTMLAnchorElement)) {
-			return;
+	class SongGroupManager implements GroupManager {
+		#maxActiveWorkers: number = 3;
+		#tracked: SvelteSet<GroupKey> = new SvelteSet();
+		#workers: SvelteMap<GroupKey, GroupWorker> = new SvelteMap();
+		#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
+
+		constructor() {
+			watch(() => songs.size, () => this.#update());
 		}
 
-		const path = target.getAttribute("href") as string;
-		event.preventDefault();
+		#update() {
+			const trackedKeys = this.#tracked.values();
 
-		window.history.pushState({}, "", path);
-		app.changePage(path);
+			let groupKey = trackedKeys.next().value;
+			while (
+				this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined
+			) {
+				const worker = new GroupWorker();
+				worker.onMessage(event => {
+					const { grouped, key } = event.data;
+
+					this.#groups.set(key, new GroupedSongs(grouped));
+					this.#workers.delete(key);
+				});
+
+				worker.postMessage({
+					key: groupKey,
+					songs: $state.snapshot(songs.values().toArray()),
+				});
+
+				this.#workers.set(groupKey, worker);
+
+				groupKey = trackedKeys.next().value;
+			}
+		}
+
+		track(groupKey: GroupKey) {
+			this.#tracked.add(groupKey);
+			this.#update();
+		}
+
+		untrack(groupKey: GroupKey) {
+			this.#tracked.delete(groupKey);
+			this.#update();
+		}
+
+		get groups() {
+			return this.#groups;
+		}
+
+		get tracked() {
+			return this.#tracked.values().toArray();
+		}
+
+		get inProgress() {
+			return this.#workers.keys().toArray();
+		}
 	}
 
-	app.changePage(window.location.pathname);
+	const groupManager = new SongGroupManager();
+
+	setGroupManager(groupManager);
+
+	class RouteState implements RouteManager {
+		#routes: Array<Route<RouteMetadata>> = $state([]);
+		#current: ResolvedRoute<RouteMetadata> | undefined = $state();
+		router = new Router<RouteMetadata>([], {
+			onRoutesUpdated: (router) => this.#routes = router.routes,
+		});
+		constructor() {
+			$effect(() => {
+				const { pathname } = window.location;
+				if (this.#current !== undefined || !this.router.hasRoute(pathname)) {
+					return;
+				}
+
+				this.goTo(pathname);
+			});
+		}
+
+		goTo(path: string, addToHistory?: boolean): void {
+			const resolvedRoute = this.router.resolve(path);
+			if (!resolvedRoute || resolvedRoute.path === this.#current?.path) {
+				return;
+			}
+
+			this.#current = resolvedRoute;
+
+			if (resolvedRoute.metadata?.kind === "redirect") {
+				return this.goTo(
+					resolvedRoute.metadata.redirectTo,
+					addToHistory,
+				);
+			}
+
+			if (addToHistory && resolvedRoute.metadata?.kind === "page") {
+				window.history.pushState({}, "", path);
+			} else {
+				window.history.replaceState({}, "", path);
+			}
+		}
+
+		get current() {
+			return this.#current;
+		}
+
+		get routes() {
+			return this.#routes;
+		}
+	}
+
+	const routeState = new RouteState();
+	const { current: currentRoute, routes } = $derived(routeState);
+	setRouteManager(routeState);
+	$inspect(currentRoute);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
-	let editorEnabled = $derived(app.page?.displayEditor || false);
+	let editorEnabled = $derived(
+		routeState.current?.metadata?.kind === "page"
+				&& routeState.current?.metadata?.displayEditor || false,
+	);
 
 	$effect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -79,14 +184,26 @@
 			editorPane.expand();
 		}
 	});
+
+	onMount(async () => {
+		for (
+			const [id, song] of (await getSongs()).map(song =>
+				[song.id, song as Song] as const
+			)
+		) {
+			songs.set(id, song);
+		}
+	});
 </script>
 
-<svelte:window onpopstate={() => app.changePage(window.location.pathname)} />
+<svelte:window
+	onpopstate={() => routeState.goTo(window.location.pathname, false)}
+/>
 
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
 	<header
 		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg"
-		hidden={app.page?.hideHeader}
+		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
 			<Button
@@ -97,7 +214,7 @@
 				class="group size-10 sm:hidden"
 			>
 				<Icon
-					name="menu-line"
+					name="menu"
 					class="text-2xl group-data-[active=true]:text-primary transition"
 				/>
 			</Button>
@@ -113,18 +230,29 @@
 			menuOpen ? "translate-x-0" : "-translate-x-full"
 		}`}
 	>
-		<nav hidden={app.page?.hideNavigation}>
-			{#each routes.filter((route) => !route.hideNavigation && !route.hidden) as route}
+		<nav
+			hidden={currentRoute?.metadata?.kind === "page"
+			&& currentRoute?.metadata?.hideNavigation}
+		>
+			{#each routes.filter(({ metadata }) =>
+				metadata !== undefined && metadata.kind === "page" && !metadata.hideNavigation
+			) as { path, metadata }}
+				{@const { name, icon } = metadata! as PageMetadata}
 				<a
-					href={route.path as string}
-					onclick={handleNavitionClick}
+					href={path as string}
+					onclick={(event) => {
+						event.preventDefault();
+						routeState.goTo(
+							(event.target as HTMLAnchorElement).getAttribute("href") as string,
+						);
+					}}
 					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-base-600/20 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={route.path === app.path || undefined}
+					data-active={path === currentRoute?.path || undefined}
 				>
-					{#if route.icon}
-						<Icon name={route.icon} size="1.25em" />
+					{#if icon}
+						<Icon name={icon} size="1.25em" />
 					{/if}
-					{route.name}
+					{name}
 				</a>
 			{/each}
 		</nav>
@@ -135,11 +263,16 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				{#each routes as route}
-					<div class="h-full" hidden={route.path !== app.path}>
-						<route.component {app} visible={route.path === app.path} />
-					</div>
-				{/each}
+				<Page path="/music" name="Music" icon="music" displayEditor>
+					<Music />
+					<Redirect path="/" />
+				</Page>
+				<Page path="/directories" name="Directories" icon="folder">
+					<Directories />
+				</Page>
+				<Page path="/jobs" name="Jobs" icon="play">
+					<Jobs />
+				</Page>
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div
@@ -156,12 +289,13 @@
 				>
 				</div>
 				<div
-					class={`max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity ${
-						editorPane?.isCollapsed() ? "opacity-0" : ""
-					}`}
+					class={[
+						"max-lg:px-1 lg:py-1 absolute top-1/2 z-1 -translate-y-1/2 left-1/2 -translate-x-1/2 rounded-theme bg-primary/50 inset-shadow-sm inset-shadow-white/25 backdrop-blur-lg transition-opacity",
+						editorPane?.isCollapsed() && "opacity-0",
+					]}
 				>
 					<Icon
-						name="up-line"
+						name="up"
 						size="1.25em"
 						class={`transition transform lg:-rotate-90 ${
 							editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""
@@ -180,7 +314,7 @@
 						: "",
 				]}
 			>
-				{#if app.selectedItem && editorEnabled}
+				{#if editorEnabled}
 					<div
 						transition:fade={{
 							duration: prefersReducedMotion.current ? 0 : 200,
@@ -190,7 +324,7 @@
 							onSmallScreen.current ? "rounded-t-theme-xl overflow-hidden" : "",
 						]}
 					>
-						<Editor bind:selectedItem={app.selectedItem} />
+						<Editor />
 					</div>
 				{/if}
 			</Pane>

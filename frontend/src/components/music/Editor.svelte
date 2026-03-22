@@ -1,21 +1,26 @@
 <script lang="ts">
 	import Icon from "@components/Icon.svelte";
+	import Image from "@components/Image.svelte";
 	import TextInput from "@components/TextInput.svelte";
-	import Cover from "./Cover.svelte";
 
+	import Stack from "@components/stack/Stack.svelte";
+	import StackItem from "@components/stack/StackItem.svelte";
 	import type { Song } from "@lib/models";
-	import { isGroup, isSong, type Item } from "@lib/state/app.svelte";
+	import { editedSongs, selectedSongs, songs } from "@state";
+	import { SvelteSet } from "svelte/reactivity";
+	import MissingCover from "./MissingCover.svelte";
 
 	const excludedFields: Array<keyof Song> = [
-		"title",
-		"artist",
 		"id",
 		"path",
 		"unknown",
+		"fileCreatedAt",
+		"directoryId",
+		"updatedAt",
+		"addedAt",
 	];
 
 	interface Props {
-		selectedItem: Item | null;
 		canEdit?: boolean;
 	}
 
@@ -25,142 +30,100 @@
 			.replace(/^./, (str) => str.toUpperCase());
 	}
 
-	let { selectedItem = $bindable() }: Props = $props();
+	const all = songs();
+	const edited = editedSongs();
+	const selected = selectedSongs();
 
-	let imageHeight: number | null | undefined = $state();
-	let imageWidth: number | null | undefined = $state();
-	let failedToLoad = $state(false);
-
-	function onCoverError() {
-		failedToLoad = true;
-	}
-
-	function onCoverLoad() {
-		failedToLoad = false;
-	}
+	const songsWithNoCover: Set<string> = new SvelteSet();
+	const songsInSelection: Array<Song> = $derived(
+		selected.values().map(id => all.get(id) as Song)
+			.toArray(),
+	);
 </script>
 
-{#snippet suffixChild()}
-	<Icon name="edit-3-line" />
-{/snippet}
+<div class={["space-y-2 relative h-full overflow-y-auto pt-6"]}>
+	{#if songsInSelection.length > 0}
+		{@const first = songsInSelection[0] as Song}
+		{@const firstEdited = edited.get(first.id)}
+		{@const keys = [...new Set(songsInSelection.flatMap((song) => Object.keys(song)))]
+		.sort() as Array<keyof Song>}
 
-<div class={`space-y-2 relative h-full overflow-y-auto pt-6`}>
-	{#if selectedItem}
 		<div class="text-center text-sm">
-			<Cover
-				lazy={false}
-				bind:imageHeight
-				bind:imageWidth
-				onError={onCoverError}
-				onLoading={onCoverLoad}
-				onLoad={onCoverLoad}
-				item={selectedItem}
-				class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25"
-			/>
-
-			{#if !imageHeight && !imageWidth && !failedToLoad}
-				<div
-					class="w-24 bg-base-950/25 text-transparent motion-safe:animate-pulse rounded-theme-lg mx-auto"
-					aria-hidden="true"
-				>
-					x
-				</div>
+			{#if songsInSelection.length === 1}
+				{#if songsWithNoCover.has(songsInSelection[0].id)}
+					<MissingCover
+						class="size-64 rounded-theme shadow-lg shadow-black/25 mx-auto mb-1"
+					/>
+				{:else}
+					<Image
+						src="/api/songs/{songsInSelection[0].id}/cover-art/front.jpg"
+						class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25 size-64"
+					/>
+				{/if}
 			{:else}
-				<p
-					aria-hidden={failedToLoad || (!imageHeight && !imageWidth)}
-					aria-label={`Cover art size ${imageWidth} by ${imageHeight}.`}
-					class={`duration-300 ease-in-out text-base-950/50 ${
-						failedToLoad ? "invisible pointer-events-none" : ""
-					}`}
+				<Stack
+					class="drop-shadow-xl drop-shadow-black/25"
+					style={`height: calc(auto + ${selected.size * 3})px`}
+					offset="4px"
 				>
-					{imageHeight} x {imageWidth}
-				</p>
+					{#each songsInSelection.filter((song) => !songsWithNoCover.has(song.id)) as song, index (song.id)}
+						<StackItem index={index}>
+							<Image
+								src="/api/songs/{song.id}/cover-art/front.jpg"
+								class="mb-1 mx-auto rounded-theme size-64 object-contain object-top"
+								onError={() => {
+									songsWithNoCover.add(song.id);
+								}}
+							/>
+						</StackItem>
+					{/each}
+				</Stack>
 			{/if}
-		</div>
-		<div class="flex flex-col gap-2 mx-auto justify-center items-center md:w-3/5">
-			<TextInput
-				variant="ghost"
-				class="font-bold text-center text-2xl truncate w-full"
-				placeholder={isSong(selectedItem) ? "Title..." : "Album Title..."}
-				aria-label={isSong(selectedItem) ? "Song title" : "Album title"}
-				bind:value={() =>
-				isSong(selectedItem)
-					? selectedItem.song.title
-					: selectedItem.songs.at(0)?.album, (value) =>
-				isGroup(selectedItem)
-					? (selectedItem.songs = selectedItem.songs.map((song) => ({
-						...song,
-						album: value,
-					})))
-					: (selectedItem.song.title = value)}
-				{suffixChild}
-			></TextInput>
-			<TextInput
-				variant="ghost"
-				class="text-center block w-full"
-				placeholder={isSong(selectedItem) ? "Artist..." : "Album Artist..."}
-				aria-label={isSong(selectedItem) ? "Song artist" : "Album artist"}
-				bind:value={() =>
-				isSong(selectedItem)
-					? selectedItem.song.artist
-					: selectedItem.songs[0].albumArtist, (value) =>
-				isGroup(selectedItem)
-					? (selectedItem.songs = selectedItem.songs.map((song) => ({
-						...song,
-						albumArtist: value,
-					})))
-					: (selectedItem.song.artist = value)}
-				{suffixChild}
-			></TextInput>
 		</div>
 		<div class="space-y-2 mt-2 px-2 md:w-3/5 mx-auto">
-			{#if isSong(selectedItem)}
-				{#each Object.entries(selectedItem.song) as [key, value]}
-					{#if value && !excludedFields.includes(key as keyof Song)}
-						<label class="w-full">
-							<span class="block text-sm text-base-950/50">
-								{renameField(key)}
-							</span>
-							<TextInput
-								class="w-full block"
-								{suffixChild}
-								bind:value={selectedItem.song[key as keyof Song] as string}
-							/>
-						</label>
-					{/if}
-				{/each}
-			{:else}
-				{@const keys = [
-					...new Set(selectedItem.songs.flatMap((song) => Object.keys(song))),
-				].sort() as Array<keyof Song>}
-
-				{#each keys as key}
-					{#if !excludedFields.includes(key)
-	&& selectedItem.songs.some((song) =>
+			{#each keys as key}
+				{#if !excludedFields.includes(key)
+	&& songsInSelection.some((song) =>
 		song[key] !== null && song[key] !== undefined
 	)}
-						<label class="w-full block">
-							<span class="block text-sm text-base-950/50">
-								{renameField(key)}
-							</span>
-							<TextInput
-								class="w-full"
-								{suffixChild}
-								bind:value={() =>
-								selectedItem.songs.every(
-										(song) => song[key] === selectedItem.songs[0][key],
-									)
-									? selectedItem.songs[0][key]?.toString()
-									: `Different across (${selectedItem.songs.length}) tracks`,
-								(newValue) => (selectedItem.songs = selectedItem.songs.map((song) => ({
-									...song,
-									[key]: newValue,
-								})))}
-							/>
-						</label>
-					{/if}
-				{/each}
-			{/if}
+					<label class="w-full block">
+						<span class="block text-sm text-base-950/50">
+							{renameField(key)}
+						</span>
+						<TextInput
+							class="w-full"
+							placeholder={songsInSelection.some((song) => !song[key] || song[key] !== first[key])
+							? "Difference across selected songs"
+							: undefined}
+							bind:value={() => {
+								return firstEdited !== undefined && firstEdited[key] !== first[key]
+									? firstEdited[key]?.toString()
+									: songsInSelection.every(
+											(song) => song[key] === first[key],
+										)
+									? songsInSelection[0][key]?.toString()
+									: "";
+							}, (newValue) => {
+								for (const song of songsInSelection) {
+									edited.set(song.id, {
+										...song,
+										...edited.get(song.id),
+										[key]: newValue,
+									});
+								}
+							}}
+						>
+							{#snippet suffixChild({ focused })}
+								<Icon
+									name="pencil"
+									class="w-8"
+									hidden={focused ? true : undefined}
+								/>
+							{/snippet}
+						</TextInput>
+					</label>
+				{/if}
+			{/each}
 		</div>
 	{/if}
 </div>

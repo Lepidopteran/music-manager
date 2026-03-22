@@ -1,7 +1,7 @@
-import type { DatabaseSong } from "@bindings/DatabaseSong";
-import type { SongFile } from "@bindings/SongFile";
-import type { SongMetadata } from "@bindings/SongMetadata";
-import { fetchJson } from "@utils/api";
+import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
+import type { SongFile } from "@lib/bindings/SongFile";
+import type { SongMetadata } from "@lib/bindings/SongMetadata";
+import { fetchJson } from "src/utils/api";
 
 export async function getSongs(): Promise<Array<DatabaseSong>> {
 	return await fetchJson<Array<DatabaseSong>>("/api/songs/");

@@ -1,6 +1,4 @@
-import type { SongMetadata } from "@bindings/SongMetadata";
+import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
+import type { SongMetadata } from "@lib/bindings/SongMetadata";
 
-export interface Song extends SongMetadata {
-	id: string;
-	path: string;
-}
+export type Song = DatabaseSong & SongMetadata;
