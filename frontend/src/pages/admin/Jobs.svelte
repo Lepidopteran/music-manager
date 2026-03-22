@@ -10,6 +10,7 @@
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
 	import Progress from "@components/Progress.svelte";
+	import Page from "@components/routing/Page.svelte";
 	import type {
 		JobExecutionReport,
 		JobState,
@@ -89,80 +90,82 @@
 	)}
 />
 
-<div class="p-4 max-w-4xl">
-	<ul class="space-y-2">
-		{#each jobs as job}
-			{@const [key, state] = jobStates.entries().find(([_, state]) => state.jobId === job.id)
-			?? []}
-			<li>
-				<div
-					data-id={job.id}
-					class={["bg-base overflow-hidden rounded-theme shadow-md"]}
-				>
-					<div class="flex divide-x-2 divide-base-content/25 w-full">
-						{#each Object.entries(job.steps) as [step, description]}
-							{@const max = state && state.currentStep === Number(step)
-							? Number(state.total) || 100
-							: 100}
+<Page path="/jobs" name="Jobs" icon="play">
+	<div class="p-4 max-w-4xl">
+		<ul class="space-y-2">
+			{#each jobs as job}
+				{@const [key, state] = jobStates.entries().find(([_, state]) => state.jobId === job.id)
+				?? []}
+				<li>
+					<div
+						data-id={job.id}
+						class={["bg-base overflow-hidden rounded-theme shadow-md"]}
+					>
+						<div class="flex divide-x-2 divide-base-content/25 w-full">
+							{#each Object.entries(job.steps) as [step, description]}
+								{@const max = state && state.currentStep === Number(step)
+								? Number(state.total) || 100
+								: 100}
 
-							{@const value = state
-							? state.currentStep === Number(step)
-								? Number(state.current) || 0
-								: state.currentStep > Number(step)
-								? 100
-								: 0
-							: 0}
+								{@const value = state
+								? state.currentStep === Number(step)
+									? Number(state.current) || 0
+									: state.currentStep > Number(step)
+									? 100
+									: 0
+								: 0}
 
-							<Progress
-								{max}
-								{value}
-								class={[
-									"rounded-none! w-full",
-									state?.status !== "inProgress" && "opacity-50",
-								]}
-							/>
-						{/each}
-					</div>
-					<div class="flex justify-between items-center pl-2 pr-3">
-						<div>
-							<p class="font-bold text-lg">{job.name}</p>
-							<p>{job.description}</p>
+								<Progress
+									{max}
+									{value}
+									class={[
+										"rounded-none! w-full",
+										state?.status !== "inProgress" && "opacity-50",
+									]}
+								/>
+							{/each}
 						</div>
-						<div>
-							<Button
-								variant="primary"
-								onclick={async () => {
-									if (
-										state?.status === "inProgress"
-										|| state?.status === "pending"
-									) {
-										await cancelJob(key!);
-										return;
-									}
+						<div class="flex justify-between items-center pl-2 pr-3">
+							<div>
+								<p class="font-bold text-lg">{job.name}</p>
+								<p>{job.description}</p>
+							</div>
+							<div>
+								<Button
+									variant="primary"
+									onclick={async () => {
+										if (
+											state?.status === "inProgress"
+											|| state?.status === "pending"
+										) {
+											await cancelJob(key!);
+											return;
+										}
 
-									const id = await queueJob(job.id);
+										const id = await queueJob(job.id);
 
-									jobQueue = [...jobQueue, id];
-									jobStates.set(id, {
-										jobId: job.id,
-										status: "pending",
-										currentStep: 1,
-										values: {},
-									});
-								}}
-							>
-								{#if state?.status === "inProgress"}
-									<Icon name="square" />
-								{:else if state?.status === "pending"}
-									<Icon name="close" />
-								{:else}
-									<Icon name="play" />
-								{/if}
-							</Button>
+										jobQueue = [...jobQueue, id];
+										jobStates.set(id, {
+											jobId: job.id,
+											status: "pending",
+											currentStep: 1,
+											values: {},
+										});
+									}}
+								>
+									{#if state?.status === "inProgress"}
+										<Icon name="square" />
+									{:else if state?.status === "pending"}
+										<Icon name="close" />
+									{:else}
+										<Icon name="play" />
+									{/if}
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
-			</li>
-		{/each}
-	</ul>
-</div>
+				</li>
+			{/each}
+		</ul>
+	</div>
+</Page>

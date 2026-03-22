@@ -3,7 +3,6 @@
 	import Icon from "@components/Icon.svelte";
 	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
-	import Page from "@components/routing/Page.svelte";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
 	import { fade } from "svelte/transition";
@@ -25,7 +24,6 @@
 	} from "@state";
 
 	import { getSongs } from "@api/song";
-	import Redirect from "@components/routing/Redirect.svelte";
 	import type { Song } from "@lib/models";
 	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
@@ -263,16 +261,9 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Page path="/music" name="Music" icon="music" displayEditor>
-					<Music />
-					<Redirect path="/" />
-				</Page>
-				<Page path="/directories" name="Directories" icon="folder">
-					<Directories />
-				</Page>
-				<Page path="/jobs" name="Jobs" icon="play">
-					<Jobs />
-				</Page>
+				<Music />
+				<Directories />
+				<Jobs />
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div
