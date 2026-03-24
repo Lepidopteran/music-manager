@@ -131,7 +131,7 @@ export class Router<M> implements RouterOptions<M> {
 	}
 
 	#internalRoute(route: RouteDefinition<M>, parentIndex?: number): InternalRoute<M> {
-		const { children, path, ...props } = route;
+		const { children: _, path, ...props } = route;
 
 		const combinedPath = parentIndex !== undefined
 			? buildPath([...this.#routes[parentIndex].path.split("/"), ...path.split("/")])
@@ -141,9 +141,7 @@ export class Router<M> implements RouterOptions<M> {
 			...props,
 			parentIndex,
 			path: combinedPath,
-			matcher: match(combinedPath, {
-				end: !(children && children?.length > 0),
-			}),
+			matcher: match(combinedPath),
 		};
 	}
 

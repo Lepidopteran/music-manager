@@ -59,6 +59,11 @@ describe("Router", () => {
 			path: ":name",
 		});
 
+		const aboutRoute = router.resolve("/about/1");
+		expect(aboutRoute).toBeDefined();
+		expect(aboutRoute?.path).toEqual("/about/:id");
+		expect(aboutRoute?.children().length).toEqual(1);
+
 		const route = router.resolve("/about/1/kaisen");
 		expect(route).toBeDefined();
 		expect(route?.path).toEqual("/about/:id/:name");
