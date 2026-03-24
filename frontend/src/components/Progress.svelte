@@ -80,11 +80,11 @@
 					background-color: currentColor;
 				}
 			}
+		}
 
-			@keyframes progress {
-				50% {
-					background-position-x: -115%;
-				}
+		@keyframes progress {
+			50% {
+				background-position-x: -115%;
 			}
 		}
 	}

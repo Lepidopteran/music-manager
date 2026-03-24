@@ -1,7 +1,5 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
-import { resolve } from "node:path";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 import bundleIcons from "./plugins/icons";
 
@@ -13,11 +11,14 @@ export default defineConfig({
 			"/api": { target: "http://localhost:3000", changeOrigin: true },
 		},
 	},
+	resolve: {
+		tsconfigPaths: true,
+	},
 	build: {
 		outDir: "../dist",
 		emptyOutDir: true,
 	},
-	plugins: [bundleIcons(), tsconfigPaths(), svelte(), tailwindcss()],
+	plugins: [bundleIcons(), tailwindcss(), svelte()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
