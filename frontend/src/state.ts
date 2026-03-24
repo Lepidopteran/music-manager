@@ -18,14 +18,15 @@ export interface PageMetadata {
 	hideNavigation?: boolean;
 	displayEditor?: boolean;
 	icon?: Icon;
-	callback?: () => void;
 }
 
 export interface RedirectMetadata {
 	redirectTo: string;
 }
 
-export type RouteMetadata = { kind: "page" } & PageMetadata | { kind: "redirect" } & RedirectMetadata;
+export type RouteMetadata =
+	| { kind: "page" } & PageMetadata
+	| { kind: "redirect" } & RedirectMetadata;
 
 export interface RouteManager {
 	router: Router<RouteMetadata>;
