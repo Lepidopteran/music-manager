@@ -19,6 +19,7 @@ export interface Route<M> {
 export interface ResolvedRoute<M> extends Route<M> {
 	index: number;
 	params: ParamData;
+	resolvedPath: string;
 }
 
 export interface RouteDefinition<M> {
@@ -111,6 +112,7 @@ export class Router<M> implements RouterOptions<M> {
 			return {
 				...rest,
 				index,
+				resolvedPath: match.path,
 				params: match.params,
 				children: () => {
 					return this.#routes
