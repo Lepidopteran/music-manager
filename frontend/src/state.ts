@@ -12,11 +12,16 @@ export const [songs, setSongs] = createContext<Songs>();
 export const [editedSongs, setEditedSongs] = createContext<Songs>();
 export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
 
+export interface NavigationUIOptions {
+	position: "top" | "bottom";
+}
+
 export interface PageMetadata {
-	name?: string;
+	name: string;
 	hideHeader?: boolean;
 	hideNavigation?: boolean;
 	displayEditor?: boolean;
+	navigation?: NavigationUIOptions | boolean;
 	icon?: Icon;
 }
 
