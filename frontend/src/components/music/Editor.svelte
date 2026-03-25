@@ -52,17 +52,17 @@
 			{#if songsInSelection.length === 1}
 				{#if songsWithNoCover.has(songsInSelection[0].id)}
 					<MissingCover
-						class="size-64 rounded-theme shadow-lg shadow-black/25 mx-auto mb-1"
+						class="size-64 rounded-theme shadow-lg shadow-shade/25 mx-auto mb-1"
 					/>
 				{:else}
 					<Image
 						src="/api/songs/{songsInSelection[0].id}/cover-art/front.jpg"
-						class="mb-1 mx-auto rounded-theme shadow-lg shadow-black/25 size-64"
+						class="mb-1 mx-auto rounded-theme shadow-lg shadow-shade/25 size-64"
 					/>
 				{/if}
 			{:else}
 				<Stack
-					class="drop-shadow-xl drop-shadow-black/25"
+					class="drop-shadow-xl drop-shadow-shade/25"
 					style={`height: calc(auto + ${selected.size * 3})px`}
 					offset="4px"
 				>
