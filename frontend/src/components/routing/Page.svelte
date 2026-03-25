@@ -4,7 +4,6 @@
 	import { createSafeContext } from "@utils/context";
 	import { type Snippet } from "svelte";
 	import type { ClassValue } from "svelte/elements";
-	import { SvelteSet } from "svelte/reactivity";
 
 	interface Props extends PageMetadata {
 		path: string;
@@ -12,35 +11,24 @@
 		children: Snippet;
 	}
 
+	interface ChildPageDefinition {
+		path: string;
+		metadata: PageMetadata;
+	}
+
 	let {
 		path,
 		class: className,
 		children,
-		callback,
-		displayEditor,
-		hideHeader,
-		hideNavigation,
-		icon,
-		name,
+		...pageMetadata
 	}: Props = $props();
-
-	const metadata: RouteMetadata = $derived({
-		kind: "page",
-		hideNavigation,
-		hideHeader,
-		name,
-		displayEditor,
-		icon,
-		callback,
-	});
 
 	let previousPath: string | null = null;
 
 	const manager = routeManager();
 	const parentContext = pageContext();
 
-	const aliases = new SvelteSet<string>();
-	const childPages = new Map<string, RouteMetadata>();
+	const childDefinitionMap = new Map<string, ChildPageDefinition>();
 	const combinedPath = $derived(
 		parentContext
 			? buildPath(
@@ -49,14 +37,20 @@
 			: buildPath(path.split("/")),
 	);
 
+	export const childPages = (): Array<[string, PageMetadata]> =>
+		Array.from(
+			childDefinitionMap.entries().map((
+				[path, { metadata }],
+			) => [path, metadata]),
+		);
+
 	setPageContext({
-		aliases,
-		childPages,
+		childPages: childDefinitionMap,
 		get parentPath() {
 			return path;
 		},
 		get metadata() {
-			return metadata;
+			return pageMetadata;
 		},
 	});
 
@@ -67,25 +61,33 @@
 			&& manager.router.hasRoute(previousPath)
 		) {
 			manager.router.removeRoute(previousPath);
-			parentContext?.aliases.delete(previousPath);
 		}
 
 		const def: RouteDefinition<RouteMetadata> = {
 			path: combinedPath,
-			metadata: parentContext
-				? { ...parentContext.metadata, ...metadata }
-				: metadata,
+			metadata: {
+				kind: "page",
+				...parentContext
+					? { ...parentContext.metadata, ...pageMetadata }
+					: pageMetadata,
+			},
 		};
 
 		if (parentContext) {
-			parentContext.childPages.set(path, metadata);
+			parentContext.childPages.set(combinedPath, {
+				path,
+				metadata: pageMetadata,
+			});
 		} else {
 			manager.router.addRoute(def);
 
-			for (const [childPath, childMetadata] of childPages.entries()) {
+			for (const { path, metadata } of childDefinitionMap.values()) {
 				manager.router.addRouteWithParentPath(combinedPath, {
-					path: childPath,
-					metadata: childMetadata,
+					path,
+					metadata: {
+						kind: "page",
+						...metadata,
+					},
 				});
 			}
 		}
@@ -100,10 +102,9 @@
 
 <script lang="ts" module>
 	export interface PageContext {
-		aliases: Set<string>;
-		childPages: Map<string, RouteMetadata>;
+		childPages: Map<string, ChildPageDefinition>;
 		parentPath: string;
-		metadata: RouteMetadata;
+		metadata: PageMetadata;
 	}
 
 	export const [pageContext, setPageContext] = createSafeContext<PageContext>();
@@ -112,7 +113,8 @@
 <div
 	class={["h-full", className]}
 	hidden={manager.current?.path !== combinedPath
-	&& !aliases.has(manager.current?.path ?? "")}
+	&& !childDefinitionMap.has(manager.current?.path ?? "")
+	&& manager.current?.resolvedPath !== window.history.state?.previousPath}
 >
 	{@render children()}
 </div>
