@@ -5,19 +5,25 @@
 
 	interface Props {
 		redirectTo?: string;
+		absolute?: boolean;
 		path: string;
 	}
 
 	let {
 		path,
 		redirectTo,
+		absolute,
 	}: Props = $props();
 
 	let previousPath: string | null = null;
 
 	const manager = routeManager();
 	const parentContext = pageContext();
-	const normalizedPath = $derived(buildPath(path.split("/")));
+	const normalizedPath = $derived(
+		parentContext
+			? buildPath([...parentContext.parentPath.split("/"), ...path.split("/")])
+			: buildPath(path.split("/")),
+	);
 
 	$effect(() => {
 		if (
@@ -26,7 +32,6 @@
 			&& manager.router.hasRoute(previousPath)
 		) {
 			manager.router.removeRoute(previousPath);
-			parentContext?.aliases.delete(previousPath);
 		}
 
 		if (!redirectTo && parentContext?.parentPath === undefined) {
@@ -34,7 +39,14 @@
 		}
 
 		const metadata: RedirectMetadata = {
-			redirectTo: redirectTo ?? parentContext!.parentPath,
+			redirectTo: redirectTo
+				? absolute !== true && parentContext
+					? buildPath([
+						...parentContext.parentPath.split("/"),
+						...redirectTo.split("/"),
+					])
+					: redirectTo
+				: parentContext!.parentPath,
 		};
 
 		manager.router.addRoute(
