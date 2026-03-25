@@ -12,6 +12,7 @@
 	--color-base-200: var(--base-200);
 	--color-base-300: var(--base-300);
 	--color-base-content: var(--base-content);
+	--color-shade: var(--shade);
 	--color-highlight: var(--highlight);
 	--color-success: var(--success);
 	--color-success-content: color-mix(
@@ -59,6 +60,8 @@
 		--font-mono: "JetBrains Mono", monospace;
 		--cell-padding: 0.5rem;
 		--roundness: 0.5rem;
+		--highlight: oklch(95% 0 0);
+		--shade: oklch(15% 0 0);
 		--success: #4ade80;
 		--warning: #facc15;
 		--error: #ef4444;
@@ -77,7 +80,7 @@
 		--secondary-content: oklch(100% 0.094 20);
 		--accent: oklch(65% 0.123 142.25);
 		--accent-content: oklch(10% 0.123 142.25);
-		--highlight: #888888;
+		--highlight: oklch(80% 0 0);
 	}
 
 	:root[data-theme="light"] {
@@ -92,7 +95,6 @@
 		--secondary-content: oklch(10% 0.079 20);
 		--accent: oklch(65% 0.124 142.23);
 		--accent-content: oklch(10% 0.124 142.23);
-		--highlight: #ffffff;
 	}
 
 	body {
