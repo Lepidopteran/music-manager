@@ -24,12 +24,13 @@
 	} from "@state";
 
 	import { getSongs } from "@api/song";
+	import Redirect from "@components/routing/Redirect.svelte";
 	import type { Song } from "@lib/models";
 	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
-	import Jobs from "@pages/admin/Jobs.svelte";
-	import Directories from "@pages/Directories.svelte";
+	import Albums from "@pages/Albums.svelte";
 	import Music from "@pages/Music.svelte";
+	import Settings from "@pages/Settings.svelte";
 	import { watch } from "@utils/reactivity/watch.svelte";
 	import { onMount } from "svelte";
 	import { SvelteMap, SvelteSet } from "svelte/reactivity";
@@ -126,13 +127,11 @@
 			});
 		}
 
-		goTo(path: string, addToHistory?: boolean): void {
+		goTo(path: string, addToHistory = true): void {
 			const resolvedRoute = this.router.resolve(path);
 			if (!resolvedRoute || resolvedRoute.path === this.#current?.path) {
 				return;
 			}
-
-			this.#current = resolvedRoute;
 
 			if (resolvedRoute.metadata?.kind === "redirect") {
 				return this.goTo(
@@ -141,11 +140,21 @@
 				);
 			}
 
-			if (addToHistory && resolvedRoute.metadata?.kind === "page") {
-				window.history.pushState({}, "", path);
+			if (addToHistory) {
+				window.history.pushState(
+					{ previousPath: this.#current?.resolvedPath },
+					"",
+					path,
+				);
 			} else {
-				window.history.replaceState({}, "", path);
+				window.history.replaceState(
+					{ previousPath: window.history.state.previousPath ?? null },
+					"",
+					path,
+				);
 			}
+
+			this.#current = resolvedRoute;
 		}
 
 		get current() {
@@ -160,7 +169,15 @@
 	const routeState = new RouteState();
 	const { current: currentRoute, routes } = $derived(routeState);
 	setRouteManager(routeState);
-	$inspect(currentRoute);
+	$inspect(currentRoute, currentRoute?.children());
+
+	const pages: Array<Route<PageMetadata>> = $derived(
+		routes.filter(route => route.metadata?.kind === "page") as Array<
+			Route<
+				PageMetadata
+			>
+		>,
+	);
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
 	let editorEnabled = $derived(
@@ -198,44 +215,34 @@
 	onpopstate={() => routeState.goTo(window.location.pathname, false)}
 />
 
-<div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full">
+<div class="p-1 grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full gap-2">
 	<header
-		class="col-start-1 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-2 shadow-lg bg-base z-10"
+		class="col-start-2 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-4 shadow-lg bg-base border-b border-base-content/10 rounded-b-theme inset-shadow-xs inset-shadow-highlight/25 z-10"
 		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
-			<Button
-				color="ghost"
-				toggleable={true}
-				active={menuOpen}
-				onclick={() => (menuOpen = !menuOpen)}
-				class="group size-10 sm:hidden"
-			>
-				<Icon
-					name="menu"
-					class="text-2xl group-data-[active=true]:text-primary transition"
-				/>
-			</Button>
-			<h1 class="text-2xl font-bold row-start-1 flex gap-2 items-center">
-				<Logo class="p-1" /> Muusik
-			</h1>
+			<h2 class="text-xl">
+				{currentRoute?.metadata?.kind === "page" && currentRoute.metadata?.name}
+			</h2>
 		</div>
 		<div class="flex gap-4"></div>
 		<div class="flex gap-4"></div>
 	</header>
+
 	<aside
-		class={`col-start-1 row-start-2 row-end-3 bg-base transition-all duration-300 shadow-lg z-10 ${
-			menuOpen ? "translate-x-0" : "-translate-x-full"
-		}`}
+		class={[
+			"row-start-1 row-end-3 bg-base transition-all duration-300 shadow-lg z-10 h-full overflow-hidden rounded-r-theme pr-2 inset-shadow-highlight/50 inset-shadow-xs flex flex-col",
+			menuOpen ? "translate-x-0" : "-translate-x-full",
+		]}
 	>
-		<nav
-			hidden={currentRoute?.metadata?.kind === "page"
-			&& currentRoute?.metadata?.hideNavigation}
-		>
-			{#each routes.filter(({ metadata }) =>
-				metadata !== undefined && metadata.kind === "page" && !metadata.hideNavigation
-			) as { path, metadata }}
-				{@const { name, icon } = metadata! as PageMetadata}
+		<div class="flex items-center gap-2 p-2">
+			<h1 class="text-2xl font-semibold row-start-1 flex gap-2 items-center">
+				<Logo class="p-1" /> Muusik
+			</h1>
+		</div>
+		{#snippet item(route: Route<PageMetadata>)}
+			{@const { metadata: { name, icon } = {}, path } = route}
+			<li>
 				<a
 					href={path as string}
 					onclick={(event) => {
@@ -244,26 +251,60 @@
 							(event.target as HTMLAnchorElement).getAttribute("href") as string,
 						);
 					}}
-					class="font-semibold px-4 flex items-center gap-3 py-2 transition hover:bg-primary/10 hover:text-primary data-active:text-primary data-active:bg-primary/20"
-					data-active={path === currentRoute?.path || undefined}
+					class={[
+						"font-semibold px-4 flex border-base-content/10 border border-l-0 items-center gap-3 py-2 transition hover:bg-primary/10 inset-shadow-sm hover:text-primary rounded-r-theme-xl",
+						currentRoute?.path === path
+							|| route.children().some(child => child.path === currentRoute?.path)
+							? "text-primary bg-primary/20 inset-shadow-shade/50"
+							: "inset-shadow-highlight/25",
+					]}
 				>
 					{#if icon}
 						<Icon name={icon} size="1.25em" />
 					{/if}
 					{name}
 				</a>
-			{/each}
+			</li>
+		{/snippet}
+		<div>
+			<nav class="flex flex-col gap-2">
+				<ul>
+					{#each pages.filter(page =>
+						page.metadata?.navigation !== undefined
+							&& typeof page.metadata?.navigation !== "boolean"
+							&& page.metadata?.navigation.position === "top"
+						|| page.metadata?.navigation === true
+					) as route}
+						{@render item(route)}
+					{/each}
+				</ul>
+			</nav>
+		</div>
+		<nav
+			class="h-full py-4 flex flex-col"
+			hidden={currentRoute?.metadata?.kind === "page"
+			&& currentRoute?.metadata?.hideNavigation}
+		>
+			<ul class="mt-auto">
+				{#each pages.filter(page =>
+					page.metadata?.navigation !== undefined
+					&& typeof page.metadata?.navigation !== "boolean"
+					&& page.metadata?.navigation.position === "bottom"
+				) as route}
+					{@render item(route)}
+				{/each}
+			</ul>
 		</nav>
 	</aside>
-	<main class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full inset-shadow-xs shadow-lg inset-shadow-highlight/10">
+	<main class="col-start-1 sm:col-start-2 col-end-3 row-start-2 overflow-y-auto h-full shadow-lg inset-shadow-xs inset-shadow-highlight/10 rounded-theme shadow-shade/25">
 		<PaneGroup
 			direction={onSmallScreen.current ? "vertical" : "horizontal"}
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Music />
-				<Directories />
-				<Jobs />
+				<Settings />
+				<Redirect path="/" redirectTo="/albums" />
+				<Albums />
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div
@@ -288,9 +329,10 @@
 					<Icon
 						name="up"
 						size="1.25em"
-						class={`transition transform lg:-rotate-90 ${
-							editorPane?.isCollapsed() ? "rotate-180 lg:rotate-90" : ""
-						}`}
+						class={[
+							"transition transform md:-rotate-90",
+							editorPane?.isCollapsed() ? "rotate-180 md:rotate-90" : "",
+						]}
 					/>
 				</div>
 			</PaneResizer>
@@ -299,7 +341,7 @@
 				minSize={30}
 				bind:this={editorPane}
 				class={[
-					"shadow-lg shadow-black/25 bg-base",
+					"shadow-lg shadow-black/25 bg-base inset-shadow-xs inset-shadow-highlight/25 rounded-theme rounded-br-none",
 					!editorEnabled
 						? "opacity-0 duration-500 transition-all pointer-events-none"
 						: "",

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Page from "@components/routing/Page.svelte";
-	import Redirect from "@components/routing/Redirect.svelte";
 	import { editedSongs, groupManager, selectedSongs } from "@state";
 
 	const groupState = groupManager();
@@ -12,8 +11,7 @@
 	}
 </script>
 
-<Page path="/music" name="Music" icon="music" displayEditor>
-	<Redirect path="/" />
+<Page path="/albums" name="Albums" icon="album_2" navigation displayEditor>
 	<div class="flex flex-col overflow-y-auto h-full">
 		{#if groupState.groups.has("album") && groupState.groups.get("album")!.length() > 0}
 			{@const albums = groupState.groups.get("album")!}
