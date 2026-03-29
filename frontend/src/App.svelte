@@ -29,7 +29,6 @@
 	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
 	import Albums from "@pages/Albums.svelte";
-	import Music from "@pages/Music.svelte";
 	import Settings from "@pages/Settings.svelte";
 	import { watch } from "@utils/reactivity/watch.svelte";
 	import { onMount } from "svelte";
