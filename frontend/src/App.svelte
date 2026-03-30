@@ -24,9 +24,15 @@
 	} from "@state";
 
 	import { getSongs } from "@api/song";
+	import Breadcrumbs from "@components/Breadcrumbs.svelte";
 	import Redirect from "@components/routing/Redirect.svelte";
 	import type { Song } from "@lib/models";
-	import { type ResolvedRoute, type Route, Router } from "@lib/router";
+	import {
+		buildPath,
+		type ResolvedRoute,
+		type Route,
+		Router,
+	} from "@lib/router";
 	import { GroupWorker } from "@lib/workers";
 	import Albums from "@pages/Albums.svelte";
 	import Settings from "@pages/Settings.svelte";
@@ -147,7 +153,7 @@
 				);
 			} else {
 				window.history.replaceState(
-					{ previousPath: window.history.state.previousPath ?? null },
+					{ previousPath: window.history.state.previousPath || null },
 					"",
 					path,
 				);
@@ -167,8 +173,24 @@
 
 	const routeState = new RouteState();
 	const { current: currentRoute, routes } = $derived(routeState);
+	const parentRoutes = $derived.by(() => {
+		const { current } = routeState;
+		if (!current) {
+			return [];
+		}
+
+		const routes: Array<Route<RouteMetadata>> = [];
+		let route = current.parent();
+
+		while (route) {
+			routes.push(route);
+			route = route.parent();
+		}
+
+		return routes.reverse();
+	});
+
 	setRouteManager(routeState);
-	$inspect(currentRoute, currentRoute?.children());
 
 	const pages: Array<Route<PageMetadata>> = $derived(
 		routes.filter(route => route.metadata?.kind === "page") as Array<
@@ -220,9 +242,32 @@
 		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
 		<div class="flex items-center gap-2">
-			<h2 class="text-xl">
-				{currentRoute?.metadata?.kind === "page" && currentRoute.metadata?.name}
-			</h2>
+			{#if currentRoute}
+				<Breadcrumbs data={[...parentRoutes, currentRoute]} class="text-lg">
+					{#snippet crumb({ item, index })}
+						{@const path = item.metadata?.kind === "page" ? item.metadata.name : item.path}
+						{#if index < parentRoutes.length}
+							<a
+								class="decoration-accent underline"
+								href={buildPath(
+									currentRoute?.resolvedPath.split("/").filter(Boolean).slice(0, index + 1)
+										|| [],
+								)}
+								onclick={(event) => {
+									event.preventDefault();
+									routeState.goTo(
+										(event.target as HTMLAnchorElement).getAttribute("href") as string,
+									);
+								}}
+							>{path}</a>
+						{:else}
+							<span class={[parentRoutes.length > 0 && "font-semibold"]}>{
+								path
+							}</span>
+						{/if}
+					{/snippet}
+				</Breadcrumbs>
+			{/if}
 		</div>
 		<div class="flex gap-4"></div>
 		<div class="flex gap-4"></div>
