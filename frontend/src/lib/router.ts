@@ -120,7 +120,7 @@ export class Router<M> implements RouterOptions<M> {
 						.map((route, index) => this.#route(route, index));
 				},
 				parent: () => {
-					if (index === 0 || !parentIndex) {
+					if (parentIndex === undefined) {
 						return;
 					}
 
