@@ -1,71 +1,52 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+	import type { HTMLAttributes } from "svelte/elements";
 
-	interface Props {
-		separator?: string;
+	interface Props extends HTMLAttributes<HTMLUListElement> {
 		crumbs?: Array<string>;
-		crumb?: Snippet<[string, number, string[]]>;
-		[key: string]: unknown;
+		crumb?: Snippet<[{ text: string; index: number }]>;
 	}
 
 	let {
-		children,
-		separator = "",
-		crumb: crumb,
+		crumb,
 		crumbs = $bindable([]),
 		...rest
 	}: Props = $props();
 </script>
 
-<div
-	class={separator.length > 0 ? "" : "breadcrumb-box-separator"}
-	style={separator.length > 0
-	? `--breadcrumb-separator: \"${separator}\"`
-	: undefined}
->
-	<ul {...rest}>
-		{#each crumbs as text, index}
-			<li>
-				{#if crumb}
-					{@render crumb(text, index, crumbs)}
-				{:else}
-					{text}
-				{/if}
-			</li>
-		{/each}
-	</ul>
-</div>
+<ul {...rest}>
+	{#each crumbs as text, index}
+		<li>
+			{#if crumb}
+				{@render crumb({ text, index })}
+			{:else}
+				{text}
+			{/if}
+		</li>
+	{/each}
+</ul>
 
 <style>
-	:root {
-		--breadcrumb-color: rgb(from var(--color-base-content) r g b / 0.5);
-	}
-
-	ul {
-		list-style: none;
-		display: flex;
-		align-items: center;
-
-		& > li {
+	@layer components {
+		ul {
+			list-style: none;
 			display: flex;
 			align-items: center;
-			&:not(:first-child)::before {
-				content: var(--breadcrumb-separator);
-				margin-inline: 0.5em;
-				color: var(--breadcrumb-color);
-				display: inline-block;
+
+			& > li {
+				display: flex;
+				align-items: center;
+				&:not(:first-child)::before {
+					content: "";
+					width: calc(var(--spacing) * 1.5);
+					height: calc(var(--spacing) * 1.5);
+					display: inline-block;
+					border-right: 1px solid;
+					border-top: 1px solid;
+					color: oklch(from var(--color-base-content) l c h / 0.5);
+					transform: rotate(45deg);
+				}
 			}
 		}
-	}
-
-	.breadcrumb-box-separator ul li:not(:first-child)::before {
-		content: "";
-		width: calc(var(--spacing) * 1.5);
-		height: calc(var(--spacing) * 1.5);
-		display: inline-block;
-		border-right: 1px solid;
-		border-top: 1px solid;
-		color: var(--breadcrumb-color);
-		transform: rotate(45deg);
 	}
 </style>
