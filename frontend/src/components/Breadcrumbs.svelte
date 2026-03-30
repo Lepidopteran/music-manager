@@ -1,26 +1,26 @@
-<script lang="ts">
+<script lang="ts" generics="T">
 	import type { Snippet } from "svelte";
 	import type { HTMLAttributes } from "svelte/elements";
 
 	interface Props extends HTMLAttributes<HTMLUListElement> {
-		crumbs?: Array<string>;
-		crumb?: Snippet<[{ text: string; index: number }]>;
+		data?: Array<T>;
+		crumb?: Snippet<[{ item: T; index: number }]>;
 	}
 
 	let {
 		crumb,
-		crumbs = $bindable([]),
+		data = $bindable([]),
 		...rest
 	}: Props = $props();
 </script>
 
 <ul {...rest}>
-	{#each crumbs as text, index}
+	{#each data as item, index}
 		<li>
 			{#if crumb}
-				{@render crumb({ text, index })}
+				{@render crumb({ item, index })}
 			{:else}
-				{text}
+				{item}
 			{/if}
 		</li>
 	{/each}
@@ -32,10 +32,12 @@
 			list-style: none;
 			display: flex;
 			align-items: center;
+			gap: calc(var(--spacing) * 1.5);
 
 			& > li {
 				display: flex;
 				align-items: center;
+				gap: calc(var(--spacing) * 1.5);
 				&:not(:first-child)::before {
 					content: "";
 					width: calc(var(--spacing) * 1.5);
