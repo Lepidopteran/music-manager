@@ -2,25 +2,31 @@
 	import {
 		type ColumnDef,
 		getCoreRowModel,
+		type RowSelectionOptions,
 		type TableOptions,
 	} from "@tanstack/table-core";
 
 	import Checkbox from "@components/Checkbox.svelte";
-	import type { HTMLAttributes } from "svelte/elements";
+	import type { ClassValue, HTMLAttributes } from "svelte/elements";
 	import { SvelteSet } from "svelte/reactivity";
 	import CellContent from "./CellContent.svelte";
 	import { createTable } from "./table.svelte";
 
-	interface Props extends HTMLAttributes<HTMLTableElement> {
-		columns: ColumnDef<D, V>[];
-		data: D[];
-		options?: Partial<TableOptions<D>>;
+	interface SelectionOptions extends RowSelectionOptions<D> {
 		/**
 		 * Allows the ability to click and drag to select multiple rows.
 		 *
 		 * Requires selection to be enabled.
 		 */
-		scrubSelection?: boolean;
+		enableScrubSelection?: boolean;
+	}
+
+	interface Props {
+		columns: ColumnDef<D, V>[];
+		data: D[];
+		class?: ClassValue;
+		rowSelection?: boolean | SelectionOptions;
+		options?: Partial<TableOptions<D>>;
 	}
 
 	let isScrubbing = $state(false);
@@ -40,14 +46,25 @@
 		data,
 		class: className,
 		options,
-		scrubSelection = true,
+		rowSelection = false,
 		...rest
 	}: Props = $props();
+
+	const { enableScrubSelection, ...selectionOptions } = $derived(
+		{
+			enableScrubSelection: true,
+			enableRowSelection: true,
+			...typeof rowSelection === "boolean"
+				? { enableRowSelection: rowSelection }
+				: rowSelection,
+		},
+	);
 
 	const tableOptions = $derived({
 		data,
 		columns,
 		getCoreRowModel: getCoreRowModel(),
+		...selectionOptions,
 		...options,
 	});
 
@@ -68,13 +85,17 @@
 />
 
 <table
+	role="grid"
 	class={[
 		className,
 		"w-full border border-base-content/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
 	]}
 	onpointerup={() => endScrubbing()}
 	onpointerdown={(event) => {
-		if (!scrubSelection || event.button !== 0) {
+		if (
+			!enableScrubSelection
+			|| event.button !== 0
+		) {
 			return;
 		}
 

@@ -79,20 +79,22 @@
 		<Table
 			data={directories}
 			class="select-none"
+			rowSelection={{
+				onRowSelectionChange: (updater) => {
+					rowSelection = typeof updater === "function"
+						? updater(rowSelection)
+						: updater;
+				},
+				enableRowSelection: (row) => !directoriesToBeDeleted.has(row.original.name),
+			}}
 			options={{
 				getRowId: (row) => row.name,
-				enableRowSelection: (row) => !directoriesToBeDeleted.has(row.original.name),
 				state: {
 					rowSelection,
 					columnVisibility: {
 						totalSpace: onMediumScreen.current,
 						freeSpace: onMediumScreen.current,
 					},
-				},
-				onRowSelectionChange: (updater) => {
-					rowSelection = typeof updater === "function"
-						? updater(rowSelection)
-						: updater;
 				},
 			}}
 			columns={[
