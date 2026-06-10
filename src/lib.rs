@@ -21,11 +21,11 @@ mod config;
 mod db;
 mod events;
 mod fs;
+mod jobs;
 mod migration;
 mod organize;
 mod paths;
 mod state;
-mod jobs;
 
 pub use config::load_config;
 pub use migration::run_migrations;
@@ -57,7 +57,12 @@ pub fn initialize_logging() {
                 .into()
             }),
         )
-        .with(tracing_subscriber::fmt::layer())
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_ansi_sanitization(false)
+                .with_thread_ids(true)
+                .with_target(true),
+        )
         .init();
 }
 
