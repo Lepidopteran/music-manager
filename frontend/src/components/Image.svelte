@@ -7,7 +7,7 @@
 	let isComplete = $state(false);
 
 	interface Props {
-		src: string;
+		src?: string;
 		alt?: string;
 		decoding?: "async" | "auto" | "sync";
 		loading?: "lazy" | "eager";
@@ -36,7 +36,11 @@
 		loading,
 	}: Props = $props();
 
-	watch(() => src, () => {
+	watch(() => src, (source, previousSource) => {
+		if (source === previousSource) {
+			return;
+		}
+
 		failedToLoad = false;
 		isComplete = false;
 		isLoading = true;
