@@ -18,6 +18,7 @@
 		type RouteMetadata,
 		setEditedSongs,
 		setGroupManager,
+		setPressedKeys,
 		setRouteManager,
 		setSelectedSongs,
 		setSongs,
@@ -42,6 +43,9 @@
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
+
+	const pressedKeys = new SvelteSet<string>();
+	setPressedKeys(pressedKeys);
 
 	const songs = new SvelteMap<string, Song>();
 	setSongs(songs);
@@ -230,10 +234,26 @@
 			songs.set(id, song);
 		}
 	});
+
+	$inspect(pressedKeys);
 </script>
 
 <svelte:window
 	onpopstate={() => routeState.goTo(window.location.pathname, false)}
+	onkeydown={(event) => {
+		pressedKeys.add(event.key.toLowerCase());
+	}}
+	onkeyup={(event) => {
+		pressedKeys.delete(event.key.toLowerCase());
+	}}
+	onblur={() => {
+		pressedKeys.clear();
+	}}
+	onvisibilitychange={() => {
+		if (document.hidden) {
+			pressedKeys.clear();
+		}
+	}}
 />
 
 <div class="p-1 grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full gap-2">

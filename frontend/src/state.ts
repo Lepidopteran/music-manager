@@ -11,6 +11,7 @@ export const [routeManager, setRouteManager] = createContext<RouteManager>();
 export const [songs, setSongs] = createContext<Songs>();
 export const [editedSongs, setEditedSongs] = createContext<Songs>();
 export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
+export const [pressedKeys, setPressedKeys] = createContext<Set<string>>();
 
 export interface NavigationUIOptions {
 	position: "top" | "bottom";
