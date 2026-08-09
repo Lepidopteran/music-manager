@@ -419,7 +419,13 @@
 							onSmallScreen.current ? "rounded-t-theme-xl overflow-hidden" : "",
 						]}
 					>
-						<Editor />
+						{#if selectedSongs.size > 0}
+							<Editor />
+						{:else}
+							<div class="h-full flex items-center justify-center">
+								<p class="text-sm text-current/50">Select a item to edit...</p>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</Pane>
