@@ -34,7 +34,7 @@
 		type Route,
 		Router,
 	} from "@lib/router";
-	import { GroupWorker } from "@lib/workers";
+	import { GroupWebWorker } from "@lib/workers";
 	import Albums from "@pages/Albums.svelte";
 	import Settings from "@pages/Settings.svelte";
 	import { watch } from "@utils/reactivity/watch.svelte";
