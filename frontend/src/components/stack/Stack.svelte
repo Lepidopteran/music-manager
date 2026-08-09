@@ -17,8 +17,13 @@
 		},
 	});
 
-	let { class: className, direction = "bottom", offset = 6, children, ...rest }:
-		Props = $props();
+	let {
+		class: className,
+		direction = "bottom",
+		offset = 4,
+		children,
+		...rest
+	}: Props = $props();
 </script>
 
 <div
@@ -33,7 +38,7 @@
 				grid-area: stack;
 				width: 100%;
 				height: 100%;
-				z-index: var(--stack-index);
+				z-index: calc(1 - var(--stack-index));
 			}
 
 			.stack-bottom .stack-item {

@@ -8,7 +8,7 @@
 	import type { Song } from "@lib/models";
 	import { editedSongs, selectedSongs, songs } from "@state";
 	import { SvelteSet } from "svelte/reactivity";
-	import MissingCover from "./MissingCover.svelte";
+	import CoverView from "./CoverView.svelte";
 
 	const excludedFields: Array<keyof Song> = [
 		"id",
@@ -50,32 +50,32 @@
 
 		<div class="text-center text-sm">
 			{#if songsInSelection.length === 1}
-				{#if songsWithNoCover.has(songsInSelection[0].id)}
-					<MissingCover
-						class="size-64 rounded-theme shadow-lg shadow-shade/25 mx-auto mb-1"
-					/>
-				{:else}
-					<Image
-						src="/api/songs/{songsInSelection[0].id}/cover-art/front.jpg"
-						class="mb-1 mx-auto rounded-theme shadow-lg shadow-shade/25 size-64"
-					/>
-				{/if}
+				<CoverView
+					class="mx-auto size-64 object-contain object-top rounded-theme"
+					src={songsWithNoCover.has(songsInSelection[0].id)
+					? undefined
+					: `/api/songs/${songsInSelection[0].id || ""}/cover-art/front.jpg`}
+				/>
 			{:else}
 				<Stack
 					class="drop-shadow-xl drop-shadow-shade/25"
 					style={`height: calc(auto + ${selected.size * 3})px`}
-					offset="4px"
 				>
-					{#each songsInSelection.filter((song) => !songsWithNoCover.has(song.id)) as song, index (song.id)}
-						<StackItem index={index}>
-							<Image
-								src="/api/songs/{song.id}/cover-art/front.jpg"
-								class="mb-1 mx-auto rounded-theme size-64 object-contain object-top"
-								onError={() => {
-									songsWithNoCover.add(song.id);
-								}}
-							/>
-						</StackItem>
+					{#each songsInSelection as song, index (song.id)}
+						{#if index < 8}
+							<StackItem
+								index={index}
+								style={`opacity: calc(1 - ${index} / ${selected.size});`}
+							>
+								<CoverView
+									src={`/api/songs/${song.id || ""}/cover-art/front.jpg` || undefined}
+									class="size-64 object-contain object-top rounded-theme"
+									onError={() => {
+										songsWithNoCover.add(song.id);
+									}}
+								/>
+							</StackItem>
+						{/if}
 					{/each}
 				</Stack>
 			{/if}
