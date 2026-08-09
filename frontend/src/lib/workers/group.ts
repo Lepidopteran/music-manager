@@ -8,8 +8,12 @@ type GroupedSongs = Record<string, Array<Song>>;
 function groupSongs(groupKey: GroupKey, songs: Array<Song>): GroupedSongs {
 	return Object.fromEntries(
 		songs.reduce((map, song) => {
-			const key = (song[groupKey] ?? "Unknown") as string;
+			const key = (song[groupKey]) as string;
 			const group = map.get(key);
+
+			if (!key) {
+				return map;
+			}
 
 			if (group) {
 				group.push(song);
