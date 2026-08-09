@@ -2,14 +2,12 @@
 	import GridList from "@components/GridList.svelte";
 	import CoverView from "@components/music/CoverView.svelte";
 	import Page from "@components/routing/Page.svelte";
-	import Select from "@components/Select.svelte";
 	import {
 		editedSongs,
 		groupManager,
 		routeManager,
 		selectedSongs,
 	} from "@state";
-	import { onMount, untrack } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
 
 	const routeState = routeManager();
@@ -44,17 +42,9 @@
 			}
 		}
 	});
-
-	onMount(() => {
-		activeAlbum = page.params()?.album as string;
-	});
 </script>
 
-<svelte:window
-	onpopstate={() => {
-		activeAlbum = page.params()?.album as string;
-	}}
-/>
+<svelte:window />
 
 <Page
 	bind:this={page}
