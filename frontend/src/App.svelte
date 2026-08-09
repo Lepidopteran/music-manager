@@ -234,8 +234,6 @@
 			songs.set(id, song);
 		}
 	});
-
-	$inspect(pressedKeys);
 </script>
 
 <svelte:window
