@@ -1,56 +1,39 @@
 import type { GroupWorkerRequest, GroupWorkerResponse } from "./group";
+import GroupWorker from "./group?worker";
 
 /**
  * Utility class that wraps a native {@link https://developer.mozilla.org/en-US/docs/Web/API/Worker|Worker} to add types.
  * @template T - The type of the message that the worker will receive
  * @template O - The type of the message that the worker will send
  */
-export class WebWorker<I, O> {
-	#worker: Worker | null = null;
 
-	constructor(scriptUrl: URL) {
-		this.#worker = new Worker(scriptUrl, {
-			type: "module",
-		});
+export class WebWorker<I, O> {
+	#worker: Worker;
+
+	constructor(worker: Worker) {
+		this.#worker = worker;
 	}
 
 	postMessage(message: I): void {
-		if (this.#worker) {
-			this.#worker.postMessage(message);
-		} else {
-			console.error("Worker is not initialized.");
-		}
+		this.#worker.postMessage(message);
 	}
 
 	onMessage(callback: (event: MessageEvent<O>) => void): void {
-		if (this.#worker) {
-			this.#worker.onmessage = callback;
-		} else {
-			console.error("Worker is not initialized.");
-		}
+		this.#worker.onmessage = callback;
 	}
 
 	onError(callback: (error: ErrorEvent) => void): void {
-		if (this.#worker) {
-			this.#worker.onerror = callback;
-		} else {
-			console.error("Worker is not initialized.");
-		}
+		this.#worker.onerror = callback;
 	}
 
 	terminate(): void {
-		if (this.#worker) {
-			this.#worker.terminate();
-			this.#worker = null;
-		}
+		this.#worker.terminate();
 	}
 }
 
-export const groupWorkerUrl = new URL("./group.ts", import.meta.url);
-
 export type { GroupWorkerRequest, GroupWorkerResponse } from "./group";
-export class GroupWorker extends WebWorker<GroupWorkerRequest, GroupWorkerResponse> {
+export class GroupWebWorker extends WebWorker<GroupWorkerRequest, GroupWorkerResponse> {
 	constructor() {
-		super(groupWorkerUrl);
+		super(new GroupWorker());
 	}
 }

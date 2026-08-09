@@ -59,7 +59,7 @@
 	class SongGroupManager implements GroupManager {
 		#maxActiveWorkers: number = 3;
 		#tracked: SvelteSet<GroupKey> = new SvelteSet();
-		#workers: SvelteMap<GroupKey, GroupWorker> = new SvelteMap();
+		#workers: SvelteMap<GroupKey, GroupWebWorker> = new SvelteMap();
 		#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
 
 		constructor() {
@@ -73,7 +73,7 @@
 			while (
 				this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined
 			) {
-				const worker = new GroupWorker();
+				const worker = new GroupWebWorker();
 				worker.onMessage(event => {
 					const { grouped, key } = event.data;
 
