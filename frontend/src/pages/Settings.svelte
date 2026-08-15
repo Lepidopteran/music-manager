@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from "@components/Button.svelte";
 	import Icon from "@components/Icon.svelte";
+	import PrevPage from "@components/navigation/PrevPage.svelte";
 	import Page from "@components/routing/Page.svelte";
 	import { buildPath } from "@lib/router";
 	import { routeManager } from "@state";
@@ -59,19 +60,7 @@
 			in:fade={{ duration: prefersReducedMotion.current ? 0 : 200 }}
 			class="p-4"
 		>
-			<a
-				href={buildPath(navigationPath.slice(0, -1))}
-				onclick={(event) => {
-					event.preventDefault();
-					routeState.goTo(
-						(event.target as HTMLAnchorElement).getAttribute("href") as string,
-					);
-				}}
-			>
-				<Button title="Back" class="pointer-events-none shadow-lg">
-					<Icon name="arrow_left" />
-				</Button>
-			</a>
+			<PrevPage />
 		</div>
 	{/if}
 	<Jobs />
