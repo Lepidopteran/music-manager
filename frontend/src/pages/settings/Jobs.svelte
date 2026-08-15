@@ -17,9 +17,8 @@
 		RegistryJob,
 	} from "@lib/bindings/bindings";
 	import { addSourceEventListener } from "@utils/api";
-	import { onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
-	import { match, P } from "ts-pattern";
+	import { match } from "ts-pattern";
 
 	interface JobUiState extends JobState {
 		current?: bigint;
@@ -32,17 +31,6 @@
 	let jobReports: SvelteMap<string, JobExecutionReport> = $state(
 		new SvelteMap(),
 	);
-
-	onMount(async () => {
-		jobs = await getJobs();
-
-		jobStates = new SvelteMap(
-			Object.entries(await getJobStates()),
-		) as SvelteMap<string, JobUiState>;
-
-		jobQueue = await getJobQueueOrder();
-		jobReports = new SvelteMap(Object.entries(await getJobReports()));
-	});
 </script>
 
 <svelte:window
@@ -90,7 +78,21 @@
 	)}
 />
 
-<Page path="/jobs" name="Jobs" icon="play">
+<Page
+	path="/jobs"
+	name="Jobs"
+	icon="play"
+	onLoad={async () => {
+		jobs = await getJobs();
+
+		jobStates = new SvelteMap(
+			Object.entries(await getJobStates()),
+		) as SvelteMap<string, JobUiState>;
+
+		jobQueue = await getJobQueueOrder();
+		jobReports = new SvelteMap(Object.entries(await getJobReports()));
+	}}
+>
 	<div class="p-4 max-w-4xl">
 		<ul class="space-y-2">
 			{#each jobs as job}

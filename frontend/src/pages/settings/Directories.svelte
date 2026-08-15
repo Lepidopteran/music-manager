@@ -63,15 +63,16 @@
 		}
 	}
 
-	onMount(async () => {
-		directories = await getDirectories();
-	});
-
 	$inspect(rowSelection);
 	$inspect(directories);
 </script>
 
-<Page path="/directories" name="Directories" icon="folder">
+<Page
+	path="/directories"
+	name="Directories"
+	icon="folder"
+	onLoad={async () => directories = await getDirectories()}
+>
 	<div class="flex flex-col gap-4 p-4">
 		<h1 class="text-3xl font-bold">Directories</h1>
 		<p>This is the list of directories used to scan and manage your music</p>
