@@ -2,13 +2,16 @@
 	import { buildPath, type RouteDefinition } from "@lib/router";
 	import { type PageMetadata, routeManager, type RouteMetadata } from "@state";
 	import { createSafeContext } from "@utils/context";
-	import { type Snippet } from "svelte";
+	import type { ParamData } from "path-to-regexp";
+	import { type Snippet, untrack } from "svelte";
 	import type { ClassValue } from "svelte/elements";
 
 	interface Props extends PageMetadata {
 		path: string;
+		onLoad?: () => void;
 		class?: ClassValue;
-		children: Snippet;
+		content?: Snippet<[{ loaded: boolean; params: ParamData }]>;
+		children?: Snippet;
 	}
 
 	interface ChildPageDefinition {
@@ -20,10 +23,13 @@
 		path,
 		class: className,
 		children,
+		content,
+		onLoad,
 		...pageMetadata
 	}: Props = $props();
 
 	let previousPath: string | null = null;
+	let loaded = $state(false);
 
 	const manager = routeManager();
 	const parentContext = pageContext();
@@ -52,6 +58,18 @@
 		get metadata() {
 			return pageMetadata;
 		},
+	});
+
+	$effect(() => {
+		const current = manager.current;
+		if (
+			(current?.path === combinedPath
+				|| childDefinitionMap.has(manager.current?.path ?? ""))
+			&& !untrack(() => loaded)
+		) {
+			loaded = true;
+			onLoad?.();
+		}
 	});
 
 	$effect(() => {
@@ -116,5 +134,14 @@
 	&& !childDefinitionMap.has(manager.current?.path ?? "")
 	&& manager.current?.resolvedPath !== window.history.state?.previousPath}
 >
-	{@render children()}
+	{#if content}
+		{@render content({
+			loaded,
+			params: manager.current?.path === combinedPath
+				? manager.current?.params ?? {}
+				: {},
+		})}
+	{:else}
+		{@render children?.()}
+	{/if}
 </div>
