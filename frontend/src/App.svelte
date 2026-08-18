@@ -263,10 +263,12 @@
 			{#if currentRoute}
 				<Breadcrumbs data={[...parentRoutes, currentRoute]} class="text-lg">
 					{#snippet crumb({ item, index })}
+						{@const param = item.path.split("/").filter(Boolean)[index]
+						.replace(/\{\}|\:/g, "")}
 						{@const path = item.metadata?.kind === "page" ? item.metadata.name : item.path}
 						{#if index < parentRoutes.length}
 							<a
-								class="decoration-accent underline"
+								class="decoration-primary underline"
 								href={buildPath(
 									currentRoute?.resolvedPath.split("/").filter(Boolean).slice(0, index + 1)
 										|| [],
@@ -280,7 +282,7 @@
 							>{path}</a>
 						{:else}
 							<span class={[parentRoutes.length > 0 && "font-semibold"]}>{
-								path
+								currentRoute?.params[param] || path
 							}</span>
 						{/if}
 					{/snippet}
