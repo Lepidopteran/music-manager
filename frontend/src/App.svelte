@@ -125,6 +125,7 @@
 		router = new Router<RouteMetadata>([], {
 			onRoutesUpdated: (router) => this.#routes = router.routes,
 		});
+
 		constructor() {
 			$effect(() => {
 				const { pathname } = window.location;
@@ -330,20 +331,18 @@
 				</a>
 			</li>
 		{/snippet}
-		<div>
-			<nav class="flex flex-col gap-2">
-				<ul>
-					{#each pages.filter(page =>
-						page.metadata?.navigation !== undefined
-							&& typeof page.metadata?.navigation !== "boolean"
-							&& page.metadata?.navigation.position === "top"
-						|| page.metadata?.navigation === true
-					) as route}
-						{@render item(route)}
-					{/each}
-				</ul>
-			</nav>
-		</div>
+		<nav class="flex flex-col gap-2">
+			<ul>
+				{#each pages.filter(page =>
+					page.metadata?.navigation !== undefined
+						&& typeof page.metadata?.navigation !== "boolean"
+						&& page.metadata?.navigation.position === "top"
+					|| page.metadata?.navigation === true
+				) as route}
+					{@render item(route)}
+				{/each}
+			</ul>
+		</nav>
 		<nav
 			class="h-full py-4 flex flex-col"
 			hidden={currentRoute?.metadata?.kind === "page"
