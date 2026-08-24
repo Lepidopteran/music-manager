@@ -3,12 +3,13 @@ use std::{
     fs::File,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
+    str::FromStr,
 };
 
 use clap::Parser;
 use color_eyre::owo_colors::OwoColorize;
 use dotenvy::dotenv;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
 
 use muusik::{
@@ -48,23 +49,19 @@ async fn main() {
 
     tracing::info!("Database URL: {}", database_url.underline().blue());
 
-    let mut new_database = false;
-    if let Some(database_url) = database_url.strip_prefix("sqlite://") {
-        let path = PathBuf::from(database_url);
+    let database_options = SqliteConnectOptions::from_str(database_url)
+        .expect("Invalid database URL")
+        .create_if_missing(true);
 
-        if !path.exists() {
-            File::create(&path).expect("Failed to create database file");
-            new_database = true;
-        }
-    }
+    let is_new_database = !database_options.get_filename().exists();
 
     let pool = SqlitePoolOptions::new()
         .max_connections(32)
-        .connect(database_url)
+        .connect_with(database_options)
         .await
         .expect("Failed to connect to database");
 
-    run_migrations(&pool, new_database)
+    run_migrations(&pool, is_new_database)
         .await
         .expect("Failed to run migrations");
 
