@@ -17,6 +17,11 @@
 target/
 dist/
 
+# Testing Files
+.data/
+.config/
+.cache/
+
 # Temp Files
 *.bak
 *.tmp
