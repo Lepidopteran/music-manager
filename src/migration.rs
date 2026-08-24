@@ -33,6 +33,8 @@ macro_rules! custom_migrations {
     };
 }
 
+const MIGRATION_TABLE_NAME: &str = "_sqlx_migrations";
+
 static CUSTOM_MIGRATIONS: LazyLock<HashMap<i64, MigrationFn>> = custom_migrations! {
     20250905175005, add_uuid_to_songs;
     20250916122132, use_uuid_for_names_in_directories;
@@ -54,14 +56,18 @@ pub async fn run_migrations(pool: &SqlitePool, new_database: bool) -> Result<()>
         info!("New database detected, Initializing database...");
     }
 
-    connection.ensure_migrations_table().await?;
+    connection
+        .ensure_migrations_table(MIGRATION_TABLE_NAME)
+        .await?;
 
-    let dirty_version = connection.dirty_version().await?;
+    let dirty_version = connection.dirty_version(MIGRATION_TABLE_NAME).await?;
     if let Some(version) = dirty_version {
         return Err(MigrateError::Dirty(version).into());
     }
 
-    let applied_migrations = connection.list_applied_migrations().await?;
+    let applied_migrations = connection
+        .list_applied_migrations(MIGRATION_TABLE_NAME)
+        .await?;
 
     validate_applied_migrations(&applied_migrations, &MIGRATOR)?;
 
@@ -83,7 +89,7 @@ pub async fn run_migrations(pool: &SqlitePool, new_database: bool) -> Result<()>
             continue;
         }
 
-        connection.apply(migration).await?;
+        connection.apply(MIGRATION_TABLE_NAME, migration).await?;
 
         if !new_database {
             info!(
@@ -354,14 +360,18 @@ mod test {
 
         connection.lock().await?;
 
-        connection.ensure_migrations_table().await?;
+        connection
+            .ensure_migrations_table(MIGRATION_TABLE_NAME)
+            .await?;
 
-        let dirty_version = connection.dirty_version().await?;
+        let dirty_version = connection.dirty_version(MIGRATION_TABLE_NAME).await?;
         if let Some(version) = dirty_version {
             return Err(MigrateError::Dirty(version).into());
         }
 
-        let applied_migrations = connection.list_applied_migrations().await?;
+        let applied_migrations = connection
+            .list_applied_migrations(MIGRATION_TABLE_NAME)
+            .await?;
 
         validate_applied_migrations(&applied_migrations, &MIGRATOR)?;
 
@@ -387,7 +397,7 @@ mod test {
                 continue;
             }
 
-            connection.apply(migration).await?;
+            connection.apply(MIGRATION_TABLE_NAME, migration).await?;
             made_changes = true;
 
             info!(
