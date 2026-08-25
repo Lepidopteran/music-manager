@@ -1,6 +1,6 @@
 CREATE TABLE albums (
 	id TEXT NOT NULL PRIMARY KEY,
-	title TEXT,
+	title TEXT NOT NULL,
 	artist TEXT DEFAULT NULL,
 	artist_sort TEXT DEFAULT NULL,
 	artists TEXT DEFAULT NULL,
@@ -17,10 +17,10 @@ CREATE TABLE albums (
 	language TEXT DEFAULT NULL,
 	replaygain_album_gain TEXT DEFAULT NULL,
 	replaygain_album_peak TEXT DEFAULT NULL,
-	added_at TEXT NOT NULL,
-	updated_at TEXT DEFAULT NULL
+	added_at DATETIME NOT NULL,
+	updated_at DATETIME DEFAULT NULL
 );
 
 ALTER TABLE songs ADD COLUMN album_id TEXT REFERENCES albums(id);
 
-CREATE INDEX idx_albums_name ON albums(name);
+CREATE INDEX idx_albums_title ON albums(title);

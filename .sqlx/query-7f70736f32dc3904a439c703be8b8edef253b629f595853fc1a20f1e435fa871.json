@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM songs WHERE id = ?",
+  "query": "SELECT * FROM songs WHERE album_id = ?",
   "describe": {
     "columns": [
       {
@@ -202,5 +202,5 @@
       true
     ]
   },
-  "hash": "7427fa6a7a9f7add3a52c5cc50dbcae7c0798770d59d3b6442ae0f9ea28db347"
+  "hash": "7f70736f32dc3904a439c703be8b8edef253b629f595853fc1a20f1e435fa871"
 }

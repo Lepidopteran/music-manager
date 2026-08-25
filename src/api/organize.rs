@@ -15,11 +15,11 @@ use ts_rs::TS;
 
 use crate::{
     api::internal_error,
-    db::{Song, directories, songs},
+    db::{Song, albums, directories, songs},
     fs::{Operation, OperationEvent},
     metadata::{Metadata, item::ItemKey},
     organize,
-    state::{AppState},
+    state::AppState,
 };
 
 #[derive(serde::Serialize, TS)]
@@ -67,47 +67,47 @@ async fn organize_album_tracks(
 ) -> Result<()> {
     let mut connection = db.acquire().await.map_err(internal_error)?;
 
-    let album = songs::get_album(&mut connection, title)
+    let tracks = albums::get_album_from_title(&mut connection, &title)
         .await
-        .map_err(IntoResponse::into_response)?;
+        .expect("Album not found")
+        .get_songs(&mut connection)
+        .await
+        .expect("No songs found");
 
     let directories = directories::get_directories(&mut connection)
         .await
         .map_err(IntoResponse::into_response)?;
 
-    let tracks = album
-        .tracks
-        .iter()
-        .try_fold(HashMap::new(), |mut paths, song| {
-            let directory_id = options
-                .directory_id
-                .as_deref()
-                .unwrap_or(&song.directory_id);
+    let tracks = tracks.iter().try_fold(HashMap::new(), |mut paths, song| {
+        let directory_id = options
+            .directory_id
+            .as_deref()
+            .unwrap_or(&song.directory_id);
 
-            let directory: PathBuf = directories
-                .iter()
-                .find(|dir| dir.name == directory_id)
-                .ok_or_else(|| {
-                    not_found(format!("Directory {} not found", song.directory_id)).into_response()
-                })?
-                .path
-                .clone()
-                .into();
+        let directory: PathBuf = directories
+            .iter()
+            .find(|dir| dir.name == directory_id)
+            .ok_or_else(|| {
+                not_found(format!("Directory {} not found", song.directory_id)).into_response()
+            })?
+            .path
+            .clone()
+            .into();
 
-            let path = directory.join(
-                organize::render_song_path(
-                    &handlebars::Handlebars::new(),
-                    organize::DEFAULT_TEMPLATE,
-                    &map_organize(song),
-                    options.rename_original_files,
-                )
-                .map_err(IntoResponse::into_response)?,
-            );
+        let path = directory.join(
+            organize::render_song_path(
+                &handlebars::Handlebars::new(),
+                organize::DEFAULT_TEMPLATE,
+                &map_organize(song),
+                options.rename_original_files,
+            )
+            .map_err(IntoResponse::into_response)?,
+        );
 
-            paths.insert(song.path.clone().into(), (path.clone(), song.id.clone()));
+        paths.insert(song.path.clone().into(), (path.clone(), song.id.clone()));
 
-            Ok::<HashMap<PathBuf, (PathBuf, String)>, Response>(paths)
-        })?;
+        Ok::<HashMap<PathBuf, (PathBuf, String)>, Response>(paths)
+    })?;
 
     let mut operation_handle = manager
         .queue_operation(Operation::Move {
@@ -162,7 +162,10 @@ async fn preview_organize_album_tracks(
 ) -> Result<Json<Vec<PathRenamePreviewResult>>> {
     let mut connection = pool.acquire().await.map_err(internal_error)?;
 
-    let album = songs::get_album(&mut connection, title)
+    let tracks = albums::get_album_from_title(&mut connection, &title)
+        .await
+        .map_err(IntoResponse::into_response)?
+        .get_songs(&mut connection)
         .await
         .map_err(IntoResponse::into_response)?;
 
@@ -170,8 +173,7 @@ async fn preview_organize_album_tracks(
         .await
         .map_err(IntoResponse::into_response)?;
 
-    let previews = album
-        .tracks
+    let previews = tracks
         .iter()
         .map(|song| {
             let directory_id = options

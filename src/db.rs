@@ -5,6 +5,7 @@ use ts_rs::TS;
 
 use crate::metadata::{SongFile, item::ItemKey};
 
+pub mod albums;
 pub mod directories;
 pub mod songs;
 
@@ -61,6 +62,7 @@ pub struct Song {
     #[ts(type = "Date")]
     pub file_created_at: Option<OffsetDateTime>,
     pub directory_id: String,
+    pub album_id: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, TS, Default)]
@@ -127,27 +129,6 @@ impl From<SongFile> for UpdatedSong {
             disc_number: metadata.and_then(|m| m.get(&ItemKey::DiscNumber).cloned()),
             year: metadata.and_then(|m| m.get(&ItemKey::Year).cloned()),
             mood: metadata.and_then(|m| m.get(&ItemKey::Mood).cloned()),
-        }
-    }
-}
-
-/// A collection of songs. Does not correlate to a table in the database.
-#[derive(serde::Serialize, TS)]
-#[ts(rename = "Album", export)]
-pub struct Album {
-    pub title: String,
-    pub artist: Option<String>,
-    pub tracks: Vec<Song>,
-}
-
-impl From<Vec<Song>> for Album {
-    fn from(tracks: Vec<Song>) -> Self {
-        let title = tracks[0].album.clone().expect("Album not found");
-        let artist = tracks[0].album_artist.clone();
-        Album {
-            title,
-            artist,
-            tracks,
         }
     }
 }

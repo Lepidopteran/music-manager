@@ -6,77 +6,178 @@
       {
         "name": "id",
         "ordinal": 0,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "id"
+          }
+        }
       },
       {
         "name": "path",
         "ordinal": 1,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "path"
+          }
+        }
       },
       {
         "name": "title",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "title"
+          }
+        }
       },
       {
         "name": "artist",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "artist"
+          }
+        }
       },
       {
         "name": "album",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "album"
+          }
+        }
       },
       {
         "name": "album_artist",
         "ordinal": 5,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "album_artist"
+          }
+        }
       },
       {
         "name": "genre",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "genre"
+          }
+        }
       },
       {
         "name": "year",
         "ordinal": 7,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "year"
+          }
+        }
       },
       {
         "name": "track_number",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "track_number"
+          }
+        }
       },
       {
         "name": "disc_number",
         "ordinal": 9,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "disc_number"
+          }
+        }
       },
       {
         "name": "mood",
         "ordinal": 10,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "mood"
+          }
+        }
       },
       {
         "name": "added_at",
         "ordinal": 11,
-        "type_info": "Datetime"
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "added_at"
+          }
+        }
       },
       {
         "name": "updated_at",
         "ordinal": 12,
-        "type_info": "Datetime"
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "updated_at"
+          }
+        }
       },
       {
         "name": "file_created_at",
         "ordinal": 13,
-        "type_info": "Datetime"
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "file_created_at"
+          }
+        }
       },
       {
         "name": "directory_id",
         "ordinal": 14,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "directory_id"
+          }
+        }
+      },
+      {
+        "name": "album_id",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "songs",
+            "name": "album_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -97,7 +198,8 @@
       true,
       true,
       true,
-      false
+      false,
+      true
     ]
   },
   "hash": "461f15e5e2d3f23201d4e253f7311df5ce782eddf9294a592669dab9e207b972"
