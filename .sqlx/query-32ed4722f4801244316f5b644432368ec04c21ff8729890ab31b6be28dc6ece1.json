@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO songs (path) VALUES ('/path/to/song.mp3')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "32ed4722f4801244316f5b644432368ec04c21ff8729890ab31b6be28dc6ece1"
+}
