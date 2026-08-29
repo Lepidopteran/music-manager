@@ -1,0 +1,117 @@
+<script lang="ts">
+	import type { Snippet } from "svelte";
+	import type { Attachment } from "svelte/attachments";
+	import type { HTMLInputAttributes } from "svelte/elements";
+
+	interface Props extends HTMLInputAttributes {
+		value?: string | null;
+		variant?: "base" | "ghost";
+		prefixChild?: Snippet<[{ focused: boolean }]>;
+		suffixChild?: Snippet<[{ focused: boolean }]>;
+		prefixDecorative?: boolean;
+		suffixDecorative?: boolean;
+	}
+
+	let focused = $state(false);
+
+	const hooksAttachment: Attachment<HTMLInputElement> = (input) => {
+		const handleFocus = (event: FocusEvent) => {
+			if (event.target === input) {
+				focused = true;
+			}
+		};
+
+		const handleBlur = (event: FocusEvent) => {
+			if (event.target === input) {
+				focused = false;
+			}
+		};
+
+		input.addEventListener("focus", handleFocus);
+		input.addEventListener("blur", handleBlur);
+
+		return () => {
+			input.removeEventListener("focus", handleFocus);
+			input.removeEventListener("blur", handleBlur);
+		};
+	};
+
+	let {
+		value = $bindable(""),
+		variant = "base",
+		required = true,
+		prefixChild,
+		suffixChild,
+		prefixDecorative = true,
+		suffixDecorative = true,
+		placeholder,
+		pattern,
+		class: className,
+		...rest
+	}: Props = $props();
+</script>
+
+<div
+	class={[
+		"inset-shadow-sm inset-shadow-black/25 focus-within:outline-1 focus-within:outline-primary",
+		`input-${variant}`,
+		className,
+	]}
+>
+	{#if prefixChild}
+		<div class={["user-select-none h-full", prefixDecorative && "pointer-events-none"]}>
+			{@render prefixChild({ focused: focused })}
+		</div>
+	{/if}
+	<input
+		type="text"
+		class="outline-none"
+		{placeholder}
+		bind:value
+		{...rest}
+		{@attach hooksAttachment}
+	/>
+	{#if suffixChild}
+		<div class={["user-select-none h-full", suffixDecorative && "pointer-events-none"]}>
+			{@render suffixChild({ focused: focused })}
+		</div>
+	{/if}
+</div>
+
+<style>
+	@layer components {
+		div {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			border-radius: var(--radius-theme);
+			background-color: var(--color-base-300);
+
+			& > input {
+				text-align: inherit;
+				display: block;
+				width: 100%;
+				padding: calc(var(--spacing) * 2) calc(var(--spacing));
+			}
+
+			&.input-ghost {
+				background-color: transparent;
+				box-shadow: none;
+
+				&:has(input:not(:disabled):not([disabled])):hover {
+					background-color: rgb(from var(--color-base-300) r g b / 50%);
+				}
+			}
+		}
+
+		input {
+			transition: all 50ms linear;
+
+			&:disabled,
+			&[disabled] {
+				cursor: not-allowed;
+				opacity: 0.5;
+			}
+		}
+	}
+</style>
