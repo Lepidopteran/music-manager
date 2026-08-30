@@ -1,59 +1,15 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"extends": "@tsconfig/svelte/tsconfig.json",
+	"extends": "../dist/tsconfig.json",
 	"compilerOptions": {
-		"target": "ESNext",
-		"useDefineForClassFields": true,
-		"module": "ESNext",
-		"resolveJsonModule": true,
-		/**
-		 * Typecheck JS in `.svelte` and `.js` files by default.
-		 * Disable checkJs if you'd like to use dynamic types in JS.
-		 * Note that setting allowJs false does not prevent the use
-		 * of JS in `.svelte` files.
-		 */
+		"rewriteRelativeImportExtensions": true,
 		"allowJs": true,
 		"checkJs": true,
-		"isolatedModules": true,
-		"moduleDetection": "force",
-		"baseUrl": ".",
-		"paths": {
-			"@api/*": [
-				"src/api/*"
-			],
-			"@state": [
-				"src/state.ts"
-			],
-			"@attachments/*": [
-				"src/attachments/*"
-			],
-			"@assets/*": [
-				"src/assets/*"
-			],
-			"@components/*": [
-				"src/components/*"
-			],
-			"@lib/*": [
-				"src/lib/*"
-			],
-			"@pages/*": [
-				"src/pages/*"
-			],
-			"@utils/*": [
-				"src/utils/*"
-			]
-		}
-	},
-	"include": [
-		".muusik/*.ts",
-		"src/**/*.ts",
-		"src/**/*.js",
-		"src/**/*.svelte",
-		"src/*.svelte"
-	],
-	"references": [
-		{
-			"path": "./tsconfig.node.json"
-		}
-	]
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"moduleResolution": "bundler"
+	}
 }

@@ -1,13 +1,6 @@
 <script lang="ts">
-	import Button from "@components/Button.svelte";
-	import Icon from "@components/Icon.svelte";
-	import Logo from "@components/Logo.svelte";
-	import Editor from "@components/music/Editor.svelte";
-	import { Pane, PaneGroup, PaneResizer } from "paneforge";
-	import { prefersReducedMotion } from "svelte/motion";
-	import { fade } from "svelte/transition";
-
-	import { onSmallScreen } from "@utils/screen";
+	import "./layout.css";
+	import favicon from "@lib/assets/favicon.svg";
 
 	import {
 		GroupedSongs,
@@ -25,21 +18,19 @@
 	} from "@state";
 
 	import { getSongs } from "@api/song";
-	import Breadcrumbs from "@components/Breadcrumbs.svelte";
-	import Redirect from "@components/routing/Redirect.svelte";
+	import Icon from "@components/Icon.svelte";
+	import Logo from "@components/Logo.svelte";
+	import Editor from "@components/music/Editor.svelte";
 	import type { Song } from "@lib/models";
-	import {
-		buildPath,
-		type ResolvedRoute,
-		type Route,
-		Router,
-	} from "@lib/router";
+	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWebWorker } from "@lib/workers";
-	import Albums from "@pages/Albums.svelte";
-	import Settings from "@pages/Settings.svelte";
 	import { watch } from "@utils/reactivity/watch.svelte";
+	import { onSmallScreen } from "@utils/screen";
+	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { onMount } from "svelte";
+	import { prefersReducedMotion } from "svelte/motion";
 	import { SvelteMap, SvelteSet } from "svelte/reactivity";
+	import { fade } from "svelte/transition";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
@@ -178,24 +169,6 @@
 
 	const routeState = new RouteState();
 	const { current: currentRoute, routes } = $derived(routeState);
-	const parentRoutes = $derived.by(() => {
-		const { current } = routeState;
-		if (!current) {
-			return [];
-		}
-
-		const routes: Array<Route<RouteMetadata>> = [];
-		let route = current.parent();
-
-		while (route) {
-			routes.push(route);
-			route = route.parent();
-		}
-
-		return routes.reverse();
-	});
-
-	setRouteManager(routeState);
 
 	const pages: Array<Route<PageMetadata>> = $derived(
 		routes.filter(route => route.metadata?.kind === "page") as Array<
@@ -235,61 +208,16 @@
 			songs.set(id, song);
 		}
 	});
+	let { children } = $props();
 </script>
 
-<svelte:window
-	onpopstate={() => routeState.goTo(window.location.pathname, false)}
-	onkeydown={(event) => {
-		pressedKeys.add(event.key.toLowerCase());
-	}}
-	onkeyup={(event) => {
-		pressedKeys.delete(event.key.toLowerCase());
-	}}
-	onblur={() => {
-		pressedKeys.clear();
-	}}
-	onvisibilitychange={() => {
-		if (document.hidden) {
-			pressedKeys.clear();
-		}
-	}}
-/>
-
+<svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <div class="p-1 grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full gap-2">
 	<header
 		class="col-start-2 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-4 shadow-lg bg-base border-b border-base-content/10 rounded-b-theme inset-shadow-xs inset-shadow-highlight/25 z-10"
 		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
 	>
-		<div class="flex items-center gap-2">
-			{#if currentRoute}
-				<Breadcrumbs data={[...parentRoutes, currentRoute]} class="text-lg">
-					{#snippet crumb({ item, index })}
-						{@const param = item.path.split("/").filter(Boolean)[index]
-						.replace(/\{\}|\:/g, "")}
-						{@const path = item.metadata?.kind === "page" ? item.metadata.name : item.path}
-						{#if index < parentRoutes.length}
-							<a
-								class="decoration-primary underline"
-								href={buildPath(
-									currentRoute?.resolvedPath.split("/").filter(Boolean).slice(0, index + 1)
-										|| [],
-								)}
-								onclick={(event) => {
-									event.preventDefault();
-									routeState.goTo(
-										(event.target as HTMLAnchorElement).getAttribute("href") as string,
-									);
-								}}
-							>{path}</a>
-						{:else}
-							<span class={[parentRoutes.length > 0 && "font-semibold"]}>{
-								currentRoute?.params[param] || path
-							}</span>
-						{/if}
-					{/snippet}
-				</Breadcrumbs>
-			{/if}
-		</div>
+		<div class="flex items-center gap-2"></div>
 		<div class="flex gap-4"></div>
 		<div class="flex gap-4"></div>
 	</header>
@@ -365,9 +293,7 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
-				<Settings />
-				<Redirect path="/" redirectTo="/albums" />
-				<Albums />
+				{@render children()}
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
 				<div
@@ -444,3 +370,4 @@
 		}
 	}
 </style>
+{@render children()}

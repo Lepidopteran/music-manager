@@ -1,5 +1,4 @@
 import { icons as mingcute } from "@iconify-json/mingcute";
-import type metadata from "@iconify-json/mingcute/metadata.json";
 import { getIconData, IconifyIcon, parseIconSet } from "@iconify/utils";
 import path from "node:path";
 import { AST, parse } from "svelte/compiler";
@@ -9,7 +8,6 @@ import type { Plugin, ResolvedConfig } from "vite";
 const virtualModuleId = "virtual:icons";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
-type MingcuteCategories = typeof metadata.categories;
 function declaration(keys: Array<string>) {
 	return `declare module "${virtualModuleId}" {
 	import { IconifyIcon } from "@iconify/types";
@@ -94,13 +92,10 @@ export default function iconsPlugin(): Plugin {
 		},
 
 		async buildStart() {
-			const { icons, metadata } = await import("@iconify-json/mingcute");
-			const { categories } = metadata;
-
-			const { Zodiac: _zodiac, Crypto: _crypto, ...included } = categories as MingcuteCategories;
+			const { icons } = await import("@iconify-json/mingcute");
 
 			parseIconSet(icons, (name) => {
-				if (name.endsWith("-line") || Object.values(included).every((category) => !category.includes(name))) {
+				if (name.endsWith("-line")) {
 					return;
 				}
 
