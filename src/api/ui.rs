@@ -8,7 +8,7 @@ use axum::{
 use rust_embed::Embed;
 
 #[derive(Embed)]
-#[folder = "dist/"]
+#[folder = "frontend/build/"]
 struct Asset;
 
 pub fn router() -> Router {

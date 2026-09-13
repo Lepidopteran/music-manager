@@ -10,16 +10,15 @@ fn main() {
 }
 
 fn build_frontend() -> Result<(), String> {
-
     let status = Command::new("pnpm")
         .arg("run")
         .arg("build")
+        .arg("--emptyOutDir")
         .current_dir("frontend")
         .status()
         .map_err(|err| format!("Failed to execute build command: {err}"))?;
 
     if !status.success() {
-
         let status = Command::new("pnpm")
             .arg("install")
             .current_dir("frontend")
@@ -33,6 +32,7 @@ fn build_frontend() -> Result<(), String> {
         let status = Command::new("pnpm")
             .arg("run")
             .arg("build")
+            .arg("--emptyOutDir")
             .current_dir("frontend")
             .status()
             .map_err(|err| format!("Failed to execute build command: {err}"))?;
@@ -40,7 +40,6 @@ fn build_frontend() -> Result<(), String> {
         if !status.success() {
             return Err("Failed to build frontend".into());
         }
-
     }
 
     Ok(())

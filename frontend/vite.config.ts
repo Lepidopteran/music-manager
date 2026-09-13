@@ -20,16 +20,10 @@ export default defineConfig({
 				"@pages/*": "src/pages/*",
 				"@utils/*": "src/utils/*",
 			},
-			typescript: {
-				config: config => {
-					config.include.push("../.muusik/*.ts");
-				},
-			},
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) => filename.split(/[/\\]/).includes("node_modules") ? undefined : true,
 			},
-			outDir: "../dist",
 			adapter: adapter({
 				fallback: "index.html",
 			}),
