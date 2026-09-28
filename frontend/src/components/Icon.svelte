@@ -38,7 +38,12 @@
 		height: size,
 	})}
 
-	<svg {...renderData.attributes} class={[className]} {...rest}>
+	<svg
+		{...renderData.attributes}
+		class={[className]}
+		data-icon={name}
+		{...rest}
+	>
 		{@html renderData.body}
 	</svg>
 {/await}
