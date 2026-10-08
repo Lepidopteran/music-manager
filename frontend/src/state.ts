@@ -1,13 +1,11 @@
 import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
 import type { Song } from "@lib/models";
-import type { ResolvedRoute, Route, Router } from "@lib/router";
 import { createContext } from "svelte";
 import type { Icon } from "virtual:icons";
 
 type Songs = Map<string, Song>;
 
 export const [groupManager, setGroupManager] = createContext<GroupManager>();
-export const [routeManager, setRouteManager] = createContext<RouteManager>();
 export const [songs, setSongs] = createContext<Songs>();
 export const [editedSongs, setEditedSongs] = createContext<Songs>();
 export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
@@ -15,30 +13,6 @@ export const [pressedKeys, setPressedKeys] = createContext<Set<string>>();
 
 export interface NavigationUIOptions {
 	position: "top" | "bottom";
-}
-
-export interface PageMetadata {
-	name: string;
-	hideHeader?: boolean;
-	hideNavigation?: boolean;
-	displayEditor?: boolean;
-	navigation?: NavigationUIOptions | boolean;
-	icon?: Icon;
-}
-
-export interface RedirectMetadata {
-	redirectTo: string;
-}
-
-export type RouteMetadata =
-	| { kind: "page" } & PageMetadata
-	| { kind: "redirect" } & RedirectMetadata;
-
-export interface RouteManager {
-	router: Router<RouteMetadata>;
-	routes: Array<Route<RouteMetadata>>;
-	current?: ResolvedRoute<RouteMetadata>;
-	goTo: (path: string, addToHistory?: boolean) => void;
 }
 
 /**

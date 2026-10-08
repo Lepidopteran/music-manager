@@ -3,11 +3,9 @@
 	import GridList from "@components/GridList.svelte";
 	import CoverView from "@components/music/CoverView.svelte";
 	import PrevPage from "@components/navigation/PrevPage.svelte";
-	import Page from "@components/routing/Page.svelte";
 	import {
 		editedSongs,
 		groupManager,
-		routeManager,
 		selectedSongs,
 	} from "@state";
 	import { onMount } from "svelte";
@@ -17,7 +15,6 @@
 	const selected = selectedSongs();
 	const edited = editedSongs();
 
-	let page: ReturnType<typeof Page>;
 	let selectedAlbums = new SvelteSet();
 
 	let gridList: ReturnType<typeof GridList>;
