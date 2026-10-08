@@ -2,17 +2,17 @@
 	import "./layout.css";
 	import favicon from "@lib/assets/favicon.svg";
 
+	import type { Icon as IconType } from "virtual:icons";
+
+	import { page as currentPage } from "$app/state";
+
 	import {
 		GroupedSongs,
 		type GroupKey,
 		type GroupManager,
-		type PageMetadata,
-		type RouteManager,
-		type RouteMetadata,
 		setEditedSongs,
 		setGroupManager,
 		setPressedKeys,
-		setRouteManager,
 		setSelectedSongs,
 		setSongs,
 	} from "@state";
@@ -22,7 +22,6 @@
 	import Logo from "@components/Logo.svelte";
 	import Editor from "@components/music/Editor.svelte";
 	import type { Song } from "@lib/models";
-	import { type ResolvedRoute, type Route, Router } from "@lib/router";
 	import { GroupWebWorker } from "@lib/workers";
 	import { watch } from "@utils/reactivity/watch.svelte";
 	import { onSmallScreen } from "@utils/screen";
@@ -110,78 +109,27 @@
 
 	setGroupManager(groupManager);
 
-	class RouteState implements RouteManager {
-		#routes: Array<Route<RouteMetadata>> = $state([]);
-		#current: ResolvedRoute<RouteMetadata> | undefined = $state();
-		router = new Router<RouteMetadata>([], {
-			onRoutesUpdated: (router) => this.#routes = router.routes,
-		});
+	const topNavigation: Page[] = [
+		{
+			name: "Albums",
+			displayEditor: true,
+			path: "/albums",
+			icon: "album_2",
+		},
+	];
 
-		constructor() {
-			$effect(() => {
-				const { pathname } = window.location;
-				if (this.#current !== undefined || !this.router.hasRoute(pathname)) {
-					return;
-				}
-
-				this.goTo(pathname);
-			});
-		}
-
-		goTo(path: string, addToHistory = true): void {
-			const resolvedRoute = this.router.resolve(path);
-			if (!resolvedRoute || resolvedRoute.path === this.#current?.path) {
-				return;
-			}
-
-			if (resolvedRoute.metadata?.kind === "redirect") {
-				return this.goTo(
-					resolvedRoute.metadata.redirectTo,
-					addToHistory,
-				);
-			}
-
-			if (addToHistory) {
-				window.history.pushState(
-					{ previousPath: this.#current?.resolvedPath },
-					"",
-					path,
-				);
-			} else {
-				window.history.replaceState(
-					{ previousPath: window.history.state.previousPath || null },
-					"",
-					path,
-				);
-			}
-
-			this.#current = resolvedRoute;
-		}
-
-		get current() {
-			return this.#current;
-		}
-
-		get routes() {
-			return this.#routes;
-		}
-	}
-
-	const routeState = new RouteState();
-	const { current: currentRoute, routes } = $derived(routeState);
-
-	const pages: Array<Route<PageMetadata>> = $derived(
-		routes.filter(route => route.metadata?.kind === "page") as Array<
-			Route<
-				PageMetadata
-			>
-		>,
-	);
+	const bottomNavigation: Page[] = [
+		{
+			name: "Settings",
+			path: "/settings",
+			icon: "settings_3",
+		},
+	];
 
 	let editorPane: ReturnType<typeof Pane> | null = $state(null);
 	let editorEnabled = $derived(
-		routeState.current?.metadata?.kind === "page"
-				&& routeState.current?.metadata?.displayEditor || false,
+		topNavigation.find(item => currentPage.url.pathname.startsWith(item.path))
+			?.displayEditor,
 	);
 
 	$effect(() => {
@@ -208,15 +156,22 @@
 			songs.set(id, song);
 		}
 	});
+
 	let { children } = $props();
+
+	type Page = {
+		name: string;
+		path: string;
+		hideHeader?: boolean;
+		hideNavigation?: boolean;
+		displayEditor?: boolean;
+		icon: IconType;
+	};
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <div class="p-1 grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] overflow-hidden h-full gap-2">
-	<header
-		class="col-start-2 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-4 shadow-lg bg-base border-b border-base-content/10 rounded-b-theme inset-shadow-xs inset-shadow-highlight/25 z-10"
-		hidden={currentRoute?.metadata?.kind === "page" && currentRoute?.metadata?.hideHeader}
-	>
+	<header class="col-start-2 col-end-3 row-start-1 h-14 flex gap-4 justify-between items-center px-4 shadow-lg bg-base border-b border-base-content/10 rounded-b-theme inset-shadow-xs inset-shadow-highlight/25 z-10">
 		<div class="flex items-center gap-2"></div>
 		<div class="flex gap-4"></div>
 		<div class="flex gap-4"></div>
@@ -233,56 +188,36 @@
 				<Logo class="p-1" /> Muusik
 			</h1>
 		</div>
-		{#snippet item(route: Route<PageMetadata>)}
-			{@const { metadata: { name, icon } = {}, path } = route}
+		{#snippet menuItem(item: Page)}
+			{@const { name, path, icon } = item}
 			<li>
 				<a
 					href={path as string}
-					onclick={(event) => {
-						event.preventDefault();
-						routeState.goTo(
-							(event.target as HTMLAnchorElement).getAttribute("href") as string,
-						);
-					}}
 					class={[
 						"font-semibold px-4 flex border-base-content/10 border border-l-0 items-center gap-3 py-2 transition hover:bg-primary/10 inset-shadow-sm hover:text-primary rounded-r-theme-xl",
-						currentRoute?.path === path
-							|| route.children().some(child => child.path === currentRoute?.path)
+						currentPage.url.pathname === path || currentPage.url.pathname.startsWith(
+								path,
+							)
 							? "text-primary bg-primary/20 inset-shadow-shade/50"
 							: "inset-shadow-highlight/25",
 					]}
 				>
-					{#if icon}
-						<Icon name={icon} size="1.25em" />
-					{/if}
+					<Icon name={icon} size="1.25em" />
 					{name}
 				</a>
 			</li>
 		{/snippet}
 		<nav class="flex flex-col gap-2">
 			<ul>
-				{#each pages.filter(page =>
-					page.metadata?.navigation !== undefined
-						&& typeof page.metadata?.navigation !== "boolean"
-						&& page.metadata?.navigation.position === "top"
-					|| page.metadata?.navigation === true
-				) as route}
-					{@render item(route)}
+				{#each topNavigation as page}
+					{@render menuItem(page)}
 				{/each}
 			</ul>
 		</nav>
-		<nav
-			class="h-full py-4 flex flex-col"
-			hidden={currentRoute?.metadata?.kind === "page"
-			&& currentRoute?.metadata?.hideNavigation}
-		>
+		<nav class="h-full py-4 flex flex-col">
 			<ul class="mt-auto">
-				{#each pages.filter(page =>
-					page.metadata?.navigation !== undefined
-					&& typeof page.metadata?.navigation !== "boolean"
-					&& page.metadata?.navigation.position === "bottom"
-				) as route}
-					{@render item(route)}
+				{#each bottomNavigation as page}
+					{@render menuItem(page)}
 				{/each}
 			</ul>
 		</nav>
@@ -370,4 +305,3 @@
 		}
 	}
 </style>
-{@render children()}
