@@ -6,16 +6,12 @@
 		getJobs,
 		getJobStates,
 		queueJob,
-	} from "@api/jobs";
-	import Button from "@components/Button.svelte";
-	import Icon from "@components/Icon.svelte";
-	import Progress from "@components/Progress.svelte";
-	import type {
-		JobExecutionReport,
-		JobState,
-		RegistryJob,
-	} from "@lib/bindings/bindings";
-	import { addSourceEventListener } from "@utils/api";
+	} from "#api/jobs";
+	import type { JobExecutionReport, JobState, RegistryJob } from "#bindings";
+	import Button from "#components/Button.svelte";
+	import Icon from "#components/Icon.svelte";
+	import Progress from "#components/Progress.svelte";
+	import { addSourceEventListener } from "#utils/api";
 	import { onMount } from "svelte";
 	import { SvelteMap } from "svelte/reactivity";
 	import { match } from "ts-pattern";

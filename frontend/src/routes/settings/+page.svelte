@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Icon from "@components/Icon.svelte";
+	import Icon from "#components/Icon.svelte";
 	import { type Icon as IconType } from "virtual:icons";
 
 	type SettingsPage = {

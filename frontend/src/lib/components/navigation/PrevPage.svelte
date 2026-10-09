@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import Button from "@components/Button.svelte";
-	import Icon from "@components/Icon.svelte";
+	import Button from "#components/Button.svelte";
+	import Icon from "#components/Icon.svelte";
 
 	const navigationPath = $derived(
 		page.url.pathname.split("/").filter(Boolean) ?? [],

@@ -1,20 +1,20 @@
 <script lang="ts">
-	import type { Directory } from "@lib/bindings/Directory";
-	import type { NewDirectory } from "@lib/bindings/NewDirectory";
-	import type { PageData, PageProps } from "./$types";
+	import type { Directory } from "#bindings/Directory";
+	import type { NewDirectory } from "#bindings/NewDirectory";
+	import type { PageProps } from "./$types";
 
-	import Button from "@components/Button.svelte";
-	import Modal from "@components/Modal.svelte";
-	import TextInput from "@components/TextInput.svelte";
-	import { formatBytes } from "@utils/bytes";
+	import Button from "#components/Button.svelte";
+	import Modal from "#components/Modal.svelte";
+	import TextInput from "#components/TextInput.svelte";
+	import { formatBytes } from "#utils/bytes";
 	import { onMount } from "svelte";
 
-	import { createDirectory, deleteDirectory } from "@api/directory";
-	import ServerDirectory from "@components/input/ServerDirectory.svelte";
-	import Table from "@components/table/Table.svelte";
+	import { createDirectory, deleteDirectory } from "#api/directory";
+	import ServerDirectory from "#components/input/ServerDirectory.svelte";
+	import Table from "#components/table/Table.svelte";
 
-	import Icon from "@components/Icon.svelte";
-	import { onMediumScreen } from "@utils/screen";
+	import Icon from "#components/Icon.svelte";
+	import { onMediumScreen } from "#utils/screen";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -59,7 +59,7 @@
 		}
 	}
 
-	let { data, params }: PageData = $props();
+	let { data }: PageProps = $props();
 
 	onMount(() => {
 		directories = data.directories;

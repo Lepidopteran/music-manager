@@ -10,21 +10,6 @@ export default defineConfig({
 		bundleIcons(),
 		tailwindcss(),
 		sveltekit({
-			alias: {
-				"@api/*": "src/api/*",
-				"@state": "src/state.ts",
-				"@attachments/*": "src/attachments/*",
-				"@assets/*": "src/assets/*",
-				"@components/*": "src/components/*",
-				"@lib/*": "src/lib/*",
-				"@pages/*": "src/pages/*",
-				"@utils/*": "src/utils/*",
-			},
-			typescript: {
-				config: config => {
-					config.include.push("../.muusik/*.ts");
-				},
-			},
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) => filename.split(/[/\\]/).includes("node_modules") ? undefined : true,

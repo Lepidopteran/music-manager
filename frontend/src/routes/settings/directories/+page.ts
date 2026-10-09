@@ -1,6 +1,7 @@
-import { getDirectories } from "@api/directory";
-import type { PageData } from "../../$types";
+import { getDirectories } from "#api/directory";
+import type { PageLoad } from "./$types";
 
-export const load: PageData = async () => {
-	return { directories: await getDirectories() };
+export const load: PageLoad = async () => {
+	const directories = await getDirectories();
+	return { directories };
 };

@@ -1,7 +1,6 @@
-import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
-import type { Song } from "@lib/models";
+import type { DatabaseSong } from "#bindings/DatabaseSong";
+import type { Song } from "#lib/models.ts";
 import { createContext } from "svelte";
-import type { Icon } from "virtual:icons";
 
 type Songs = Map<string, Song>;
 

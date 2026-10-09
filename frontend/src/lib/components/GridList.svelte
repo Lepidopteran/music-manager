@@ -1,8 +1,8 @@
 <script lang="ts" generics="T">
-	import { attributeChanged } from "@attachments/mutation";
-	import { resizeOccurred } from "@attachments/resize";
-	import { pressedKeys } from "@state";
-	import { watch } from "@utils/reactivity/watch.svelte";
+	import { attributeChanged } from "#attachments/mutation";
+	import { resizeOccurred } from "#attachments/resize";
+	import { pressedKeys } from "#lib/state.ts";
+	import { watch } from "#utils/reactivity/watch.svelte";
 	import { onMount, type Snippet, untrack } from "svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";
 	import { prefersReducedMotion } from "svelte/motion";

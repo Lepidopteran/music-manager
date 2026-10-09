@@ -1,10 +1,10 @@
 <script lang="ts">
-	import GridList from "@components/GridList.svelte";
-	import CoverView from "@components/music/CoverView.svelte";
+	import GridList from "#components/GridList.svelte";
+	import CoverView from "#components/music/CoverView.svelte";
 
 	import type { PageProps } from "./$types";
 
-	import { editedSongs, groupManager, selectedSongs } from "@state";
+	import { editedSongs, groupManager, selectedSongs } from "#lib/state.ts";
 
 	const selected = selectedSongs();
 	const groupState = groupManager();

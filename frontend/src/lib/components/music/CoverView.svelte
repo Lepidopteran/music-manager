@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Image from "@components/Image.svelte";
+	import Image from "#components/Image.svelte";
 	import type { ClassValue } from "svelte/elements";
 	import MissingCover from "./MissingCover.svelte";
 

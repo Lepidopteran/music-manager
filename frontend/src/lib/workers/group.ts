@@ -1,5 +1,5 @@
-import type { DatabaseSong } from "@lib/bindings/DatabaseSong";
-import type { Song } from "@lib/models";
+import type { DatabaseSong } from "#bindings/DatabaseSong";
+import type { Song } from "#lib/models.ts";
 import { sendMessage } from "./utils";
 
 type GroupKey = keyof DatabaseSong;

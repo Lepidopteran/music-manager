@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { watch } from "@utils/reactivity/watch.svelte";
+	import { watch } from "#utils/reactivity/watch.svelte";
 	import type { ClassValue } from "svelte/elements";
 
 	let failedToLoad = $state(false);

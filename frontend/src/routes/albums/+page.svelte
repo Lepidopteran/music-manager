@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import GridList from "@components/GridList.svelte";
-	import CoverView from "@components/music/CoverView.svelte";
-	import PrevPage from "@components/navigation/PrevPage.svelte";
+	import GridList from "#components/GridList.svelte";
+	import CoverView from "#components/music/CoverView.svelte";
+	import PrevPage from "#components/navigation/PrevPage.svelte";
 	import {
 		editedSongs,
 		groupManager,
 		selectedSongs,
-	} from "@state";
+	} from "#lib/state.ts";
 	import { onMount } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
 

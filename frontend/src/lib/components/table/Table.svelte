@@ -6,7 +6,7 @@
 		type TableOptions,
 	} from "@tanstack/table-core";
 
-	import Checkbox from "@components/Checkbox.svelte";
+	import Checkbox from "#components/Checkbox.svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";
 	import { SvelteSet } from "svelte/reactivity";
 	import CellContent from "./CellContent.svelte";

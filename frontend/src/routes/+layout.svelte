@@ -1,6 +1,6 @@
 <script lang="ts">
 	import "./layout.css";
-	import favicon from "@lib/assets/favicon.svg";
+	import favicon from "#assets/favicon.svg";
 
 	import type { Icon as IconType } from "virtual:icons";
 
@@ -15,16 +15,16 @@
 		setPressedKeys,
 		setSelectedSongs,
 		setSongs,
-	} from "@state";
+	} from "#lib/state.ts";
 
-	import { getSongs } from "@api/song";
-	import Icon from "@components/Icon.svelte";
-	import Logo from "@components/Logo.svelte";
-	import Editor from "@components/music/Editor.svelte";
-	import type { Song } from "@lib/models";
-	import { GroupWebWorker } from "@lib/workers";
-	import { watch } from "@utils/reactivity/watch.svelte";
-	import { onSmallScreen } from "@utils/screen";
+	import { getSongs } from "#api/song";
+	import Icon from "#components/Icon.svelte";
+	import Logo from "#components/Logo.svelte";
+	import Editor from "#components/music/Editor.svelte";
+	import type { Song } from "#lib/models.ts";
+	import { GroupWebWorker } from "#lib/workers/index.ts";
+	import { watch } from "#utils/reactivity/watch.svelte";
+	import { onSmallScreen } from "#utils/screen";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { onMount } from "svelte";
 	import { prefersReducedMotion } from "svelte/motion";

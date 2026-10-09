@@ -1,12 +1,12 @@
 <script lang="ts">
-	import Icon from "@components/Icon.svelte";
-	import Image from "@components/Image.svelte";
-	import TextInput from "@components/TextInput.svelte";
+	import Icon from "#components/Icon.svelte";
+	import Image from "#components/Image.svelte";
+	import TextInput from "#components/TextInput.svelte";
 
-	import Stack from "@components/stack/Stack.svelte";
-	import StackItem from "@components/stack/StackItem.svelte";
-	import type { Song } from "@lib/models";
-	import { editedSongs, selectedSongs, songs } from "@state";
+	import Stack from "#components/stack/Stack.svelte";
+	import StackItem from "#components/stack/StackItem.svelte";
+	import type { Song } from "#lib/models.ts";
+	import { editedSongs, selectedSongs, songs } from "#lib/state.ts";
 	import { SvelteSet } from "svelte/reactivity";
 	import CoverView from "./CoverView.svelte";
 
