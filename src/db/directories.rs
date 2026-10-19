@@ -1,7 +1,7 @@
 use axum::response::IntoResponse;
 use hyper::StatusCode;
 
-use super::{Directory, NewDirectory, Result, Connection};
+use super::{Connection, Directory, NewDirectory, Result};
 
 #[derive(thiserror::Error, Debug)]
 pub enum DatabaseDirectoryError {
@@ -103,10 +103,7 @@ pub async fn add_directory(
     })
 }
 
-pub async fn remove_directory(
-    connection: &mut Connection,
-    name: String,
-) -> Result<()> {
+pub async fn remove_directory(connection: &mut Connection, name: String) -> Result<()> {
     if name.trim().is_empty() {
         return Err(DatabaseDirectoryError::NameEmpty.into());
     }
@@ -127,9 +124,7 @@ pub async fn remove_directory(
     }
 }
 
-pub async fn get_directories(
-    connection: &mut Connection,
-) -> Result<Vec<Directory>> {
+pub async fn get_directories(connection: &mut Connection) -> Result<Vec<Directory>> {
     let directories = sqlx::query_as!(Directory, "SELECT * FROM directories")
         .fetch_all(&mut *connection)
         .await?;

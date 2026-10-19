@@ -7,7 +7,7 @@ use sqlx::{query, query_as, query_scalar};
 use time::OffsetDateTime;
 
 use super::{
-    Album, Connection, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories,
+    Connection, DatabaseError, Directory, NewSong, Result, Song, UpdatedSong, directories,
 };
 
 #[non_exhaustive]
@@ -189,35 +189,4 @@ pub async fn update_song_path(
     }
 
     Ok(())
-}
-
-pub async fn get_album(connection: &mut Connection, title: String) -> Result<Album> {
-    let tracks = query_as!(Song, "SELECT * FROM songs WHERE album = ?", title)
-        .fetch_all(&mut *connection)
-        .await?;
-
-    if tracks.is_empty() {
-        return Err(DatabaseSongError::AlbumNotFound.into());
-    }
-
-    let album = Album::from(tracks);
-
-    Ok(album)
-}
-
-pub async fn get_albums(connection: &mut Connection) -> Result<Vec<Album>> {
-    let tracks = query_as!(Song, "SELECT * FROM songs WHERE album IS NOT NULL")
-        .fetch_all(&mut *connection)
-        .await?;
-
-    let mut album_map: HashMap<String, Vec<Song>> = HashMap::new();
-
-    for track in tracks {
-        album_map
-            .entry(track.album.clone().expect("Album not found"))
-            .or_default()
-            .push(track);
-    }
-
-    Ok(album_map.into_values().map(Album::from).collect())
 }
