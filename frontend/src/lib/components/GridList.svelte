@@ -1,7 +1,7 @@
 <script lang="ts" generics="T">
 	import { attributeChanged } from "#attachments/mutation";
 	import { resizeOccurred } from "#attachments/resize";
-	import { pressedKeys } from "#lib/state.ts";
+	import { pressedKeys } from "#lib/state/input.svelte.ts";
 	import { watch } from "#utils/reactivity/watch.svelte";
 	import { onMount, type Snippet, untrack } from "svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";
@@ -9,8 +9,6 @@
 	import { SvelteSet } from "svelte/reactivity";
 
 	const uuid = $props.id();
-
-	const keyContext = pressedKeys();
 
 	interface Props {
 		id?: string;
@@ -299,8 +297,6 @@
 		return rows;
 	});
 
-	const keys = pressedKeys();
-
 	onMount(() => {
 		styleDeclaration = getComputedStyle(gridElement);
 		containerWidth = gridElement.offsetWidth;
@@ -387,7 +383,7 @@
 					onclick={(_) => {
 						moveToIndex(index);
 						if (
-							!multiSelect || !keyContext.has("control")
+							!multiSelect || !pressedKeys.has("control")
 						) {
 							selected.clear();
 						}

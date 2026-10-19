@@ -6,7 +6,7 @@
 	import Stack from "#components/stack/Stack.svelte";
 	import StackItem from "#components/stack/StackItem.svelte";
 	import type { Song } from "#lib/models.ts";
-	import { editedSongs, selectedSongs, songs } from "#lib/state.ts";
+	import { app } from "#lib/state/app.svelte.ts";
 	import { SvelteSet } from "svelte/reactivity";
 	import CoverView from "./CoverView.svelte";
 
@@ -30,9 +30,9 @@
 			.replace(/^./, (str) => str.toUpperCase());
 	}
 
-	const all = songs();
-	const edited = editedSongs();
-	const selected = selectedSongs();
+	const all = $derived(app.songs);
+	const edited = $derived(app.editedSongs);
+	const selected = $derived(app.selectedSongs);
 
 	const songsWithNoCover: Set<string> = new SvelteSet();
 	const songsInSelection: Array<Song> = $derived(

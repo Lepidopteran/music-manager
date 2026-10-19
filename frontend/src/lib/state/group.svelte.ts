@@ -1,18 +1,9 @@
 import type { DatabaseSong } from "#bindings/DatabaseSong";
 import type { Song } from "#lib/models.ts";
-import { createContext } from "svelte";
-
-type Songs = Map<string, Song>;
-
-export const [groupManager, setGroupManager] = createContext<GroupManager>();
-export const [songs, setSongs] = createContext<Songs>();
-export const [editedSongs, setEditedSongs] = createContext<Songs>();
-export const [selectedSongs, setSelectedSongs] = createContext<Set<string>>();
-export const [pressedKeys, setPressedKeys] = createContext<Set<string>>();
-
-export interface NavigationUIOptions {
-	position: "top" | "bottom";
-}
+import { app } from "#lib/state/app.svelte.ts";
+import { watch } from "#lib/utils/reactivity/watch.svelte.ts";
+import { SvelteMap, SvelteSet } from "svelte/reactivity";
+import { GroupWebWorker } from "../workers";
 
 /**
  * Type for song group keys.
@@ -99,3 +90,66 @@ export class GroupedSongs {
 		return Object.values(this._groups);
 	}
 }
+
+export class SongGroupManager implements GroupManager {
+	#maxActiveWorkers: number = 3;
+	#tracked: SvelteSet<GroupKey> = new SvelteSet();
+	#workers: SvelteMap<GroupKey, GroupWebWorker> = new SvelteMap();
+	#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
+
+	constructor() {
+		$effect.root(() => {
+			watch(() => app.songs.size, () => this.#update());
+		});
+	}
+
+	#update() {
+		const trackedKeys = this.#tracked.values();
+
+		let groupKey = trackedKeys.next().value;
+		while (
+			this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined
+		) {
+			const worker = new GroupWebWorker();
+			worker.onMessage(event => {
+				const { grouped, key } = event.data;
+
+				this.#groups.set(key, new GroupedSongs(grouped));
+				this.#workers.delete(key);
+			});
+
+			worker.postMessage({
+				key: groupKey,
+				songs: $state.snapshot(app.songs.values().toArray()),
+			});
+
+			this.#workers.set(groupKey, worker);
+
+			groupKey = trackedKeys.next().value;
+		}
+	}
+
+	track(groupKey: GroupKey) {
+		this.#tracked.add(groupKey);
+		this.#update();
+	}
+
+	untrack(groupKey: GroupKey) {
+		this.#tracked.delete(groupKey);
+		this.#update();
+	}
+
+	get groups() {
+		return this.#groups;
+	}
+
+	get tracked() {
+		return this.#tracked.values().toArray();
+	}
+
+	get inProgress() {
+		return this.#workers.keys().toArray();
+	}
+}
+
+export const songGroups = new SongGroupManager();

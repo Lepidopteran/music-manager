@@ -1,45 +1,40 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
 	import GridList from "#components/GridList.svelte";
 	import CoverView from "#components/music/CoverView.svelte";
 	import PrevPage from "#components/navigation/PrevPage.svelte";
-	import {
-		editedSongs,
-		groupManager,
-		selectedSongs,
-	} from "#lib/state.ts";
+	import { app } from "#lib/state/app.svelte.ts";
+	import { songGroups } from "#lib/state/group.svelte.ts";
+	import { goto } from "$app/navigation";
 	import { onMount } from "svelte";
 	import { SvelteSet } from "svelte/reactivity";
 
-	const groupState = groupManager();
-	const selected = selectedSongs();
-	const edited = editedSongs();
+	const { selectedSongs, editedSongs } = $derived(app);
 
 	let selectedAlbums = new SvelteSet();
 
 	let gridList: ReturnType<typeof GridList>;
 
-	const albums = $derived(groupState.groups.get("album"));
+	const albums = $derived(songGroups.groups.get("album"));
 
 	$effect(() => {
-		selected.clear();
+		selectedSongs.clear();
 		for (const album of selectedAlbums) {
 			for (const song of albums!.get(album as string)!) {
-				selected.add(song.id);
+				selectedSongs.add(song.id);
 			}
 		}
 	});
 
 	onMount(() => {
-		if (!groupState.tracked.includes("album")) {
-			groupState.track("album");
+		if (!songGroups.tracked.includes("album")) {
+			songGroups.track("album");
 		}
 	});
 </script>
 
 <svelte:window />
 
-{#if groupState.groups.has("album") && groupState.groups.get("album")!.length() > 0}
+{#if songGroups.groups.has("album") && songGroups.groups.get("album")!.length() > 0}
 	<GridList
 		bind:this={gridList}
 		class={"m-2 gap-2 overflow-y-auto h-full"}
@@ -59,11 +54,11 @@
 				class="mb-1 rounded-theme shadow-lg shadow-shade/25 size-32 mx-auto"
 			/>
 			<div class="truncate text-center">
-				{edited.get(songs[0].id)?.album || album}
+				{editedSongs.get(songs[0].id)?.album || album}
 			</div>
 		{/snippet}
 	</GridList>
-{:else if groupState.inProgress.includes("album")}
+{:else if songGroups.inProgress.includes("album")}
 	<div class="h-full flex items-center justify-center">
 		<p class="text-sm text-current/50">Loading albums...</p>
 	</div>

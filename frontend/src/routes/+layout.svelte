@@ -6,108 +6,17 @@
 
 	import { page as currentPage } from "$app/state";
 
-	import {
-		GroupedSongs,
-		type GroupKey,
-		type GroupManager,
-		setEditedSongs,
-		setGroupManager,
-		setPressedKeys,
-		setSelectedSongs,
-		setSongs,
-	} from "#lib/state.ts";
-
-	import { getSongs } from "#api/song";
 	import Icon from "#components/Icon.svelte";
 	import Logo from "#components/Logo.svelte";
 	import Editor from "#components/music/Editor.svelte";
-	import type { Song } from "#lib/models.ts";
-	import { GroupWebWorker } from "#lib/workers/index.ts";
-	import { watch } from "#utils/reactivity/watch.svelte";
+	import { app } from "#lib/state/app.svelte.ts";
 	import { onSmallScreen } from "#utils/screen";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
-	import { onMount } from "svelte";
 	import { prefersReducedMotion } from "svelte/motion";
-	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 	import { fade } from "svelte/transition";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
-
-	const pressedKeys = new SvelteSet<string>();
-	setPressedKeys(pressedKeys);
-
-	const songs = new SvelteMap<string, Song>();
-	setSongs(songs);
-
-	const selectedSongs = new SvelteSet<string>();
-	setSelectedSongs(selectedSongs);
-
-	const editedSongs = new SvelteMap<string, Song>();
-	setEditedSongs(editedSongs);
-
-	class SongGroupManager implements GroupManager {
-		#maxActiveWorkers: number = 3;
-		#tracked: SvelteSet<GroupKey> = new SvelteSet();
-		#workers: SvelteMap<GroupKey, GroupWebWorker> = new SvelteMap();
-		#groups: SvelteMap<GroupKey, GroupedSongs> = new SvelteMap();
-
-		constructor() {
-			watch(() => songs.size, () => this.#update());
-		}
-
-		#update() {
-			const trackedKeys = this.#tracked.values();
-
-			let groupKey = trackedKeys.next().value;
-			while (
-				this.#workers.size < this.#maxActiveWorkers && groupKey !== undefined
-			) {
-				const worker = new GroupWebWorker();
-				worker.onMessage(event => {
-					const { grouped, key } = event.data;
-
-					this.#groups.set(key, new GroupedSongs(grouped));
-					this.#workers.delete(key);
-				});
-
-				worker.postMessage({
-					key: groupKey,
-					songs: $state.snapshot(songs.values().toArray()),
-				});
-
-				this.#workers.set(groupKey, worker);
-
-				groupKey = trackedKeys.next().value;
-			}
-		}
-
-		track(groupKey: GroupKey) {
-			this.#tracked.add(groupKey);
-			this.#update();
-		}
-
-		untrack(groupKey: GroupKey) {
-			this.#tracked.delete(groupKey);
-			this.#update();
-		}
-
-		get groups() {
-			return this.#groups;
-		}
-
-		get tracked() {
-			return this.#tracked.values().toArray();
-		}
-
-		get inProgress() {
-			return this.#workers.keys().toArray();
-		}
-	}
-
-	const groupManager = new SongGroupManager();
-
-	setGroupManager(groupManager);
 
 	const topNavigation: Page[] = [
 		{
@@ -144,16 +53,6 @@
 			editorPane.collapse();
 		} else {
 			editorPane.expand();
-		}
-	});
-
-	onMount(async () => {
-		for (
-			const [id, song] of (await getSongs()).map(song =>
-				[song.id, song as Song] as const
-			)
-		) {
-			songs.set(id, song);
 		}
 	});
 
@@ -281,7 +180,7 @@
 							onSmallScreen.current ? "rounded-t-theme-xl overflow-hidden" : "",
 						]}
 					>
-						{#if selectedSongs.size > 0}
+						{#if app.selectedSongs.size > 0}
 							<Editor />
 						{:else}
 							<div class="h-full flex items-center justify-center">

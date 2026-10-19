@@ -55,12 +55,12 @@
 	"imports": {
 		"#components/*": "./src/lib/components/*",
 		"#assets/*": "./src/lib/assets/*",
-		"#lib/*": "./src/lib/*",
 		"#api/*": "./src/lib/api/*.ts",
-		"#state": "./src/lib/state.ts",
+		"#state": "./src/lib/state/*.svelte.ts",
 		"#utils/*": "./src/lib/utils/*.ts",
 		"#attachments/*": "./src/lib/attachments/*.ts",
 		"#bindings/*": "./src/lib/bindings/*.ts",
-		"#bindings": "./src/lib/bindings/bindings.ts"
+		"#bindings": "./src/lib/bindings/bindings.ts",
+		"#lib/*": "./src/lib/*"
 	}
 }
