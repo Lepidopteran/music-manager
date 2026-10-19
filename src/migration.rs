@@ -20,6 +20,7 @@ static MIGRATOR: Migrator = sqlx::migrate!();
 
 type MigrationFn = fn(&SqlitePool) -> BoxFuture<'_, Result<()>>;
 
+mod add_reference_to_albums_in_songs;
 mod add_reference_to_directory_in_songs;
 mod add_uuid_to_songs;
 mod use_uuid_for_names_in_directories;
@@ -38,6 +39,7 @@ macro_rules! migration_map {
 }
 
 static MIGRATIONS: LazyLock<HashMap<i64, MigrationFn>> = migration_map! {
+    add_reference_to_albums_in_songs,
     add_uuid_to_songs,
     add_reference_to_directory_in_songs,
     use_uuid_for_names_in_directories

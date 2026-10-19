@@ -1,0 +1,254 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM albums WHERE title = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "artist",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "artist"
+          }
+        }
+      },
+      {
+        "name": "artist_sort",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "artist_sort"
+          }
+        }
+      },
+      {
+        "name": "artists",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "artists"
+          }
+        }
+      },
+      {
+        "name": "artists_sort",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "artists_sort"
+          }
+        }
+      },
+      {
+        "name": "original_release_date",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "original_release_date"
+          }
+        }
+      },
+      {
+        "name": "label",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "name": "barcode",
+        "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "barcode"
+          }
+        }
+      },
+      {
+        "name": "release_date",
+        "ordinal": 9,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "release_date"
+          }
+        }
+      },
+      {
+        "name": "disc_total",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "disc_total"
+          }
+        }
+      },
+      {
+        "name": "musicbrainz_release_id",
+        "ordinal": 11,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "musicbrainz_release_id"
+          }
+        }
+      },
+      {
+        "name": "musicbrainz_release_artist_id",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "musicbrainz_release_artist_id"
+          }
+        }
+      },
+      {
+        "name": "musicbrainz_release_group_id",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "musicbrainz_release_group_id"
+          }
+        }
+      },
+      {
+        "name": "script",
+        "ordinal": 14,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "script"
+          }
+        }
+      },
+      {
+        "name": "language",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "language"
+          }
+        }
+      },
+      {
+        "name": "replaygain_album_gain",
+        "ordinal": 16,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "replaygain_album_gain"
+          }
+        }
+      },
+      {
+        "name": "replaygain_album_peak",
+        "ordinal": 17,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "replaygain_album_peak"
+          }
+        }
+      },
+      {
+        "name": "added_at",
+        "ordinal": 18,
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "added_at"
+          }
+        }
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 19,
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "albums",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "63440337e3e719b853cf0c61c702f24a76273915ea0b0c1e5ee0f984bbd0a57a"
+}
