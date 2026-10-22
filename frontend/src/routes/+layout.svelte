@@ -4,12 +4,13 @@
 
 	import type { Icon as IconType } from "virtual:icons";
 
-	import { page as currentPage } from "$app/state";
+	import { page, page as currentPage } from "$app/state";
 
 	import Icon from "#components/Icon.svelte";
 	import Logo from "#components/Logo.svelte";
 	import Editor from "#components/music/Editor.svelte";
 	import { app } from "#lib/state/app.svelte.ts";
+	import PrevPage from "#components/navigation/PrevPage.svelte";
 	import { onSmallScreen } from "#utils/screen";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
@@ -127,6 +128,15 @@
 			autoSaveId="mainPane"
 		>
 			<Pane minSize={onSmallScreen.current ? 0 : 30}>
+				{#if page.url.pathname.split("/").filter(Boolean).length > 1}
+					<div
+						class="inline-block p-4"
+						in:scale={{ duration: prefersReducedMotion.current ? 0 : 200 }}
+					>
+						<PrevPage />
+					</div>
+				{/if}
+
 				{@render children()}
 			</Pane>
 			<PaneResizer disabled={!editorEnabled}>
