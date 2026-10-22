@@ -1,15 +1,16 @@
 import { icons as mingcute } from "@iconify-json/mingcute";
-import type metadata from "@iconify-json/mingcute/metadata.json";
-import { getIconData, IconifyIcon, parseIconSet } from "@iconify/utils";
+import { getIconData, type IconifyIcon, parseIconSet } from "@iconify/utils";
+import type { Node } from "estree";
 import path from "node:path";
-import { AST, parse } from "svelte/compiler";
+import { type AST, parse } from "svelte/compiler";
 import { match } from "ts-pattern";
 import type { Plugin, ResolvedConfig } from "vite";
+
+import { walk } from "zimmerframe";
 
 const virtualModuleId = "virtual:icons";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
-type MingcuteCategories = typeof metadata.categories;
 function declaration(keys: Array<string>) {
 	return `declare module "${virtualModuleId}" {
 	import { IconifyIcon } from "@iconify/types";
@@ -22,7 +23,7 @@ function declaration(keys: Array<string>) {
 
 export default function iconsPlugin(): Plugin {
 	const available: Array<string> = [];
-	const icons: Record<string, IconifyIcon> = {};
+	const icons: Map<string, IconifyIcon> = new Map();
 	let config: ResolvedConfig;
 
 	return {
@@ -50,11 +51,36 @@ export default function iconsPlugin(): Plugin {
 
 		transform(code, id) {
 			if (id.endsWith(".svelte")) {
-				const ast = parse(code, {
+				const { fragment, instance, module: _module } = parse(code, {
 					modern: true,
 				});
 
-				walk(ast.fragment, (node) => {
+				if (instance) {
+					const { content } = instance;
+
+					walk(content as Node, {}, {
+						_(_, { next }) {
+							next();
+						},
+						Literal(node) {
+							const { value } = node;
+							if (value && typeof value === "string" && available.includes(value)) {
+								const icon = getIconData(
+									mingcute,
+									`${value.replace(/_/g, "-")}-fill`,
+								);
+
+								if (icon) {
+									icons.set(value, icon);
+								} else {
+									console.warn(`Icon "${value}" not found`);
+								}
+							}
+						},
+					});
+				}
+
+				walkFragment(fragment, (node) => {
 					if (node.type !== "Component") {
 						return;
 					}
@@ -79,7 +105,13 @@ export default function iconsPlugin(): Plugin {
 						const value of iconValues
 					) {
 						if (available.includes(value)) {
-							icons[value] = getIconData(mingcute, `${value.replace("_", "-")}-fill`) as IconifyIcon;
+							icons.set(
+								value,
+								getIconData(
+									mingcute,
+									`${value.replace(/_/g, "-")}-fill`,
+								) as IconifyIcon,
+							);
 						}
 					}
 				});
@@ -88,23 +120,22 @@ export default function iconsPlugin(): Plugin {
 
 		load(id) {
 			if (id === resolvedVirtualModuleId) {
-				this.info(`Bundled icons: ${Object.keys(icons).join(", ")}`);
-				return `export const icons = ${JSON.stringify(icons)};\nexport { iconToSVG } from "@iconify/utils";`;
+				this.info(`Bundled icons: ${icons.keys().toArray().join(", ")}`);
+				return `export const icons = ${
+					JSON.stringify(Object.fromEntries(icons.entries()))
+				};\nexport { iconToSVG } from "@iconify/utils";`;
 			}
 		},
 
 		async buildStart() {
-			const { icons, metadata } = await import("@iconify-json/mingcute");
-			const { categories } = metadata;
-
-			const { Zodiac: _zodiac, Crypto: _crypto, ...included } = categories as MingcuteCategories;
+			const { icons } = await import("@iconify-json/mingcute");
 
 			parseIconSet(icons, (name) => {
-				if (name.endsWith("-line") || Object.values(included).every((category) => !category.includes(name))) {
+				if (name.endsWith("-line")) {
 					return;
 				}
 
-				available.push(name.replace(/-fill/g, "").replace(/-/g, "_"));
+				available.push(name.replace(/-/g, "_").replace(/_fill$/, ""));
 			});
 
 			const outputDirectory = path.resolve(config.root, ".muusik");
@@ -119,9 +150,9 @@ export default function iconsPlugin(): Plugin {
 	};
 }
 
-type Node = AST.ElementLike | AST.Block | AST.Text | AST.Comment | AST.Tag;
+type SvelteNode = AST.ElementLike | AST.Block | AST.Text | AST.Comment | AST.Tag;
 
-function walk(fragment: AST.Fragment, callback: (node: Node) => void) {
+function walkFragment(fragment: AST.Fragment, callback: (node: SvelteNode) => void) {
 	for (const childNode of fragment.nodes) {
 		callback(childNode);
 
@@ -131,21 +162,21 @@ function walk(fragment: AST.Fragment, callback: (node: Node) => void) {
 				{ type: "TitleElement" },
 				{ type: "RegularElement" },
 				{ type: "KeyBlock" },
-				({ fragment }) => walk(fragment, callback),
+				({ fragment }) => walkFragment(fragment, callback),
 			)
 			.with({ type: "EachBlock" }, ({ body, fallback }) => {
-				walk(body, callback);
+				walkFragment(body, callback);
 				if (fallback) {
-					walk(fallback, callback);
+					walkFragment(fallback, callback);
 				}
 			})
 			.with({ type: "SnippetBlock" }, ({ body }) => {
-				walk(body, callback);
+				walkFragment(body, callback);
 			})
 			.with({ type: "IfBlock" }, ({ consequent, alternate }) => {
-				walk(consequent, callback);
+				walkFragment(consequent, callback);
 				if (alternate) {
-					walk(alternate, callback);
+					walkFragment(alternate, callback);
 				}
 			})
 			.otherwise(() => {});
