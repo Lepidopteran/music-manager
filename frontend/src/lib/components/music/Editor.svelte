@@ -6,7 +6,7 @@
 	import Stack from "#components/stack/Stack.svelte";
 	import StackItem from "#components/stack/StackItem.svelte";
 	import type { Song } from "#lib/models.ts";
-	import { app } from "#lib/state/app.svelte.ts";
+	import { app } from "#stores/app";
 	import { SvelteSet } from "svelte/reactivity";
 	import CoverView from "./CoverView.svelte";
 

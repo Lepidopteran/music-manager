@@ -1,31 +1,35 @@
 <script lang="ts">
+	import type { DatabaseSong } from "#bindings/DatabaseSong";
 	import GridList from "#components/GridList.svelte";
 	import CoverView from "#components/music/CoverView.svelte";
-
 	import type { PageProps } from "./$types";
 
-	import { app } from "#lib/state/app.svelte.ts";
-	import { songGroups } from "#lib/state/group.svelte.ts";
+	import PrevPage from "#components/navigation/PrevPage.svelte";
+	import { app } from "#stores/app";
 
+	const { params }: PageProps = $props();
 	const { editedSongs, selectedSongs } = $derived(app);
-	const albums = $derived(songGroups.groups.get("album"));
-
-	if (!songGroups.tracked.includes("album")) {
-		songGroups.track("album");
-	}
-
-	let { params }: PageProps = $props();
-
 	const { album } = $derived(params);
+
+	const songIds = $derived(app.getAlbumSongIds(album));
+	const songs: DatabaseSong[] = $derived(
+		songIds
+			?.map((id) => editedSongs.get(id) ?? app.songs.get(id)).filter((song) =>
+				song !== undefined
+			)
+			?? [],
+	);
 </script>
 
-{#if albums && albums.has(album as string)}
+{#if songs.length === 0}
+	<div class="h-full flex items-center justify-center">
+		<p class="text-sm text-current/50">Album has no songs...</p>
+	</div>
+{:else}
 	<GridList
 		class="p-4"
-		data={albums.get(album as string)!.sort((a, b) =>
-			Number(a.trackNumber) - Number(b.trackNumber)
-		)}
-		getKey={(song) => song.id}
+		data={songs.sort((a, b) => Number(a.trackNumber) - Number(b.trackNumber))}
+		getKey={(song: DatabaseSong) => song.id}
 		selected={selectedSongs}
 		columnWidth={128}
 	>

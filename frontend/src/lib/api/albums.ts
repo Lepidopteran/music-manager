@@ -1,4 +1,5 @@
 import type { Album } from "#bindings/Album";
+import type { DatabaseSong } from "#bindings/DatabaseSong";
 import { fetchJson } from "#utils/api";
 
 export async function getAlbums(): Promise<Array<Album>> {
