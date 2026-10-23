@@ -3,21 +3,21 @@
 	import Image from "#components/Image.svelte";
 	import TextInput from "#components/TextInput.svelte";
 
+	import type { DatabaseSong } from "#bindings/DatabaseSong";
 	import Stack from "#components/stack/Stack.svelte";
 	import StackItem from "#components/stack/StackItem.svelte";
-	import type { Song } from "#lib/models.ts";
 	import { app } from "#lib/stores/app.svelte.ts";
 	import { SvelteSet } from "svelte/reactivity";
 	import CoverView from "./CoverView.svelte";
 
-	const excludedFields: Array<keyof Song> = [
+	const excludedFields: Array<keyof DatabaseSong> = [
 		"id",
 		"path",
-		"unknown",
 		"fileCreatedAt",
 		"directoryId",
 		"updatedAt",
 		"addedAt",
+		"albumId",
 	];
 
 	interface Props {
@@ -35,18 +35,18 @@
 	const selected = $derived(app.selectedSongs);
 
 	const songsWithNoCover: Set<string> = new SvelteSet();
-	const songsInSelection: Array<Song> = $derived(
-		selected.values().map(id => all.get(id) as Song)
+	const songsInSelection: Array<DatabaseSong> = $derived(
+		selected.values().map(id => all.get(id) as DatabaseSong)
 			.toArray(),
 	);
 </script>
 
 <div class={["space-y-2 relative h-full overflow-y-auto pt-6"]}>
 	{#if songsInSelection.length > 0}
-		{@const first = songsInSelection[0] as Song}
+		{@const first = songsInSelection[0] as DatabaseSong}
 		{@const firstEdited = edited.get(first.id)}
 		{@const keys = [...new Set(songsInSelection.flatMap((song) => Object.keys(song)))]
-		.sort() as Array<keyof Song>}
+		.sort() as Array<keyof DatabaseSong>}
 
 		<div class="text-center text-sm">
 			{#if songsInSelection.length === 1}

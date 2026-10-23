@@ -2,7 +2,6 @@ import { getAlbums, getAlbumSongs } from "#api/albums";
 import { getSongs } from "#api/song";
 import type { Album } from "#bindings/Album";
 import type { DatabaseSong } from "#bindings/DatabaseSong";
-import type { Song } from "#lib/models.ts";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
 export class AppState {
@@ -22,7 +21,7 @@ export class AppState {
 	});
 
 	#selectedSongs = new SvelteSet<string>();
-	#editedSongs = new SvelteMap<string, Song>();
+	#editedSongs = new SvelteMap<string, DatabaseSong>();
 
 	constructor() {
 		$effect.root(() => {
