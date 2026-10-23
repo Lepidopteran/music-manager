@@ -7,7 +7,7 @@ Written with [Rust](https://www.rust-lang.org/), [TypeScript](https://www.typesc
 ## Features
 
 - [x] Support for a majoirty of audio formats: MP3, M4A, AIFF, AAC, FLAC, OGG, WAV, and More
-- [x] Scrape metadata from audio files 
+- [x] Scrape metadata from audio files
 - [x] Music tagging
 - [x] Music art tagging
 - [ ] Web interface
@@ -28,18 +28,20 @@ To develop Muusik, you need to have the following installed:
 
 ### Installing Dependencies
 
+#### Arch Linux
 
-#### Arch Linux 
 ```bash
 sudo pacman -S openssl sqlite
 ```
 
 #### Fedora
+
 ```bash
 sudo dnf install openssl-devel sqlite-devel
 ```
 
-#### Debian/Ubuntu 
+#### Debian/Ubuntu
+
 ```bash
 sudo apt install libssl-dev libsqlite3-dev
 ```
