@@ -1,7 +1,7 @@
 <script lang="ts">
 	import GridList from "#components/GridList.svelte";
 	import CoverView from "#components/music/CoverView.svelte";
-	import { app } from "#stores/app";
+	import { app } from "#lib/stores/app.svelte.ts";
 	import { goto } from "$app/navigation";
 	import { SvelteSet } from "svelte/reactivity";
 

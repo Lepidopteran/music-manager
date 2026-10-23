@@ -5,7 +5,7 @@
 	import type { PageProps } from "./$types";
 
 	import PrevPage from "#components/navigation/PrevPage.svelte";
-	import { app } from "#stores/app";
+	import { app } from "#lib/stores/app.svelte.ts";
 
 	const { params }: PageProps = $props();
 	const { editedSongs, selectedSongs } = $derived(app);

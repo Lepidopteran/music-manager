@@ -1,7 +1,7 @@
 <script lang="ts" generics="T">
 	import { attributeChanged } from "#attachments/mutation";
 	import { resizeOccurred } from "#attachments/resize";
-	import { pressedKeys } from "#stores/input";
+	import { pressedKeys } from "#lib/stores/input.svelte.ts";
 	import { watch } from "#utils/reactivity/watch.svelte";
 	import { onMount, type Snippet, untrack } from "svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";

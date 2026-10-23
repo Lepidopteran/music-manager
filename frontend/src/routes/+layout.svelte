@@ -10,7 +10,7 @@
 	import Logo from "#components/Logo.svelte";
 	import Editor from "#components/music/Editor.svelte";
 	import PrevPage from "#components/navigation/PrevPage.svelte";
-	import { app } from "#stores/app";
+	import { app } from "#lib/stores/app.svelte.ts";
 	import { onSmallScreen } from "#utils/screen";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
