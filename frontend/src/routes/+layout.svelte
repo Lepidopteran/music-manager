@@ -14,7 +14,7 @@
 	import { onSmallScreen } from "#utils/screen";
 	import { Pane, PaneGroup, PaneResizer } from "paneforge";
 	import { prefersReducedMotion } from "svelte/motion";
-	import { scale } from "svelte/transition";
+	import { fade, scale } from "svelte/transition";
 
 	let theme = $state("dark");
 	let menuOpen = $state(true);
