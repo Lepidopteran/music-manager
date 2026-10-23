@@ -25,8 +25,8 @@ pnpm check:watch      # Watch mode for type checking
 
 # Code Quality
 pnpm exec oxlint       # Frontend linting
-dprint check           # Format check (from root)
-dprint fmt             # Auto-format (from root)
+pnx dprint check           # Format check (from root)
+pnx dprint fmt             # Auto-format (from root)
 ```
 
 **MAKE SURE TO RUN PNPM RUN CHECK BEFORE YOU ARE FINISHED WITH YOUR CHANGES!**
