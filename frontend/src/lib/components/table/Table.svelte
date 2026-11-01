@@ -15,7 +15,7 @@
 		type TableOptions,
 	} from "@tanstack/svelte-table";
 
-	import type { ClassValue } from "svelte/elements";
+	import type { ClassValue, HTMLAttributes } from "svelte/elements";
 
 	interface ColumnMeta {
 		alignment?: "left" | "center" | "right";
@@ -29,7 +29,7 @@
 		columnMeta: {} as ColumnMeta,
 	});
 
-	interface Props<D extends RowData> {
+	interface Props<D extends RowData> extends HTMLAttributes<HTMLTableElement> {
 		columns: ColumnDef<typeof features, D>[];
 		options?: Omit<
 			TableOptions<typeof features, D>,
