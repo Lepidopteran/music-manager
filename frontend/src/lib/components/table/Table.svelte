@@ -1,4 +1,5 @@
 <script lang="ts" generics="D extends RowData, V">
+	import { dragSelection } from "#attachments/drag";
 	import Checkbox from "#components/Checkbox.svelte";
 
 	import {
@@ -15,19 +16,6 @@
 	} from "@tanstack/svelte-table";
 
 	import type { ClassValue } from "svelte/elements";
-	import { SvelteSet } from "svelte/reactivity";
-
-	let isScrubbing = $state(false);
-	let ignoredScrubRows: SvelteSet<string> = $state(new SvelteSet());
-
-	function endScrubbing() {
-		if (!isScrubbing) {
-			return;
-		}
-
-		isScrubbing = false;
-		ignoredScrubRows.clear();
-	}
 
 	interface ColumnMeta {
 		alignment?: "left" | "center" | "right";
@@ -43,7 +31,12 @@
 
 	interface Props<D extends RowData> {
 		columns: ColumnDef<typeof features, D>[];
-		options?: TableOptions<typeof features, D>;
+		options?: Omit<
+			TableOptions<typeof features, D>,
+			| "data"
+			| "columns"
+			| "features"
+		>;
 		data: D[];
 		class?: ClassValue;
 	}
@@ -69,25 +62,12 @@
 	const hasRowSelection = $derived(rowSelectionState);
 </script>
 
-<svelte:window
-	onpointercancel={() => endScrubbing()}
-	onpointerup={() => endScrubbing()}
-/>
-
 <table
 	role="grid"
 	class={[
 		className,
 		"w-full border border-base-content/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
 	]}
-	onpointerup={() => endScrubbing()}
-	onpointerdown={(event) => {
-		if (event.button !== 0) {
-			return;
-		}
-
-		isScrubbing = true;
-	}}
 	{...rest}
 >
 	<colgroup>
@@ -140,21 +120,35 @@
 				]}
 			>
 				{#if hasRowSelection}
-					<td class="p-cell w-min text-center">
-						<Checkbox
-							variant={row.getIsSelected() ? "primary" : "base"}
-							indeterminate={row.getIsSomeSelected()}
-							disabled={!row.getCanSelect()}
-							checked={row.getIsSelected()}
-							onchange={row.getToggleSelectedHandler()}
-							onpointermove={() => {
-								if (!isScrubbing || ignoredScrubRows.has(row.id)) {
-									return;
-								}
+					{@const {
+						id,
+						getIsSelected,
+						getToggleSelectedHandler,
+						getIsSomeSelected,
+						getCanSelect,
+					} = row}
+					<td
+						id={id}
+						class="p-cell w-min text-center"
+						{@attach dragSelection((event) => {
+							const checkbox = event.target instanceof Element
+								? event.target.closest("input[type=checkbox]")
+								: null;
 
-								ignoredScrubRows.add(row.id);
-								row.getToggleSelectedHandler();
-							}}
+							if (checkbox instanceof HTMLInputElement) {
+								checkbox.click();
+								return true;
+							}
+
+							return false;
+						})}
+					>
+						<Checkbox
+							variant={getIsSelected() ? "primary" : "base"}
+							indeterminate={getIsSomeSelected()}
+							disabled={!getCanSelect()}
+							checked={getIsSelected()}
+							onchange={getToggleSelectedHandler()}
 						/>
 					</td>
 				{/if}
