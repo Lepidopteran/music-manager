@@ -1,44 +1,44 @@
-<script lang="ts" generics="D, V">
+<script lang="ts" generics="D extends RowData, V">
+	import { dragSelection } from "#attachments/drag";
+	import Checkbox from "#components/Checkbox.svelte";
+
 	import {
 		type ColumnDef,
-		getCoreRowModel,
-		type RowSelectionOptions,
+		columnSizingFeature,
+		columnVisibilityFeature,
+		createTable,
+		FlexRender,
+		type Row,
+		type RowData,
+		rowSelectionFeature,
+		tableFeatures,
 		type TableOptions,
-	} from "@tanstack/table-core";
+	} from "@tanstack/svelte-table";
 
-	import Checkbox from "#components/Checkbox.svelte";
 	import type { ClassValue, HTMLAttributes } from "svelte/elements";
-	import { SvelteSet } from "svelte/reactivity";
-	import CellContent from "./CellContent.svelte";
-	import { createTable } from "./table.svelte";
 
-	interface SelectionOptions extends RowSelectionOptions<D> {
-		/**
-		 * Allows the ability to click and drag to select multiple rows.
-		 *
-		 * Requires selection to be enabled.
-		 */
-		enableScrubSelection?: boolean;
+	interface ColumnMeta {
+		alignment?: "left" | "center" | "right";
+		truncate?: boolean | "start" | "end";
 	}
 
-	interface Props {
-		columns: ColumnDef<D, V>[];
+	const features = tableFeatures({
+		rowSelectionFeature,
+		columnSizingFeature,
+		columnVisibilityFeature,
+		columnMeta: {} as ColumnMeta,
+	});
+
+	interface Props<D extends RowData> extends HTMLAttributes<HTMLTableElement> {
+		columns: ColumnDef<typeof features, D>[];
+		options?: Omit<
+			TableOptions<typeof features, D>,
+			| "data"
+			| "columns"
+			| "features"
+		>;
 		data: D[];
 		class?: ClassValue;
-		rowSelection?: boolean | SelectionOptions;
-		options?: Partial<TableOptions<D>>;
-	}
-
-	let isScrubbing = $state(false);
-	let ignoredScrubRows: SvelteSet<string> = $state(new SvelteSet());
-
-	function endScrubbing() {
-		if (!isScrubbing) {
-			return;
-		}
-
-		isScrubbing = false;
-		ignoredScrubRows.clear();
 	}
 
 	let {
@@ -46,43 +46,21 @@
 		data,
 		class: className,
 		options,
-		rowSelection = false,
 		...rest
-	}: Props = $props();
+	}: Props<D> = $props();
 
-	const { enableScrubSelection, ...selectionOptions } = $derived(
-		{
-			enableScrubSelection: true,
-			enableRowSelection: true,
-			...typeof rowSelection === "boolean"
-				? { enableRowSelection: rowSelection }
-				: rowSelection,
-		},
-	);
-
-	const tableOptions = $derived({
-		data,
+	const table = $derived(createTable({
+		features,
 		columns,
-		getCoreRowModel: getCoreRowModel(),
-		...selectionOptions,
 		...options,
-	});
+		get data() {
+			return data;
+		},
+	}));
 
-	const {
-		getHeaderGroups,
-		getRowModel,
-		getIsAllRowsSelected,
-		getIsSomeRowsSelected,
-		getToggleAllRowsSelectedHandler,
-	} = $derived(createTable(tableOptions));
-	const { rows } = $derived(getRowModel());
-	const headerGroups = $derived(getHeaderGroups());
+	const rowSelectionState = $derived(table.atoms.rowSelection.get());
+	const hasRowSelection = $derived(rowSelectionState);
 </script>
-
-<svelte:window
-	onpointercancel={() => endScrubbing()}
-	onpointerup={() => endScrubbing()}
-/>
 
 <table
 	role="grid"
@@ -90,105 +68,103 @@
 		className,
 		"w-full border border-base-content/15 rounded-theme overflow-hidden border-separate border-spacing-0 table-fixed shadow-lg",
 	]}
-	onpointerup={() => endScrubbing()}
-	onpointerdown={(event) => {
-		if (
-			!enableScrubSelection
-			|| event.button !== 0
-		) {
-			return;
-		}
-
-		isScrubbing = true;
-	}}
 	{...rest}
 >
 	<colgroup>
-		{#if tableOptions.enableRowSelection}
+		{#if hasRowSelection}
 			<col style="width: 32px" />
 		{/if}
-		{#each headerGroups as { headers }}
-			{#each headers as { column: { getSize } }}
-				<col style:width={getSize()} class="min-w-0" />
+		{#each table.getHeaderGroups() as { headers }}
+			{#each headers as header}
+				<col style:width={header.getSize()} class="min-w-0" />
 			{/each}
 		{/each}
 	</colgroup>
 
 	<thead class="bg-base-300 border-inherit">
-		{#each headerGroups as { headers }}
+		{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 			<tr class="border-inherit text-sm shadow-md">
-				{#if tableOptions.enableRowSelection}
+				{#if hasRowSelection}
 					<th class="p-cell first:rounded-tl-theme last:rounded-tr-theme text-center">
 						<Checkbox
-							indeterminate={getIsSomeRowsSelected()}
-							disabled={!data.length}
-							checked={getIsAllRowsSelected()}
-							onchange={getToggleAllRowsSelectedHandler()}
+							indeterminate={table.getIsSomeRowsSelected()}
+							disabled={data.length === 0}
+							checked={table.getIsAllRowsSelected()}
+							onchange={table.getToggleAllRowsSelectedHandler()}
 						/>
 					</th>
 				{/if}
 
-				{#each headers as { getContext, column: { columnDef: { header, meta } } }}
+				{#each headerGroup.headers as header}
+					{@const meta = header.column.columnDef.meta}
 					<th
 						class={[
 							"p-cell first:rounded-tl-theme last:rounded-tr-theme",
-							meta?.truncate !== false && "truncate",
+							meta?.truncate && "truncate",
 						]}
 						style:direction={meta?.truncate === "end" ? "rtl" : undefined}
-						style:text-align={meta?.alignment || "left"}
+						style:text-align={meta?.alignment ?? "left"}
 					>
-						<CellContent
-							content={{
-								kind: "header",
-								context: getContext(),
-								value: header,
-							}}
-						/>
+						<FlexRender {header} />
 					</th>
 				{/each}
 			</tr>
 		{/each}
 	</thead>
-	<tbody class="divide-y divide-primary/15 border-inherit inset-shadow-xs inset-shadow-highlight/25">
-		{#each rows as row}
+	<tbody class="divide-y divide-primary/15 inset-shadow-xs inset-shadow-highlight/25">
+		{#each table.getRowModel().rows as row (row.id)}
 			<tr
 				class={[
-					"border-inherit first:border-transparent",
-					row.getCanExpand() && "cursor-pointer",
+					"first:border-transparent",
 					row.getIsSelected() && "bg-primary/10",
 				]}
 			>
-				{#if tableOptions.enableRowSelection}
-					<td class="p-cell w-min text-center">
-						<Checkbox
-							variant={row.getIsSelected() ? "primary" : "base"}
-							indeterminate={row.getIsSomeSelected()}
-							disabled={!row.getCanSelect()}
-							checked={row.getIsSelected()}
-							onchange={row.getToggleSelectedHandler()}
-							onpointermove={() => {
-								if (!isScrubbing || ignoredScrubRows.has(row.id)) {
-									return;
-								}
+				{#if hasRowSelection}
+					{@const {
+						id,
+						getIsSelected,
+						getToggleSelectedHandler,
+						getIsSomeSelected,
+						getCanSelect,
+					} = row}
+					<td
+						id={id}
+						class="p-cell w-min text-center"
+						{@attach dragSelection((event) => {
+							const checkbox = event.target instanceof Element
+								? event.target.closest("input[type=checkbox]")
+								: null;
 
-								ignoredScrubRows.add(row.id);
-								row.getToggleSelectedHandler()(new Event("change"));
-							}}
+							if (checkbox instanceof HTMLInputElement) {
+								checkbox.click();
+								return true;
+							}
+
+							return false;
+						})}
+					>
+						<Checkbox
+							variant={getIsSelected() ? "primary" : "base"}
+							indeterminate={getIsSomeSelected()}
+							disabled={!getCanSelect()}
+							checked={getIsSelected()}
+							onchange={getToggleSelectedHandler()}
 						/>
 					</td>
 				{/if}
-				{#each row.getVisibleCells() as { getContext, column: { columnDef: { cell, meta } } }}
+				{#each row.getVisibleCells() as cell (cell.id)}
+					{@const meta = cell.column.columnDef.meta}
 					<td
 						class={[
 							"p-cell truncate border-inherit border-t",
 							meta?.truncate !== false && "truncate",
 						]}
-						style:direction={meta?.truncate === "start" ? "rtl" : undefined}
-						style:text-align={meta?.alignment || "left"}
+						style:direction={meta?.truncate === "start"
+						? "rtl"
+						: undefined}
+						style:text-align={meta?.alignment ?? "left"}
 					>
-						<CellContent
-							content={{ kind: "cell", context: getContext(), value: cell }}
-						/>
+						<FlexRender {cell} />
 					</td>
 				{/each}
 			</tr>

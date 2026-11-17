@@ -15,6 +15,7 @@
 
 	import Icon from "#components/Icon.svelte";
 	import { onMediumScreen } from "#utils/screen";
+	import type { ColumnVisibilityState } from "@tanstack/svelte-table";
 
 	let newDirectoryModalOpen = $state(false);
 	let deleteDirectoryModalOpen = $state(false);
@@ -77,18 +78,10 @@
 	<Table
 		data={directories}
 		class="select-none"
-		rowSelection={{
-			onRowSelectionChange: (updater) => {
-				rowSelection = typeof updater === "function"
-					? updater(rowSelection)
-					: updater;
-			},
-			enableRowSelection: (row) => !directoriesToBeDeleted.has(row.original.name),
-		}}
 		options={{
 			getRowId: (row) => row.name,
+			enableRowSelection: (row) => !directoriesToBeDeleted.has(row.original.name),
 			state: {
-				rowSelection,
 				columnVisibility: {
 					totalSpace: onMediumScreen.current,
 					freeSpace: onMediumScreen.current,
