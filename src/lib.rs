@@ -25,6 +25,7 @@ mod jobs;
 mod migration;
 mod organize;
 mod paths;
+mod services;
 mod state;
 
 pub use config::load_config;
