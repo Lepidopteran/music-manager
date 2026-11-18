@@ -9,10 +9,10 @@ use crate::{
     AppState,
     api::internal_error,
     db::{
+        Pool,
         albums::{self, Album},
         songs,
     },
-    state::Pool,
 };
 
 pub fn router() -> Router<AppState> {

@@ -12,8 +12,8 @@ use sqlx::query_scalar;
 
 use crate::{
     AppState,
+    db::Pool,
     metadata::{CoverArt, CoverArtType, get_cover_art},
-    state::Pool,
 };
 
 use super::*;

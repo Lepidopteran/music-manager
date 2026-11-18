@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{extract::FromRef, response::sse::Event};
 use tokio::sync::broadcast::Sender;
 
-use crate::state::job::{Job, JobRegistry};
+use crate::{db::Pool, state::job::{Job, JobRegistry}};
 
 use super::{config::Settings, jobs::ScanSongs};
 
@@ -13,7 +13,6 @@ pub mod job;
 pub use fs::*;
 
 pub type JobManager = Arc<job::manager::JobManager>;
-pub type Pool = sqlx::SqlitePool;
 pub type FileOperationManager = Arc<OperationManager>;
 
 #[derive(Clone)]

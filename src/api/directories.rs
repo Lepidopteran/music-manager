@@ -15,8 +15,8 @@ use sysinfo::Disks;
 use ts_rs::TS;
 
 use crate::{
-    db::{Directory as DirectoryDB, NewDirectory, directories},
-    state::{AppState, Pool},
+    db::{Directory as DirectoryDB, NewDirectory, Pool, directories},
+    state::AppState,
 };
 
 use super::*;
